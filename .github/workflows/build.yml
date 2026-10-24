@@ -6,8 +6,8 @@ on:
       - Makefile
       - Tweak.xm
       - control
-      - layout/**
-      - .github/workflows/build.yml
+      - 'layout/**'
+      - '.github/workflows/build.yml'
 jobs:
   build:
     runs-on: macos-latest
@@ -16,9 +16,14 @@ jobs:
       - name: Install tools
         run: brew install ldid dpkg make
       - name: Install Theos and SDKs
+        shell: bash
         run: |
+          set -euxo pipefail
           git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
-          git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/theos/sdks"
+          mkdir -p "$RUNNER_TEMP/theos/sdks"
+          git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/theos/sdks-repo"
+          cp -R "$RUNNER_TEMP/theos/sdks-repo/." "$RUNNER_TEMP/theos/sdks/"
+          ls -la "$RUNNER_TEMP/theos/sdks"
       - name: Compile and package
         env:
           THEOS: ${{ runner.temp }}/theos
