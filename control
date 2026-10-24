@@ -1,0 +1,9 @@
+Package: com.renatasy83.pulloverpro.diagnostic
+Name: PullOver Pro Alpha 1 Diagnostic
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: Diagnostic-only ElleKit SpringBoard injection test; no floating windows.
+Maintainer: Renatasy83
+Author: PullOverPro iOS 26 port experiment
+Section: Tweaks
+Depends: firmware (>= 15.0), ellekit
