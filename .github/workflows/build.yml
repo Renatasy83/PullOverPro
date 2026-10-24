@@ -1,0 +1,33 @@
+name: Build diagnostic rootless deb
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - Makefile
+      - Tweak.xm
+      - control
+      - layout/**
+      - .github/workflows/build.yml
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: brew install ldid dpkg make
+      - name: Install Theos and SDKs
+        run: |
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+          git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/theos/sdks"
+      - name: Compile and package
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          export PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"
+          make clean package FINALPACKAGE=1
+      - name: Upload experimental deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: PullOverPro-Alpha1-diagnostic-deb
+          path: packages/*.deb
+          if-no-files-found: error
