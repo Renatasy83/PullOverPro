@@ -8,8 +8,8 @@ static NSString *const kAlpha2EnabledKey = @"com.renatasy83.pulloverpro.alpha2.e
 static const NSInteger kAlpha2Tag = 260102;
 
 static void PPOInstallIndicator(void) {
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:kAlpha2EnabledKey] == NO) {
-        // Opt-in via preference key; defaults to OFF for safety.
+    if ([[[NSUserDefaults standardUserDefaults] objectForKey:kAlpha2EnabledKey] isEqual:@NO]) {
+        // Explicit opt-out using preference key; enabled by default for this visual test.
         NSLog(@"[PullOverPro Alpha2] injection active, indicator disabled by default");
         return;
     }
