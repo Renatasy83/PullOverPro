@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro Alpha 2 Visual Test
-Version: 0.2.0
+Name: PullOver Pro Alpha 3 Interactive Test
+Version: 0.3.0
 Architecture: iphoneos-arm64
-Description: Experimental ElleKit SpringBoard visual injection test; no floating windows.
+Description: Experimental ElleKit SpringBoard interactive overlay test; no floating windows.
 Maintainer: Renatasy83
 Author: PullOverPro iOS 26 port experiment
 Section: Tweaks
