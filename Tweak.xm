@@ -2,58 +2,85 @@
 #import <UIKit/UIKit.h>
 #import <dispatch/dispatch.h>
 
-// Alpha 2: reversible, visual proof of injection.
-// No private window-hosting APIs or additional UIWindow instances.
-static NSString *const kAlpha2EnabledKey = @"com.renatasy83.pulloverpro.alpha2.enabled";
-static const NSInteger kAlpha2Tag = 260102;
+// Alpha 3: isolated interactive overlay. No app hosting or private APIs.
+static UIWindow *ppoWindow = nil;
+static UIViewController *ppoController = nil;
+static UIButton *ppoHandle = nil;
+static BOOL ppoExpanded = NO;
 
-static void PPOInstallIndicator(void) {
-    if ([[[NSUserDefaults standardUserDefaults] objectForKey:kAlpha2EnabledKey] isEqual:@NO]) {
-        // Explicit opt-out using preference key; enabled by default for this visual test.
-        NSLog(@"[PullOverPro Alpha2] injection active, indicator disabled by default");
-        return;
-    }
-    UIWindow *window = nil;
-    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
-        if (![scene isKindOfClass:[UIWindowScene class]]) continue;
-        UIWindowScene *windowScene = (UIWindowScene *)scene;
-        if (windowScene.activationState != UISceneActivationStateForegroundActive) continue;
-        for (UIWindow *candidate in windowScene.windows) {
-            if (!candidate.hidden && candidate.rootViewController) { window = candidate; break; }
+@interface PPOHandleTarget : NSObject
+- (void)tapped:(id)sender;
+- (void)panned:(UIPanGestureRecognizer *)recognizer;
+@end
+
+@implementation PPOHandleTarget
+- (void)tapped:(id)sender {
+    ppoExpanded = !ppoExpanded;
+    [ppoHandle setTitle:(ppoExpanded ? @"PPO ✕" : @"PPO ▶") forState:UIControlStateNormal];
+    CGRect f = ppoWindow.frame;
+    f.size.width = ppoExpanded ? 160 : 78;
+    ppoWindow.frame = f;
+    NSLog(@"[PullOverPro Alpha3] handle %@", ppoExpanded ? @"expanded" : @"collapsed");
+}
+- (void)panned:(UIPanGestureRecognizer *)recognizer {
+    if (!ppoWindow) return;
+    CGPoint delta = [recognizer translationInView:ppoWindow.superview];
+    CGRect f = ppoWindow.frame;
+    f.origin.y += delta.y;
+    CGFloat maxY = MAX(0, CGRectGetHeight(ppoWindow.windowScene.coordinateSpace.bounds) - CGRectGetHeight(f));
+    f.origin.y = MAX(0, MIN(maxY, f.origin.y));
+    ppoWindow.frame = f;
+    [recognizer setTranslation:CGPointZero inView:ppoWindow.superview];
+}
+@end
+
+static PPOHandleTarget *ppoTarget = nil;
+
+static void PPOInstallOverlay(void) {
+    if (ppoWindow) return;
+    UIWindowScene *scene = nil;
+    for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes) {
+        if ([candidate isKindOfClass:UIWindowScene.class] &&
+            candidate.activationState == UISceneActivationStateForegroundActive) {
+            scene = (UIWindowScene *)candidate;
+            break;
         }
-        if (window) break;
     }
-    if (!window || [window viewWithTag:kAlpha2Tag]) {
-        NSLog(@"[PullOverPro Alpha2] no eligible window or already installed");
-        return;
-    }
-    UILabel *indicator = [[UILabel alloc] initWithFrame:CGRectMake(8, 110, 74, 24)];
-    indicator.tag = kAlpha2Tag;
-    indicator.text = @"PPO A2";
-    indicator.textColor = UIColor.whiteColor;
-    indicator.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.75];
-    indicator.font = [UIFont boldSystemFontOfSize:11];
-    indicator.textAlignment = NSTextAlignmentCenter;
-    indicator.layer.cornerRadius = 8;
-    indicator.layer.masksToBounds = YES;
-    indicator.userInteractionEnabled = NO;
-    indicator.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
-    [window addSubview:indicator];
-    NSLog(@"[PullOverPro Alpha2] indicator installed");
+    if (!scene) { NSLog(@"[PullOverPro Alpha3] No active UIWindowScene"); return; }
+
+    ppoWindow = [[UIWindow alloc] initWithWindowScene:scene];
+    ppoWindow.frame = CGRectMake(0, 170, 78, 44);
+    ppoWindow.windowLevel = UIWindowLevelStatusBar + 1;
+    ppoWindow.backgroundColor = UIColor.clearColor;
+    ppoController = [UIViewController new];
+    ppoController.view.backgroundColor = UIColor.clearColor;
+    ppoWindow.rootViewController = ppoController;
+
+    ppoHandle = [UIButton buttonWithType:UIButtonTypeSystem];
+    ppoHandle.frame = CGRectMake(0, 0, 78, 44);
+    ppoHandle.autoresizingMask = UIViewAutoresizingFlexibleRightMargin;
+    ppoHandle.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.83];
+    ppoHandle.layer.cornerRadius = 12;
+    [ppoHandle setTitle:@"PPO ▶" forState:UIControlStateNormal];
+    [ppoHandle setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    ppoHandle.titleLabel.font = [UIFont boldSystemFontOfSize:13];
+    ppoTarget = [PPOHandleTarget new];
+    [ppoHandle addTarget:ppoTarget action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:ppoTarget action:@selector(panned:)];
+    [ppoHandle addGestureRecognizer:pan];
+    [ppoController.view addSubview:ppoHandle];
+    ppoWindow.hidden = NO;
+    NSLog(@"[PullOverPro Alpha3] interactive overlay installed");
 }
 
 %hook SpringBoard
 - (void)applicationDidFinishLaunching:(id)application {
     %orig;
-    NSLog(@"[PullOverPro Alpha2] SpringBoard launch hook reached");
-    dispatch_async(dispatch_get_main_queue(), ^{
-        PPOInstallIndicator();
-    });
+    NSLog(@"[PullOverPro Alpha3] SpringBoard hook reached");
+    dispatch_async(dispatch_get_main_queue(), ^{ PPOInstallOverlay(); });
 }
 %end
 
 %ctor {
-    @autoreleasepool {
-        NSLog(@"[PullOverPro Alpha2] tweak loaded");
-    }
+    @autoreleasepool { NSLog(@"[PullOverPro Alpha3] loaded"); }
 }
