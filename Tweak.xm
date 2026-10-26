@@ -127,7 +127,7 @@ static void PPOReloadApps(void) {
 }
 - (void)refresh:(id)sender { PPOReloadApps(); }
 @end
-static void PPOInstall(void) {
+static void __attribute__((unused)) PPOInstall(void) {
     if (ppoWindow) return;
     UIWindowScene *scene = nil;
     for (UIScene *s in UIApplication.sharedApplication.connectedScenes) {
