@@ -2,7 +2,7 @@
 #import <UIKit/UIKit.h>
 #import <dispatch/dispatch.h>
 
-// Beta Safe 2: restore Alpha 4 UI only; no private app APIs or scene hosting.
+// Beta Safe 4: safe favorites UI selection; no application launch or scene hosting.
 // Emergency opt-out suppresses UI installation. Logos hook remains installed.
 static UIWindow *ppoWindow;
 static UIViewController *ppoController;
@@ -13,13 +13,14 @@ static BOOL ppoLightTheme = NO;
 static UILabel *ppoStatus;
 static const CGFloat PPOClosedWidth = 78;
 static const CGFloat PPOOpenWidth = 218;
-static const CGFloat PPOPanelHeight = 228;
+static const CGFloat PPOPanelHeight = 310;
 
 @interface PPOHandleTarget : NSObject
 - (void)tapped:(id)sender;
 - (void)panned:(UIPanGestureRecognizer *)recognizer;
 - (void)toggleTheme:(id)sender;
 - (void)resetPosition:(id)sender;
+- (void)selectFavorite:(UIButton *)sender;
 @end
 
 @implementation PPOHandleTarget
@@ -59,6 +60,12 @@ static const CGFloat PPOPanelHeight = 228;
         if ([v isKindOfClass:UIButton.class]) [(UIButton *)v setTitleColor:foreground forState:UIControlStateNormal];
     }
     ppoStatus.text = ppoLightTheme ? @"Temă: deschisă" : @"Temă: închisă";
+}
+- (void)selectFavorite:(UIButton *)sender {
+    NSArray<NSString *> *names = @[@"Safari", @"Mesaje", @"Muzică"];
+    if (sender.tag < 0 || sender.tag >= (NSInteger)names.count) return;
+    ppoStatus.text = [NSString stringWithFormat:@"Selectat: %@ (test UI)", names[(NSUInteger)sender.tag]];
+    NSLog(@"[PullOverPro Beta Safe 4] favorite selected: %@", names[(NSUInteger)sender.tag]);
 }
 - (void)resetPosition:(id)sender {
     if (!ppoWindow) return;
@@ -106,19 +113,29 @@ static void PPOInstallOverlay(void) {
     ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
     ppoPanel.layer.cornerRadius = 12;
     ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • Beta Safe 3", 8)];
-    [ppoPanel addSubview:PPOLabel(@"Panou lateral: funcțional", 43)];
-    [ppoPanel addSubview:PPOLabel(@"Aplicații flotante: dezactivate", 72)];
-    ppoStatus = PPOLabel(@"Interfață activă", 101);
+    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • Beta Safe 4", 8)];
+    [ppoPanel addSubview:PPOLabel(@"Favorite (test interfață)", 43)];
+    NSArray<NSString *> *favorites = @[@"Safari", @"Mesaje", @"Muzică"];
+    for (NSUInteger i = 0; i < favorites.count; i++) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+        button.frame = CGRectMake(10, 72 + (CGFloat)i * 34, PPOOpenWidth - 20, 30);
+        button.tag = (NSInteger)i;
+        button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        [button setTitle:[NSString stringWithFormat:@"  %@", favorites[i]] forState:UIControlStateNormal];
+        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        [button addTarget:ppoTarget action:@selector(selectFavorite:) forControlEvents:UIControlEventTouchUpInside];
+        [ppoPanel addSubview:button];
+    }
+    ppoStatus = PPOLabel(@"Atinge un favorit pentru test", 182);
     [ppoPanel addSubview:ppoStatus];
     UIButton *theme = [UIButton buttonWithType:UIButtonTypeSystem];
-    theme.frame = CGRectMake(10, 137, 92, 32);
+    theme.frame = CGRectMake(10, 218, 92, 32);
     [theme setTitle:@"Temă" forState:UIControlStateNormal];
     [theme setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     [theme addTarget:ppoTarget action:@selector(toggleTheme:) forControlEvents:UIControlEventTouchUpInside];
     [ppoPanel addSubview:theme];
     UIButton *reset = [UIButton buttonWithType:UIButtonTypeSystem];
-    reset.frame = CGRectMake(110, 137, 98, 32);
+    reset.frame = CGRectMake(110, 218, 98, 32);
     [reset setTitle:@"Recentrare" forState:UIControlStateNormal];
     [reset setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     [reset addTarget:ppoTarget action:@selector(resetPosition:) forControlEvents:UIControlEventTouchUpInside];
@@ -146,7 +163,7 @@ static void PPOInstallOverlay(void) {
 %hook SpringBoard
 - (void)applicationDidFinishLaunching:(id)application {
     %orig;
-    NSLog(@"[PullOverPro Beta Safe 3] SpringBoard hook reached");
+    NSLog(@"[PullOverPro Beta Safe 4] SpringBoard hook reached");
     dispatch_async(dispatch_get_main_queue(), ^{
         if ([[NSFileManager defaultManager] fileExistsAtPath:@"/var/mobile/.ppo_disable"]) return;
         PPOInstallOverlay();
@@ -157,9 +174,9 @@ static void PPOInstallOverlay(void) {
 %ctor {
     @autoreleasepool {
         if ([[NSFileManager defaultManager] fileExistsAtPath:@"/var/mobile/.ppo_disable"]) {
-            NSLog(@"[PullOverPro Beta Safe 3] emergency opt-out active");
+            NSLog(@"[PullOverPro Beta Safe 4] emergency opt-out active");
             return;
         }
-        NSLog(@"[PullOverPro Beta Safe 3] loaded");
+        NSLog(@"[PullOverPro Beta Safe 4] loaded");
     }
 }
