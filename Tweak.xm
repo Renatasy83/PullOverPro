@@ -2,7 +2,7 @@
 #import <UIKit/UIKit.h>
 #import <dispatch/dispatch.h>
 
-// Beta Safe 4: safe favorites UI selection; no application launch or scene hosting.
+// Beta Safe 4 Fix 1: safe favorites UI selection; no application launch or scene hosting.
 // Emergency opt-out suppresses UI installation. Logos hook remains installed.
 static UIWindow *ppoWindow;
 static UIViewController *ppoController;
@@ -65,7 +65,7 @@ static const CGFloat PPOPanelHeight = 310;
     NSArray<NSString *> *names = @[@"Safari", @"Mesaje", @"Muzică"];
     if (sender.tag < 0 || sender.tag >= (NSInteger)names.count) return;
     ppoStatus.text = [NSString stringWithFormat:@"Selectat: %@ (test UI)", names[(NSUInteger)sender.tag]];
-    NSLog(@"[PullOverPro Beta Safe 4] favorite selected: %@", names[(NSUInteger)sender.tag]);
+    NSLog(@"[PullOverPro Beta Safe 4 Fix 1] favorite selected: %@", names[(NSUInteger)sender.tag]);
 }
 - (void)resetPosition:(id)sender {
     if (!ppoWindow) return;
@@ -108,12 +108,14 @@ static void PPOInstallOverlay(void) {
     ppoController = [UIViewController new];
     ppoController.view.backgroundColor = UIColor.clearColor;
     ppoWindow.rootViewController = ppoController;
+    // Initialize the action target before attaching any favorite buttons.
+    ppoTarget = [PPOHandleTarget new];
 
     ppoPanel = [[UIView alloc] initWithFrame:CGRectMake(0, 44, PPOOpenWidth, PPOPanelHeight - 44)];
     ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
     ppoPanel.layer.cornerRadius = 12;
     ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • Beta Safe 4", 8)];
+    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • Beta Safe 4 Fix 1", 8)];
     [ppoPanel addSubview:PPOLabel(@"Favorite (test interfață)", 43)];
     NSArray<NSString *> *favorites = @[@"Safari", @"Mesaje", @"Muzică"];
     for (NSUInteger i = 0; i < favorites.count; i++) {
@@ -150,7 +152,6 @@ static void PPOInstallOverlay(void) {
     [ppoHandle setTitle:@"PPO ▶" forState:UIControlStateNormal];
     [ppoHandle setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     ppoHandle.titleLabel.font = [UIFont boldSystemFontOfSize:13];
-    ppoTarget = [PPOHandleTarget new];
     [ppoHandle addTarget:ppoTarget action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:ppoTarget action:@selector(panned:)];
     [ppoHandle addGestureRecognizer:pan];
@@ -163,7 +164,7 @@ static void PPOInstallOverlay(void) {
 %hook SpringBoard
 - (void)applicationDidFinishLaunching:(id)application {
     %orig;
-    NSLog(@"[PullOverPro Beta Safe 4] SpringBoard hook reached");
+    NSLog(@"[PullOverPro Beta Safe 4 Fix 1] SpringBoard hook reached");
     dispatch_async(dispatch_get_main_queue(), ^{
         if ([[NSFileManager defaultManager] fileExistsAtPath:@"/var/mobile/.ppo_disable"]) return;
         PPOInstallOverlay();
@@ -174,9 +175,9 @@ static void PPOInstallOverlay(void) {
 %ctor {
     @autoreleasepool {
         if ([[NSFileManager defaultManager] fileExistsAtPath:@"/var/mobile/.ppo_disable"]) {
-            NSLog(@"[PullOverPro Beta Safe 4] emergency opt-out active");
+            NSLog(@"[PullOverPro Beta Safe 4 Fix 1] emergency opt-out active");
             return;
         }
-        NSLog(@"[PullOverPro Beta Safe 4] loaded");
+        NSLog(@"[PullOverPro Beta Safe 4 Fix 1] loaded");
     }
 }
