@@ -181,10 +181,9 @@ static void PPOInstall(void) {
     ppoWindow.hidden = NO;
     NSLog(@"[PullOverPro Beta] preview loaded");
 }
-%hook SpringBoard
-- (void)applicationDidFinishLaunching:(id)application {
-    %orig;
-    dispatch_async(dispatch_get_main_queue(), ^{ PPOInstall(); });
+// Recovery build: the scene/window bootstrap is deliberately disabled.
+// The previous preview caused a SpringBoard boot loop on the test device.
+// Do not reactivate PPOInstall until the scene lifecycle is investigated.
+%ctor {
+    NSLog(@"[PullOverPro Beta Recovery] loaded; UI bootstrap disabled");
 }
-%end
-%ctor { NSLog(@"[PullOverPro Beta] injected"); }
