@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro Beta Safe 3 Controls
-Version: 0.5.2~beta.safe3
+Name: PullOver Pro Beta Safe 4 Favorites UI
+Version: 0.5.3~beta.safe4
 Architecture: iphoneos-arm64
-Description: Floating side panel, drag handle, theme toggle, reset position; no private app APIs.
+Description: Safe favorites selection UI with theme and reset; favorites do not launch applications.
 Maintainer: Renatasy83
 Author: PullOverPro iOS 26 port experiment
 Section: Tweaks
