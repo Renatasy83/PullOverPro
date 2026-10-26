@@ -1,4 +1,4 @@
-name: Build diagnostic rootless deb
+name: Build PullOver Pro beta rootless deb
 on:
   workflow_dispatch:
   push:
@@ -33,6 +33,6 @@ jobs:
       - name: Upload experimental deb
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-Alpha1-diagnostic-deb
+          name: PullOverPro-Beta-Safe2-deb
           path: packages/*.deb
           if-no-files-found: error
