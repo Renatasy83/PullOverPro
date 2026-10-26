@@ -20,10 +20,6 @@ static id PPOCall0(id object, SEL selector) {
     if (!object || ![object respondsToSelector:selector]) return nil;
     return ((id (*)(id, SEL))objc_msgSend)(object, selector);
 }
-static id PPOCall1(id object, SEL selector, id argument) {
-    if (!object || ![object respondsToSelector:selector]) return nil;
-    return ((id (*)(id, SEL, id))objc_msgSend)(object, selector, argument);
-}
 static NSString *PPOString(id object, SEL selector) {
     id value = PPOCall0(object, selector);
     return [value isKindOfClass:NSString.class] ? value : nil;
