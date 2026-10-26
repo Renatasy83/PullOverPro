@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro Beta Safe Diagnostic
-Version: 0.5.0~beta.safe1
+Name: PullOver Pro Beta Safe 2 Side Panel
+Version: 0.5.1~beta.safe2
 Architecture: iphoneos-arm64
-Description: Inert load-only diagnostic. No SpringBoard hooks, windows, or private APIs.
+Description: Alpha 4-derived floating side panel and drag handle; no app enumeration or private APIs.
 Maintainer: Renatasy83
 Author: PullOverPro iOS 26 port experiment
 Section: Tweaks
