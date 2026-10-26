@@ -49,6 +49,18 @@ static void PPOSetStatus(NSString *message) {
     ppoStatus.text = message;
     NSLog(@"[PullOverPro Beta] %@", message);
 }
+// iOS 26 scene-host capability probe. Read-only until signatures are validated.
+// Avoid calling unknown private methods or changing scene lifecycle in SpringBoard.
+static NSString *PPOSceneHostDiagnostics(void) {
+    NSArray<NSString *> *names = @[@"FBSceneHostManager", @"FBSceneHostView", @"SBApplicationController", @"SBMainSwitcherViewController", @"FBSceneManager"];
+    NSMutableArray<NSString *> *available = [NSMutableArray array];
+    for (NSString *name in names) {
+        Class cls = NSClassFromString(name);
+        if (cls) [available addObject:name];
+        NSLog(@"[PullOverPro SceneProbe] %@: %@", name, cls ? @"present" : @"absent");
+    }
+    return [NSString stringWithFormat:@"Scene API: %lu/%lu", (unsigned long)available.count, (unsigned long)names.count];
+}
 static void PPOLaunch(NSString *bundleID) {
     id sb = UIApplication.sharedApplication;
     SEL launch = NSSelectorFromString(@"launchApplicationWithIdentifier:suspended:");
@@ -100,7 +112,7 @@ static void PPOReloadApps(void) {
     ppoController.view.frame = CGRectMake(0, 0, frame.size.width, frame.size.height);
     ppoPanel.hidden = !ppoExpanded;
     [ppoHandle setTitle:ppoExpanded ? @"PPO ✕" : @"PPO ▶" forState:UIControlStateNormal];
-    if (ppoExpanded) PPOReloadApps();
+    if (ppoExpanded) { PPOReloadApps(); NSLog(@"[PullOverPro SceneProbe] %@", PPOSceneHostDiagnostics()); }
 }
 - (void)move:(UIPanGestureRecognizer *)recognizer {
     CGPoint delta = [recognizer translationInView:ppoWindow];
