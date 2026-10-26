@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro Beta Safe 4 Favorites UI
-Version: 0.5.3~beta.safe4
+Name: PullOver Pro Beta Safe 4 Fix 1 Favorites UI
+Version: 0.5.4~beta.safe4fix1
 Architecture: iphoneos-arm64
-Description: Safe favorites selection UI with theme and reset; favorites do not launch applications.
+Description: Corrected favorite action target initialization; UI only, no app launching.
 Maintainer: Renatasy83
 Author: PullOverPro iOS 26 port experiment
 Section: Tweaks
