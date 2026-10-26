@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro Alpha 4 Side Panel
-Version: 0.4.0
+Name: PullOver Pro Beta Preview App Drawer
+Version: 0.5.0~beta.preview1
 Architecture: iphoneos-arm64
-Description: Experimental ElleKit SpringBoard expandable side panel; no floating apps.
+Description: Experimental ElleKit SpringBoard installed app list and launch prototype; no embedded app windows.
 Maintainer: Renatasy83
 Author: PullOverPro iOS 26 port experiment
 Section: Tweaks
