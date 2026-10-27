@@ -1,6 +1,6 @@
-# Choose an existing rootless shell before Theos evaluates any shell expressions.
+# Theos requires bash; select an existing path before any shell expressions.
 ifeq ($(origin SHELL),default)
-SHELL := $(firstword $(wildcard /var/jb/bin/sh /var/jb/usr/bin/sh /bin/sh))
+SHELL := $(firstword $(wildcard /var/jb/bin/bash /var/jb/usr/bin/bash /bin/bash))
 endif
 export SHELL
 

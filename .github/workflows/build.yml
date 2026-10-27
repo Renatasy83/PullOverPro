@@ -57,8 +57,8 @@ jobs:
             make --version
             echo "SDK=iPhoneOS16.5; deployment=15.0; scheme=rootless"
           } > diagnostics/build-environment.txt
-          make SHELL=/bin/sh clean
-          make SHELL=/bin/sh package FINALPACKAGE=1 2>&1 | tee diagnostics/build.log
+          make SHELL=/bin/bash clean
+          make SHELL=/bin/bash package FINALPACKAGE=1 2>&1 | tee diagnostics/build.log
       - name: Inspect package and binary
         shell: bash
         run: |

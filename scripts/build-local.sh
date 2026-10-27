@@ -14,10 +14,10 @@ test -d "$THEOS/sdks/iPhoneOS16.5.sdk" || {
     exit 1
 }
 ppo_shell=
-for candidate in /var/jb/bin/sh /var/jb/usr/bin/sh /bin/sh; do
+for candidate in /var/jb/bin/bash /var/jb/usr/bin/bash /bin/bash; do
     if test -x "$candidate"; then ppo_shell="$candidate"; break; fi
 done
-test -n "$ppo_shell" || { echo "No executable shell" >&2; exit 1; }
+test -n "$ppo_shell" || { echo "Theos requires an executable bash" >&2; exit 1; }
 echo "Theos=$THEOS; SHELL=$ppo_shell"
 make --version | head -n 1
 clang --version | head -n 1

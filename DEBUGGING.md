@@ -33,7 +33,7 @@ Build-ul CI #28 folosea macOS 26.6.2 arm64, Xcode/Apple clang, Theos și SDK-uri
 
 Acest workflow fixează SDK 16.5 și commit-urile Theos/SDK, generează manifest cu compilatorul și SHA-urile, rulează analiza Clang pentru arm64, compilează arm64+arm64e, verifică payload-ul Debian, arhitecturile Mach-O și exportă UUID-uri, dependențe și SHA256. Nu execută SpringBoard. Rootless: iphoneos-arm64 în control și /var/jb/Library/MobileSubstrate/DynamicLibraries în payload. Dublura filtrului din layout a fost eliminată; Theos instalează filtrul din rădăcină.
 
-/bin/sh absent este o problemă de build ce trebuie eliminată înaintea testării, nu dovada cauzei blocajului. Scriptul alege un shell existent și transmite SHELL pe linia de comandă pentru sub-make; nu creează symlink-uri în sistem. LC_ALL=C și LANG=C elimină dependența de locale nesuportate. Un pachet generat în prezența erorilor make nu este acceptat ca build verificat.
+/bin/sh absent este o problemă de build ce trebuie eliminată înaintea testării, nu dovada cauzei blocajului. Theos common.mk cere bash; scriptul alege un bash existent și transmite SHELL pe linia de comandă pentru sub-make; nu creează symlink-uri în sistem. LC_ALL=C și LANG=C elimină dependența de locale nesuportate. Un pachet generat în prezența erorilor make nu este acceptat ca build verificat.
 
 Pe telefon, în NewTerm ca mobile, într-un checkout separat pentru a păstra modificările locale:
 
