@@ -44,6 +44,14 @@ jobs:
             -I "$THEOS/vendor/include" -I "$THEOS/include" \
             -Xanalyzer -analyzer-output=text diagnostics/Tweak.mm \
             2>&1 | tee diagnostics/analysis.log
+      - name: Analyze isolated helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang --analyze -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
+            -Xanalyzer -analyzer-output=text tools/app-list/main.m \
+            2>&1 | tee diagnostics/helper-analysis.log
       - name: Compile and package
         shell: bash
         run: |
@@ -71,11 +79,15 @@ jobs:
           xcrun lipo "$dylib" -verify_arch arm64 arm64e
           xcrun otool -L "$dylib" | tee diagnostics/dependencies.txt
           xcrun dwarfdump --uuid "$dylib" | tee diagnostics/uuids.txt
+          helper="$RUNNER_TEMP/ppo-package/var/jb/usr/bin/ppo-apps"
+          xcrun lipo "$helper" -verify_arch arm64 arm64e
+          xcrun otool -L "$helper" | tee diagnostics/helper-dependencies.txt
+          xcrun dwarfdump --uuid "$helper" | tee diagnostics/helper-uuids.txt
           shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
       - name: Upload diagnostic deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.5.6-metadata1-${{ github.sha }}
+          name: PullOverPro-0.5.7-enumerator1-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

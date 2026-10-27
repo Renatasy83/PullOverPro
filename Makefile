@@ -18,3 +18,5 @@ PullOverProDiagnostic_FRAMEWORKS := Foundation UIKit
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
+SUBPROJECTS := tools/app-list
+include $(THEOS_MAKE_PATH)/aggregate.mk
