@@ -1,38 +1,84 @@
-name: Build PullOver Pro beta rootless deb
+name: Build PullOver Pro diagnostic rootless deb
 on:
   workflow_dispatch:
   push:
-    paths:
-      - Makefile
-      - Tweak.xm
-      - control
-      - 'layout/**'
-      - '.github/workflows/build.yml'
+    branches: [beta-development, 'debug/**']
+  pull_request:
+    branches: [beta-development]
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 20
+    env:
+      LC_ALL: C
+      LANG: C
+      THEOS: ${{ runner.temp }}/theos
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
         run: brew install ldid dpkg make
-      - name: Install Theos and SDKs
+      - name: Install pinned Theos and SDK
         shell: bash
         run: |
-          set -euxo pipefail
-          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
-          mkdir -p "$RUNNER_TEMP/theos/sdks"
-          git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/theos/sdks-repo"
-          cp -R "$RUNNER_TEMP/theos/sdks-repo/." "$RUNNER_TEMP/theos/sdks/"
-          ls -la "$RUNNER_TEMP/theos/sdks"
-      - name: Compile and package
-        env:
-          THEOS: ${{ runner.temp }}/theos
+          set -euo pipefail
+          git clone --no-checkout https://github.com/theos/theos.git "$THEOS"
+          git -C "$THEOS" checkout 304e0799973e8145f32e4ca2de6c747a84b758ce
+          git -C "$THEOS" submodule update --init --recursive
+          git clone --no-checkout https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
+          git -C "$RUNNER_TEMP/sdks" checkout 0222fd5413cf4b9af096f37b4621afa2688572f7
+          mkdir -p "$THEOS/sdks"
+          cp -R "$RUNNER_TEMP/sdks/iPhoneOS16.5.sdk" "$THEOS/sdks/"
+      - name: Static checks
+        run: python3 scripts/verify.py
+      - name: Clang static analysis
+        shell: bash
         run: |
-          export PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"
-          make clean package FINALPACKAGE=1
-      - name: Upload experimental deb
+          set -euo pipefail
+          mkdir -p diagnostics
+          perl "$THEOS/vendor/logos/bin/logos.pl" Tweak.xm > diagnostics/Tweak.mm
+          xcrun clang++ --analyze -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
+            -I "$THEOS/vendor/include" -I "$THEOS/include" \
+            -Xanalyzer -analyzer-output=text diagnostics/Tweak.mm \
+            2>&1 | tee diagnostics/analysis.log
+      - name: Compile and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/opt/make/libexec/gnubin:/usr/local/opt/make/libexec/gnubin:$PATH"
+          mkdir -p diagnostics
+          {
+            git rev-parse HEAD
+            git -C "$THEOS" rev-parse HEAD
+            xcrun clang --version
+            make --version
+            echo "SDK=iPhoneOS16.5; deployment=15.0; scheme=rootless"
+          } > diagnostics/build-environment.txt
+          make SHELL=/bin/sh clean
+          make SHELL=/bin/sh package FINALPACKAGE=1 2>&1 | tee diagnostics/build.log
+      - name: Inspect package and binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/opt/make/libexec/gnubin:/usr/local/opt/make/libexec/gnubin:$PATH"
+          python3 scripts/verify.py packages/*.deb
+          mkdir -p "$RUNNER_TEMP/ppo-package"
+          dpkg-deb -x packages/*.deb "$RUNNER_TEMP/ppo-package"
+          dylib="$RUNNER_TEMP/ppo-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverProDiagnostic.dylib"
+          xcrun lipo -verify_arch arm64 arm64e "$dylib"
+          xcrun otool -L "$dylib" | tee diagnostics/dependencies.txt
+          xcrun dwarfdump --uuid "$dylib" | tee diagnostics/uuids.txt
+          shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
+      - name: Upload diagnostic deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-Beta-Safe2-deb
-          path: packages/*.deb
+          name: PullOverPro-0.5.5-diagnostic1-${{ github.sha }}
+          path: |
+            packages/*.deb
+            diagnostics/
+            .theos/obj/**/*.dSYM/**
+          include-hidden-files: true
           if-no-files-found: error
+

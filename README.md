@@ -1,18 +1,10 @@
-# PullOverPro iOS 26 experimental port
+# PullOver Pro port research
 
-Target: iPhone 11 Pro Max (A13), iOS 26.0.1, Dopamine rootless, ElleKit.
+Original PullOver Pro: [c1d3r / Will Smillie](https://github.com/c1d3rdev/PullOver-Pro), GPL-3.0; see [LICENSE](LICENSE).
 
-**Status:** source migration / build infrastructure pending. No compatible `.deb` has been built or tested.
+`main` preserves Alpha 4. `beta-development` contains Safe 4 Fix 1. The branch `debug/safe4-startup` develops 0.5.5 diagnostic1 with an opt-in UIKit overlay and no private SpringBoard hooks or app-launch/hosting calls.
 
-Original source: https://github.com/c1d3rdev/PullOver-Pro (GPL-3.0).
+The target device and iOS/jailbreak combination are user-reported and require confirmation from device logs. Successful compilation does not establish runtime compatibility.
 
-The source archive supplied for this work contains a diagnostic-only variant; it must not be treated as an iOS 26 compatible build. Do not install historical .deb binaries from the source archive on iOS 26.
+Read [DEBUGGING.md](DEBUGGING.md) for the comparison of versions, known limits, exact local build commands, CI evidence, staged testing, recovery and the steps toward real application windows. No automatic installation or respring is performed.
 
-## Test plan
-
-1. Compile a rootless diagnostic-only tweak with an appropriate Theos SDK/toolchain.
-2. Confirm safe SpringBoard injection without enabling floating windows.
-3. Capture ElleKit/SpringBoard diagnostics and crash reports.
-4. Migrate window and application scene hosting APIs incrementally, testing after each stage.
-
-Keep the ability to launch the jailbreak with tweak injection disabled for recovery.
