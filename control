@@ -1,9 +1,10 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro Beta Safe 4 Fix 1 Favorites UI
-Version: 0.5.4~beta.safe4fix1
+Name: PullOver Pro 0.5.5 Diagnostic
+Version: 0.5.5~diagnostic1
 Architecture: iphoneos-arm64
-Description: Corrected favorite action target initialization; UI only, no app launching.
+Description: Opt-in overlay diagnostic; no private SpringBoard hooks, app launch or hosting.
 Maintainer: Renatasy83
-Author: PullOverPro iOS 26 port experiment
+Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks
 Depends: firmware (>= 15.0), ellekit
+
