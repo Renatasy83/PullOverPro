@@ -1,6 +1,7 @@
 """Source policy and Debian payload checks; these do not prove runtime safety."""
 from pathlib import Path, PurePosixPath
 import io
+import plistlib
 import re
 import subprocess
 import sys
@@ -52,8 +53,13 @@ for arg in sys.argv[1:]:
             require(name not in found, f'Duplicate payload: {name}')
             found.add(name)
             if name.endswith('.plist'):
-                text = archive.extractfile(member).read().decode()
-                require(re.sub(r'\s+', '', text) == expected_filter, 'Packaged filter mismatch')
+                raw = archive.extractfile(member).read()
+                if raw.startswith(b'bplist') or raw.lstrip().startswith(b'<?xml'):
+                    require(plistlib.loads(raw) == {'Filter': {'Bundles': ['com.apple.springboard']}},
+                            'Packaged binary/XML filter mismatch')
+                else:
+                    require(re.sub(r'\s+', '', raw.decode()) == expected_filter,
+                            'Packaged OpenStep filter mismatch')
     require(found == required, f'Missing payload: {required - found}')
     metadata = subprocess.check_output(['dpkg-deb', '--ctrl-tarfile', str(deb)])
     with tarfile.open(fileobj=io.BytesIO(metadata)) as archive:
