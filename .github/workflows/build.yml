@@ -75,7 +75,7 @@ jobs:
       - name: Upload diagnostic deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.5.5-diagnostic1-${{ github.sha }}
+          name: PullOverPro-0.5.6-metadata1-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

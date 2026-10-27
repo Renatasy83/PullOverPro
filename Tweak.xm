@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <dispatch/dispatch.h>
+#import <objc/runtime.h>
 
 // Diagnostic baseline: public UIKit only. No SpringBoard hooks or private calls.
 // Overlay requires .ppo_enable_overlay; .ppo_disable takes precedence.
@@ -13,7 +14,43 @@ static BOOL ppoLightTheme = NO;
 static UILabel *ppoStatus;
 static const CGFloat PPOClosedWidth = 78;
 static const CGFloat PPOOpenWidth = 218;
-static const CGFloat PPOPanelHeight = 310;
+static const CGFloat PPOPanelHeight = 350;
+
+
+// Metadata only: never send messages to these private classes or instantiate them.
+static NSString *PPOAPIMetadata(void) {
+    struct Entry { const char *className; const char *selector; BOOL classMethod; };
+    const Entry entries[] = {
+        {"SBApplicationController", "sharedInstance", YES},
+        {"SBApplicationController", "allApplications", NO},
+        {"SBApplication", "bundleIdentifier", NO},
+        {"SBApplication", "displayIdentifier", NO},
+        {"SBApplication", "displayName", NO},
+        {"LSApplicationWorkspace", "defaultWorkspace", YES},
+        {"LSApplicationWorkspace", "allInstalledApplications", NO},
+        {"LSApplicationProxy", "applicationIdentifier", NO},
+        {"LSApplicationProxy", "bundleIdentifier", NO},
+        {"LSApplicationProxy", "localizedName", NO},
+    };
+    NSMutableString *report = [NSMutableString stringWithFormat:
+        @"PPO 0.5.6 metadata1\nOS: %@\n"
+         "Metadata only; no private methods called. No applications enumerated.\n"
+         "Encoding does not establish ownership, entitlements or threading rules.\n\n",
+        NSProcessInfo.processInfo.operatingSystemVersionString];
+    for (const Entry &entry : entries) {
+        Class cls = objc_lookUpClass(entry.className);
+        SEL selector = sel_registerName(entry.selector);
+        Method method = cls ? (entry.classMethod
+            ? class_getClassMethod(cls, selector)
+            : class_getInstanceMethod(cls, selector)) : NULL;
+        const char *encoding = method ? method_getTypeEncoding(method) : NULL;
+        [report appendFormat:@"%s %c%s | class=%s method=%s types=%s\n",
+            entry.className, entry.classMethod ? '+' : '-', entry.selector,
+            cls ? "present" : "missing", method ? "present" : "missing",
+            encoding ? encoding : "(none)"];
+    }
+    return report;
+}
 
 @interface PPOHandleTarget : NSObject
 - (void)tapped:(id)sender;
@@ -21,9 +58,39 @@ static const CGFloat PPOPanelHeight = 310;
 - (void)toggleTheme:(id)sender;
 - (void)resetPosition:(id)sender;
 - (void)selectFavorite:(UIButton *)sender;
+- (void)inspectAPI:(UIButton *)sender;
 @end
 
 @implementation PPOHandleTarget
+- (void)inspectAPI:(UIButton *)sender {
+    static BOOL requested = NO; // One bounded report per SpringBoard process.
+    if (requested) { ppoStatus.text = @"Raport deja solicitat"; return; }
+    requested = YES;
+    sender.enabled = NO;
+    ppoStatus.text = @"Se verifică metadatele…";
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        @autoreleasepool {
+            NSError *error = nil;
+            BOOL saved = NO;
+            @try {
+                NSString *report = PPOAPIMetadata();
+                NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
+                if ([NSFileManager.defaultManager createDirectoryAtPath:directory
+                    withIntermediateDirectories:YES attributes:nil error:&error]) {
+                    saved = [report writeToFile:[directory stringByAppendingPathComponent:
+                        @"metadata-0.5.6.txt"] atomically:YES
+                        encoding:NSUTF8StringEncoding error:&error];
+                }
+                NSLog(@"[PPO 0.5.6] metadata-report=%@", saved ? @"saved" : @"write-failed");
+            } @catch (NSException *exception) {
+                NSLog(@"[PPO 0.5.6] metadata-exception=%@", exception.name);
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                ppoStatus.text = saved ? @"Raport API salvat (Filza)" : @"Raport API: eroare";
+            });
+        }
+    });
+}
 - (void)tapped:(id)sender {
     if (!ppoWindow || !ppoHandle || !ppoPanel) return;
     ppoExpanded = !ppoExpanded;
@@ -36,7 +103,7 @@ static const CGFloat PPOPanelHeight = 310;
     ppoWindow.frame = frame;
     ppoController.view.frame = CGRectMake(0, 0, frame.size.width, frame.size.height);
     ppoPanel.hidden = !ppoExpanded;
-    NSLog(@"[PPO 0.5.5] panel %@", ppoExpanded ? @"open" : @"closed");
+    NSLog(@"[PPO 0.5.6] panel %@", ppoExpanded ? @"open" : @"closed");
 }
 - (void)panned:(UIPanGestureRecognizer *)recognizer {
     if (!ppoWindow) return;
@@ -65,7 +132,7 @@ static const CGFloat PPOPanelHeight = 310;
     NSArray<NSString *> *names = @[@"Safari", @"Mesaje", @"Muzică"];
     if (sender.tag < 0 || sender.tag >= (NSInteger)names.count) return;
     ppoStatus.text = [NSString stringWithFormat:@"Selectat: %@ (test UI)", names[(NSUInteger)sender.tag]];
-    NSLog(@"[PPO 0.5.5] favorite selected: %@", names[(NSUInteger)sender.tag]);
+    NSLog(@"[PPO 0.5.6] favorite selected: %@", names[(NSUInteger)sender.tag]);
 }
 - (void)resetPosition:(id)sender {
     if (!ppoWindow) return;
@@ -101,7 +168,7 @@ static void PPOCommitOverlay(UIWindow *window, UIViewController *controller,
 }
 
 static void PPOBuildOverlay(UIWindowScene *scene) {
-    NSLog(@"[PPO 0.5.5] ui-build-begin");
+    NSLog(@"[PPO 0.5.6] ui-build-begin");
     UIWindow *ppoWindow = [[UIWindow alloc] initWithWindowScene:scene];
     ppoWindow.frame = CGRectMake(0, 170, PPOClosedWidth, 44);
     ppoWindow.windowLevel = UIWindowLevelStatusBar + 1;
@@ -116,7 +183,7 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
     ppoPanel.layer.cornerRadius = 12;
     ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • Diagnostic 0.5.5", 8)];
+    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • Diagnostic 0.5.6", 8)];
     [ppoPanel addSubview:PPOLabel(@"Favorite (test interfață)", 43)];
     NSArray<NSString *> *favorites = @[@"Safari", @"Mesaje", @"Muzică"];
     for (NSUInteger i = 0; i < favorites.count; i++) {
@@ -143,6 +210,12 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [reset setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     [reset addTarget:ppoTarget action:@selector(resetPosition:) forControlEvents:UIControlEventTouchUpInside];
     [ppoPanel addSubview:reset];
+    UIButton *inspect = [UIButton buttonWithType:UIButtonTypeSystem];
+    inspect.frame = CGRectMake(10, 258, PPOOpenWidth - 20, 32);
+    [inspect setTitle:@"Diagnostic API" forState:UIControlStateNormal];
+    [inspect setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [inspect addTarget:ppoTarget action:@selector(inspectAPI:) forControlEvents:UIControlEventTouchUpInside];
+    [ppoPanel addSubview:inspect];
     ppoPanel.hidden = YES;
     [ppoController.view addSubview:ppoPanel];
 
@@ -158,10 +231,10 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [ppoHandle addGestureRecognizer:pan];
     [ppoController.view addSubview:ppoHandle];
 
-    NSLog(@"[PPO 0.5.5] ui-built; showing");
+    NSLog(@"[PPO 0.5.6] ui-built; showing");
     ppoWindow.hidden = NO;
     PPOCommitOverlay(ppoWindow, ppoController, ppoTarget, ppoPanel, ppoStatus, ppoHandle);
-    NSLog(@"[PPO 0.5.5] ui-visible");
+    NSLog(@"[PPO 0.5.6] ui-visible");
 }
 
 static BOOL ppoScheduled;
@@ -200,12 +273,12 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 0.5.5] no-active-scene; stopped");
+                NSLog(@"[PPO 0.5.6] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 0.5.5] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 0.5.6] ui-exception=%@; stopped", exception.name);
             ppoStopped = YES;
         }
         if (ppoStopped && ppoSceneObserver) {
@@ -217,10 +290,10 @@ static void PPOScheduleOverlay(void) {
 
 %ctor {
     @autoreleasepool {
-        NSLog(@"[PPO 0.5.5] loaded; os=%@",
+        NSLog(@"[PPO 0.5.6] loaded; os=%@",
               NSProcessInfo.processInfo.operatingSystemVersionString);
         if (!PPOOverlayAllowed()) {
-            NSLog(@"[PPO 0.5.5] overlay-disabled; no hooks installed");
+            NSLog(@"[PPO 0.5.6] overlay-disabled; no hooks installed");
             return;
         }
         // No UIKit objects or private SpringBoard methods touched in the ctor.
@@ -230,7 +303,7 @@ static void PPOScheduleOverlay(void) {
                 queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                     PPOScheduleOverlay();
                 }];
-            NSLog(@"[PPO 0.5.5] overlay-armed");
+            NSLog(@"[PPO 0.5.6] overlay-armed");
             PPOScheduleOverlay();
         });
     }

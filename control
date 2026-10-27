@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro 0.5.5 Diagnostic
-Version: 0.5.5~diagnostic1
+Name: PullOver Pro 0.5.6 API Metadata
+Version: 0.5.6~metadata1
 Architecture: iphoneos-arm64
-Description: Opt-in overlay diagnostic; no private SpringBoard hooks, app launch or hosting.
+Description: On-demand API metadata report; no private method invocation, app launch or hosting.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks
