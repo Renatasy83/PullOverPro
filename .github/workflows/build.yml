@@ -14,9 +14,10 @@ jobs:
     env:
       LC_ALL: C
       LANG: C
-      THEOS: ${{ runner.temp }}/theos
     steps:
       - uses: actions/checkout@v4
+      - name: Configure Theos path
+        run: echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
       - name: Install tools
         run: brew install ldid dpkg make
       - name: Install pinned Theos and SDK
