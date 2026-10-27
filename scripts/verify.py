@@ -15,7 +15,7 @@ def require(condition, message):
         raise SystemExit(message)
 
 
-source = (ROOT / 'Tweak.xm').read_text()
+source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOAppData.mm'])
 for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'NSSelectorFromString', r'valueForKey:', r'launchApplication',
                 r'method_getImplementation', r'method_invoke', r'dlopen', r'dlsym',
@@ -37,7 +37,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.5.7~enumerator1'), 'Unexpected version')
+    require(field('Version').startswith('0.5.8~picker1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
     base = 'var/jb/Library/MobileSubstrate/DynamicLibraries/'

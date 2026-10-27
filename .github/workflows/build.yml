@@ -41,9 +41,24 @@ jobs:
           perl "$THEOS/vendor/logos/bin/logos.pl" Tweak.xm > diagnostics/Tweak.mm
           xcrun clang++ --analyze -Werror -fobjc-arc -target arm64-apple-ios15.0 \
             -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
-            -I "$THEOS/vendor/include" -I "$THEOS/include" \
+            -I "$THEOS/vendor/include" -I "$THEOS/include" -I . \
             -Xanalyzer -analyzer-output=text diagnostics/Tweak.mm \
             2>&1 | tee diagnostics/analysis.log
+      - name: Analyze app data loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ --analyze -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
+            -Xanalyzer -analyzer-output=text PPOAppData.mm \
+            2>&1 | tee diagnostics/appdata-analysis.log
+      - name: Test app data loading and persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ -fobjc-arc -Wall -Wextra -Werror -framework Foundation \
+            tests/AppDataTests.mm PPOAppData.mm -o "$RUNNER_TEMP/ppo-appdata-tests"
+          "$RUNNER_TEMP/ppo-appdata-tests" | tee diagnostics/appdata-tests.log
       - name: Analyze isolated helper
         shell: bash
         run: |
@@ -87,7 +102,7 @@ jobs:
       - name: Upload diagnostic deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.5.7-enumerator1-${{ github.sha }}
+          name: PullOverPro-0.5.8-picker1-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

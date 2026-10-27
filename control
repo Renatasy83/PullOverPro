@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro 0.5.7 App Enumerator
-Version: 0.5.7~enumerator1
+Name: PullOver Pro 0.5.8 App Picker
+Version: 0.5.8~picker1
 Architecture: iphoneos-arm64
-Description: Adds a manually invoked app enumerator outside SpringBoard; overlay unchanged.
+Description: Select real applications from a local report; no launching or scene hosting.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks
