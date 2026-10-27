@@ -68,7 +68,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ppo-package"
           dpkg-deb -x packages/*.deb "$RUNNER_TEMP/ppo-package"
           dylib="$RUNNER_TEMP/ppo-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverProDiagnostic.dylib"
-          xcrun lipo -verify_arch arm64 arm64e "$dylib"
+          xcrun lipo "$dylib" -verify_arch arm64 arm64e
           xcrun otool -L "$dylib" | tee diagnostics/dependencies.txt
           xcrun dwarfdump --uuid "$dylib" | tee diagnostics/uuids.txt
           shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
