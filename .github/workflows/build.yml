@@ -67,6 +67,17 @@ jobs:
             -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
             -Xanalyzer -analyzer-output=text tools/app-list/main.m \
             2>&1 | tee diagnostics/helper-analysis.log
+      - name: Analyze launcher and test ABI guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ --analyze -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
+            -Xanalyzer -analyzer-output=text tools/app-launch/main.mm \
+            2>&1 | tee diagnostics/launcher-analysis.log
+          xcrun clang++ -Wall -Wextra -Werror -fobjc-arc -framework Foundation \
+            tests/LaunchABITests.mm -o "$RUNNER_TEMP/ppo-abi-tests"
+          "$RUNNER_TEMP/ppo-abi-tests" | tee diagnostics/launcher-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -98,11 +109,15 @@ jobs:
           xcrun lipo "$helper" -verify_arch arm64 arm64e
           xcrun otool -L "$helper" | tee diagnostics/helper-dependencies.txt
           xcrun dwarfdump --uuid "$helper" | tee diagnostics/helper-uuids.txt
+          launcher="$RUNNER_TEMP/ppo-package/var/jb/usr/bin/ppo-open"
+          xcrun lipo "$launcher" -verify_arch arm64 arm64e
+          xcrun otool -L "$launcher" | tee diagnostics/launcher-dependencies.txt
+          xcrun dwarfdump --uuid "$launcher" | tee diagnostics/launcher-uuids.txt
           shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
       - name: Upload diagnostic deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.5.8-picker1-${{ github.sha }}
+          name: PullOverPro-0.5.9-launcher1-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

@@ -37,12 +37,12 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.5.8~picker1'), 'Unexpected version')
+    require(field('Version').startswith('0.5.9~launcher1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
     base = 'var/jb/Library/MobileSubstrate/DynamicLibraries/'
     required = {base + 'PullOverProDiagnostic.dylib', base + 'PullOverProDiagnostic.plist',
-                'var/jb/usr/bin/ppo-apps'}
+                'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open'}
     found = set()
     with tarfile.open(fileobj=io.BytesIO(payload)) as archive:
         for member in archive:
@@ -53,7 +53,7 @@ for arg in sys.argv[1:]:
                 continue
             require(member.isfile() and name in required, f'Unexpected payload: {name}')
             require(name not in found, f'Duplicate payload: {name}')
-            if name == 'var/jb/usr/bin/ppo-apps':
+            if name in {'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open'}:
                 require(member.mode & 0o111, 'Helper is not executable')
             found.add(name)
             if name.endswith('.plist'):

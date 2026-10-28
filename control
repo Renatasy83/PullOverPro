@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro 0.5.8 App Picker
-Version: 0.5.8~picker1
+Name: PullOver Pro 0.5.9 Safari Launch Test
+Version: 0.5.9~launcher1
 Architecture: iphoneos-arm64
-Description: Select real applications from a local report; no launching or scene hosting.
+Description: Manual isolated Safari launch test; SpringBoard picker unchanged, no scene hosting.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks
