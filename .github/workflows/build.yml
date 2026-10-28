@@ -108,6 +108,20 @@ jobs:
             tests/BridgeServiceTests.mm tools/bridge/PPOBridgeService.mm PPOBridgeProtocol.mm PPOAppData.mm \
             -o "$RUNNER_TEMP/ppo-bridge-service-tests"
           "$RUNNER_TEMP/ppo-bridge-service-tests" | tee diagnostics/bridge-service-tests.log
+      - name: Test actual service subprocess and mailbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -c PPOBridgeIO.cpp -o "$RUNNER_TEMP/ppo-bridge-io.o"
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc \
+            -DPPO_BRIDGE_TESTING -Dmain=PPOBridgeServerMain -c tools/bridge/main.mm \
+            -o "$RUNNER_TEMP/ppo-bridge-server-main.o"
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -DPPO_BRIDGE_TESTING \
+            -framework Foundation -framework CoreFoundation tests/BridgeIntegrationTests.mm \
+            "$RUNNER_TEMP/ppo-bridge-server-main.o" "$RUNNER_TEMP/ppo-bridge-io.o" \
+            PPOBridgeClient.mm PPOBridgeProtocol.mm PPOAppData.mm tools/bridge/PPOBridgeService.mm \
+            -o "$RUNNER_TEMP/ppo-bridge-integration-tests"
+          "$RUNNER_TEMP/ppo-bridge-integration-tests" | tee diagnostics/bridge-integration-tests.log
       - name: Compile and package
         shell: bash
         run: |

@@ -27,3 +27,10 @@ No final candidate DEB has been produced. Current diagnostic artifacts are not f
 Required automated integration coverage on a suitable target: launch IPC under actual caller sandbox; scene selection by exact app identity; host creation and teardown; touch and keyboard routing; foreground/background transitions; lock/unlock; orientation; app termination/relaunch; repeated open/close cycles; injection startup and watchdog observations. Mock tests cannot replace these checks.
 
 Do not request further intermediate phone installations from the user. Continue automatable work on the development branch; do not promote a build solely because compilation succeeds. Preserve GPL-3.0 and original attribution. No device data, other tweaks, host security configuration or installed device packages were modified.
+
+
+## Development implementation in this branch
+
+The panel no longer links the process-spawn runner. It uses a bounded file mailbox on its existing serial worker queue. A separate launchd service runs as mobile, refreshes the app inventory on demand and requests launches only after exact membership and expiry checks. No scene hosting calls were introduced. The own-service installation/removal scripts are payload-verified. See BRIDGE_DESIGN.md.
+
+The new portable transport passed365 filesystem/concurrency checks on Linux with ASan/UBSan. Foundation protocol/service policy and actual macOS subprocess integration are CI checks, not iOS runtime evidence. The branch's development package version is0.6.0~dev.bridge1. A development build must not be described as a completed port or final candidate.

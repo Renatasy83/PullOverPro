@@ -55,10 +55,22 @@ int main(int argc, char *argv[]) {
                     for (NSString *nonce in [seen.allKeys copy]) {
                         if (now - seen[nonce].doubleValue > 30) [seen removeObjectForKey:nonce];
                     }
-                    NSDictionary *validated = PPOBridgeRequestFromData(request, now, NULL);
+                    NSError *validationError = nil;
+                    NSDictionary *validated = PPOBridgeRequestFromData(request, now, &validationError);
+                    BOOL expired = !validated && [validationError.domain isEqual:@"PullOverPro.BridgeProtocol"] && validationError.code == 2;
+                    if (expired) {
+                        NSDictionary *envelope = [NSJSONSerialization JSONObjectWithData:request options:0 error:NULL];
+                        validated = PPOBridgeRequestFromData(request, [envelope[@"createdUptime"] doubleValue], NULL);
+                    }
                     NSString *nonce = validated[@"nonce"];
                     NSData *response = nil;
-                    if (nonce && !seen[nonce] && seen.count < 128) {
+                    if (nonce && expired) {
+                        response = PPOBridgeResponseData(nonce, @"stale", @"request-expired", nil, now, NULL);
+                    } else if (nonce && seen[nonce]) {
+                        response = PPOBridgeResponseData(nonce, @"rejected", @"replayed-request", nil, now, NULL);
+                    } else if (nonce && seen.count >= 128) {
+                        response = PPOBridgeResponseData(nonce, @"busy", @"request-limit", nil, now, NULL);
+                    } else if (nonce) {
                         seen[nonce] = @(now); // Consume before any private call.
                         // Alarm affects only this service, never SpringBoard.
                         alarm(20);
