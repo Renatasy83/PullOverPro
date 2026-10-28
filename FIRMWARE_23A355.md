@@ -25,3 +25,19 @@ The Go APFS reader rejected the sealed/headerless root B-tree. Built sgan81/apfs
 ## Limits
 
 These results establish firmware provenance and inspectable implementation details. They do not establish the actual device's loaded UUIDs, scene adoption ownership, presenter side effects, input routing or correct teardown. No new private scene calls were enabled and floating application hosting remains unimplemented. Dopamine/ElleKit compatibility remains unconfirmed. Next analysis should correlate exact getter/initializer encodings and presenter lifecycle implementations before deciding whether a hosting adapter can be safely implemented.
+
+## Reproducible scene audit
+
+`scripts/audit-firmware-scenes.py` extracts declarations from an existing cache using ipsw and checks the exact FrontBoard/UIKitCore UUIDs before producing its report. Executed on the extracted23A355 cache:334 declarations recorded, all explicitly not runtime-validated. Apple binaries and declaration dumps are not included in this repository.
+
+Usage:
+
+```sh
+python3 scripts/audit-firmware-scenes.py --ipsw-tool /path/to/ipsw --cache /path/to/dyld_shared_cache_arm64e --output /path/to/audit-output
+```
+
+The UIKitCore dump exposes `uiPresentationManager` at0x1889e6d08 under a category reported as NSObject. Disassembly shows a guarded lookup and lazy retained association. Its valid concrete receiver still needs correlation; the category name alone does not prove FBScene or arbitrary NSObject is acceptable.
+
+`_UIScenePresenter activate` at0x188ad5494 delegates to its owner through `_activatePresenter:`. `invalidate` at0x188d43cd8 sets its invalidated flag, calls `updateHostingStateIfNecessary`, updates its view and delegates `_invalidatePresenter:`. The owner maintains a separate active-prioritized-presenter state. These are not passive view-only operations. Restoration of SpringBoard's existing presentation, focus and foreground policy remains unverified.
+
+No private hosting calls were activated. Remaining work: concrete receiver verification, presenter priority/teardown semantics and input/foreground lifecycle, followed by target runtime validation.
