@@ -184,6 +184,7 @@ int main(int argc, char *argv[]) {
         dispatch_group_t group = dispatch_group_create();
         __block NSDictionary *wrongResponse = nil;
         __block NSError *timeoutError = nil;
+        NSData *priorRequest = Read(directory, "request.json");
         NSTimeInterval started = Now();
         dispatch_group_async(group, dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
             @autoreleasepool { wrongResponse = PPOBridgeSend(@"launch", @"com.apple.mobilesafari", &timeoutError); }
@@ -192,10 +193,10 @@ int main(int argc, char *argv[]) {
         deadline = Now() + 2;
         while (Now() < deadline) {
             newRequest = Read(directory, "request.json");
-            if (newRequest && ![newRequest isEqual:pending]) break;
+            if (newRequest && ![newRequest isEqual:priorRequest]) break;
             Pause();
         }
-        Check(newRequest != nil && ![newRequest isEqual:pending], "client wrote one new request");
+        Check(newRequest != nil && ![newRequest isEqual:priorRequest], "client wrote one new request");
         Check(dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC)) == 0,
             "wrong nonce client timeout bounded");
         Check(wrongResponse == nil && timeoutError.code == ETIMEDOUT && Now() - started >= 7.9,

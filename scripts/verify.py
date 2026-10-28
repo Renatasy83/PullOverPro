@@ -44,7 +44,8 @@ for arg in sys.argv[1:]:
     base = 'var/jb/Library/MobileSubstrate/DynamicLibraries/'
     required = {base + 'PullOverProDiagnostic.dylib', base + 'PullOverProDiagnostic.plist',
                 'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open', 'var/jb/usr/bin/ppo-bridge',
-                'var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist'}
+                'var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist',
+                'var/jb/usr/share/doc/com.renatasy83.pulloverpro.diagnostic/copyright'}
     found = set()
     with tarfile.open(fileobj=io.BytesIO(payload)) as archive:
         for member in archive:
@@ -58,6 +59,10 @@ for arg in sys.argv[1:]:
             if name in {'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open', 'var/jb/usr/bin/ppo-bridge'}:
                 require(member.mode & 0o111, 'Helper is not executable')
             found.add(name)
+            if name.endswith('copyright'):
+                require(archive.extractfile(member).read() == (ROOT / 'layout/usr/share/doc/com.renatasy83.pulloverpro.diagnostic/copyright').read_bytes(), 'License/attribution mismatch')
+            if name.endswith('.dylib') or name == 'var/jb/usr/bin/ppo-bridge':
+                require(b'PPO_BRIDGE_TEST_PATH' not in archive.extractfile(member).read(), 'Test path override leaked into release binary')
             if name.endswith('com.renatasy83.ppo.bridge.plist'):
                 raw = archive.extractfile(member).read()
                 require(plistlib.loads(raw) == plistlib.loads((ROOT / 'layout/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist').read_bytes()), 'Bridge service plist mismatch')

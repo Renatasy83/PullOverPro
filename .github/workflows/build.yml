@@ -162,7 +162,9 @@ jobs:
           xcrun otool -L "$bridge" | tee diagnostics/bridge-dependencies.txt
           xcrun dwarfdump --uuid "$bridge" | tee diagnostics/bridge-uuids.txt
           shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
-      - name: Upload diagnostic deb and evidence
+      - name: Write validation report
+        run: python3 scripts/write-validation-report.py diagnostics "${{ github.sha }}"
+      - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
           name: PullOverPro-0.6.0-development-${{ github.sha }}
