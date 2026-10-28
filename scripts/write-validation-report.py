@@ -39,12 +39,14 @@ report = {
     'floating_application_hosting_implemented': False,
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
+    'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
 }
 (directory / 'VALIDATION.json').write_text(json.dumps(report, indent=2) + '\n')
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
     '**Not a final candidate. Floating application hosting is not implemented.**\n\n'
+    'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)
     + '\n\nNot executed:\n\n'

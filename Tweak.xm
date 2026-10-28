@@ -66,6 +66,16 @@ static dispatch_queue_t PPOFileQueue(void) {
 }
 
 
+static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
+    NSString *detail = response[@"detail"];
+    if ([detail isEqual:@"feature-disabled"]) return @"PPO este dezactivat";
+    if ([detail isEqual:@"disable-check-failed"]) return @"Starea PPO nu poate fi verificată";
+    if ([detail isEqual:@"request-expired"]) return @"Cererea a expirat";
+    if ([detail isEqual:@"application-not-permitted"]) return @"Aplicația nu poate fi deschisă";
+    if ([detail isEqual:@"inventory-unavailable"]) return @"Lista aplicațiilor nu este disponibilă";
+    return @"Serviciul PPO nu a acceptat cererea";
+}
+
 @interface PPOHandleTarget : NSObject
 - (void)tapped:(id)sender;
 - (void)panned:(UIPanGestureRecognizer *)recognizer;
@@ -122,7 +132,7 @@ static dispatch_queue_t PPOFileQueue(void) {
                 if (selectionEpoch != self.saveEpoch) return;
                 NSString *status = response[@"status"];
                 if ([status isEqual:@"accepted"]) ppoStatus.text = @"Cerere de deschidere acceptată";
-                else if (response) ppoStatus.text = [NSString stringWithFormat:@"Serviciu: %@", response[@"detail"]];
+                else if (response) ppoStatus.text = PPOBridgeFailureMessage(response);
                 else ppoStatus.text = [NSString stringWithFormat:@"Serviciu indisponibil (%ld); rezultat necunoscut", (long)error.code];
             });
         }
@@ -206,18 +216,20 @@ static dispatch_queue_t PPOFileQueue(void) {
         @autoreleasepool {
             NSArray<NSDictionary *> *apps = nil;
             NSDictionary *selected = nil;
+            NSString *loadMessage = nil;
             @try {
                 NSDictionary *refresh = PPOBridgeSend(@"refresh", nil, NULL);
                 if (![refresh[@"status"] isEqual:@"refreshed"]) {
-                    @throw [NSException exceptionWithName:@"PPORefreshUnavailable" reason:nil userInfo:nil];
+                    loadMessage = refresh ? PPOBridgeFailureMessage(refresh) : @"Serviciul PPO nu răspunde";
+                } else {
+                    apps = PPOAppsFromData(PPOReadBoundedFile(PPOAppsPath, 2 * 1024 * 1024, NULL), NULL);
+                    selected = PPOSelectionFromData(PPOReadBoundedFile(PPOSelectionPath, 16384, NULL));
+                    BOOL found = NO;
+                    for (NSDictionary *app in apps) {
+                        if ([app[@"bundleIdentifier"] isEqual:selected[@"bundleIdentifier"]]) { found = YES; break; }
+                    }
+                    if (!found) selected = nil;
                 }
-                apps = PPOAppsFromData(PPOReadBoundedFile(PPOAppsPath, 2 * 1024 * 1024, NULL), NULL);
-                selected = PPOSelectionFromData(PPOReadBoundedFile(PPOSelectionPath, 16384, NULL));
-                BOOL found = NO;
-                for (NSDictionary *app in apps) {
-                    if ([app[@"bundleIdentifier"] isEqual:selected[@"bundleIdentifier"]]) { found = YES; break; }
-                }
-                if (!found) selected = nil;
             } @catch (NSException *exception) {
                 NSLog(@"[PPO 0.6.0] app-file-exception=%@", exception.name);
                 apps = nil;
@@ -225,7 +237,7 @@ static dispatch_queue_t PPOFileQueue(void) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 sender.enabled = YES;
                 if (epoch != self.listEpoch || !ppoExpanded) return;
-                if (!apps) { ppoStatus.text = @"Lista nu este disponibilă"; return; }
+                if (!apps) { ppoStatus.text = loadMessage ?: @"Lista nu este disponibilă"; return; }
                 self.apps = apps;
                 self.page = 0;
                 self.selectedIdentifier = selected[@"bundleIdentifier"];

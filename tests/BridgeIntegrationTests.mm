@@ -139,6 +139,15 @@ int main(int argc, char *argv[]) {
         NSArray *apps = PPOAppsFromData([NSData dataWithContentsOfFile:
             [root stringByAppendingPathComponent:@"apps-0.5.7.json"]], NULL);
         Check(apps.count == 1, "service inventory persisted outside SpringBoard");
+        NSString *disablePath = [root stringByAppendingPathComponent:@".ppo_disable"];
+        Check([[NSData data] writeToFile:disablePath options:0 error:NULL],
+            "create own subprocess disable marker");
+        NSDictionary *disabled = Send(@"launch", @"com.apple.mobilesafari");
+        Check([disabled[@"status"] isEqual:@"rejected"] &&
+            [disabled[@"detail"] isEqual:@"feature-disabled"] && Counter() == 0,
+            "actual service rejects launch while disabled");
+        Check(unlink(disablePath.fileSystemRepresentation) == 0,
+            "remove only subprocess fixture marker");
         Check([Send(@"launch", @"com.apple.mobilesafari")[@"status"] isEqual:@"accepted"] &&
             Counter() == 1, "real mailbox launch invokes fixture once");
 

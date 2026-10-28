@@ -74,8 +74,14 @@ int main(int argc, char *argv[]) {
                         seen[nonce] = @(now); // Consume before any private call.
                         // Alarm affects only this service, never SpringBoard.
                         alarm(20);
+#if defined(PPO_BRIDGE_TESTING)
+                        response = PPOBridgeServiceResponseWithDisablePath(request,
+                            [parent stringByAppendingPathComponent:@"apps-0.5.7.json"],
+                            [parent stringByAppendingPathComponent:@".ppo_disable"]);
+#else
                         response = PPOBridgeServiceResponse(request,
                             [parent stringByAppendingPathComponent:@"apps-0.5.7.json"]);
+#endif
                         alarm(0);
                     }
                     if (response) {

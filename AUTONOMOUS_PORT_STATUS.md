@@ -34,3 +34,9 @@ Do not request further intermediate phone installations from the user. Continue 
 The panel no longer links the process-spawn runner. It uses a bounded file mailbox on its existing serial worker queue. A separate launchd service runs as mobile, refreshes the app inventory on demand and requests launches only after exact membership and expiry checks. No scene hosting calls were introduced. The own-service installation/removal scripts are payload-verified. See BRIDGE_DESIGN.md.
 
 The new portable transport passed365 filesystem/concurrency checks on Linux with ASan/UBSan. Foundation protocol/service policy and actual macOS subprocess integration are CI checks, not iOS runtime evidence. The branch's development package version is0.6.0~dev.bridge1. A development build must not be described as a completed port or final candidate.
+
+## Continued review: emergency disable and scene evidence
+
+A service control defect was found: the new service did not previously honor the overlay's `.ppo_disable` marker. It now fails closed before workspace access and rechecks after enumeration/before launch. Added policy and subprocess regression coverage for this behavior. This is a source-level correction, not a verified device fix.
+
+Pinned iOS26 headers and a recent installed-app hosting reference were reviewed. They document newer presenter/container boundaries, but not the exact device build or safe acquisition/adoption of a SpringBoard-owned scene. The source was not copied and no speculative hosting calls were enabled. See HOSTING_RESEARCH.md for precise remaining evidence requirements.
