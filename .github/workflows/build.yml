@@ -1,4 +1,4 @@
-name: Build PullOver Pro diagnostic rootless deb
+name: Build and verify PullOver Pro development
 on:
   workflow_dispatch:
   push:
@@ -89,6 +89,25 @@ jobs:
           xcrun clang++ -Wall -Wextra -Werror -fobjc-arc -framework Foundation \
             tests/ProcessTests.mm PPOLaunchProcess.mm -o "$RUNNER_TEMP/ppo-process-tests"
           "$RUNNER_TEMP/ppo-process-tests" | tee diagnostics/process-tests.log
+      - name: Analyze and test bridge isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source in PPOBridgeClient.mm PPOBridgeProtocol.mm tools/bridge/PPOWorkspace.mm tools/bridge/PPOBridgeService.mm tools/bridge/main.mm; do
+            xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+              -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -I . \
+              -Xanalyzer -analyzer-output=text "$source"
+          done 2>&1 | tee diagnostics/bridge-analysis.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/BridgeIOTests.cpp PPOBridgeIO.cpp -o "$RUNNER_TEMP/ppo-bridge-io-tests"
+          "$RUNNER_TEMP/ppo-bridge-io-tests" | tee diagnostics/bridge-io-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -framework Foundation -framework CoreFoundation \
+            tests/BridgeProtocolTests.mm PPOBridgeProtocol.mm -o "$RUNNER_TEMP/ppo-bridge-protocol-tests"
+          "$RUNNER_TEMP/ppo-bridge-protocol-tests" | tee diagnostics/bridge-protocol-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -framework Foundation -framework CoreFoundation \
+            tests/BridgeServiceTests.mm tools/bridge/PPOBridgeService.mm PPOBridgeProtocol.mm PPOAppData.mm \
+            -o "$RUNNER_TEMP/ppo-bridge-service-tests"
+          "$RUNNER_TEMP/ppo-bridge-service-tests" | tee diagnostics/bridge-service-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -124,15 +143,20 @@ jobs:
           xcrun lipo "$launcher" -verify_arch arm64 arm64e
           xcrun otool -L "$launcher" | tee diagnostics/launcher-dependencies.txt
           xcrun dwarfdump --uuid "$launcher" | tee diagnostics/launcher-uuids.txt
+          bridge="$RUNNER_TEMP/ppo-package/var/jb/usr/bin/ppo-bridge"
+          xcrun lipo "$bridge" -verify_arch arm64 arm64e
+          xcrun otool -L "$bridge" | tee diagnostics/bridge-dependencies.txt
+          xcrun dwarfdump --uuid "$bridge" | tee diagnostics/bridge-uuids.txt
           shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
       - name: Upload diagnostic deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.5.11-spawn-diag1-${{ github.sha }}
+          name: PullOverPro-0.6.0-development-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/
             .theos/obj/**/*.dSYM/**
           include-hidden-files: true
           if-no-files-found: error
+
 

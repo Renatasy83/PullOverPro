@@ -15,7 +15,7 @@ def require(condition, message):
         raise SystemExit(message)
 
 
-source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOAppData.mm', 'PPOLaunchProcess.mm'])
+source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp'])
 for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'NSSelectorFromString', r'valueForKey:', r'launchApplication',
                 r'method_getImplementation', r'method_invoke', r'dlopen', r'dlsym',
@@ -38,12 +38,13 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.5.11~spawn.diag1'), 'Unexpected version')
+    require(field('Version').startswith('0.6.0~dev.bridge1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
     base = 'var/jb/Library/MobileSubstrate/DynamicLibraries/'
     required = {base + 'PullOverProDiagnostic.dylib', base + 'PullOverProDiagnostic.plist',
-                'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open'}
+                'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open', 'var/jb/usr/bin/ppo-bridge',
+                'var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist'}
     found = set()
     with tarfile.open(fileobj=io.BytesIO(payload)) as archive:
         for member in archive:
@@ -54,10 +55,13 @@ for arg in sys.argv[1:]:
                 continue
             require(member.isfile() and name in required, f'Unexpected payload: {name}')
             require(name not in found, f'Duplicate payload: {name}')
-            if name in {'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open'}:
+            if name in {'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open', 'var/jb/usr/bin/ppo-bridge'}:
                 require(member.mode & 0o111, 'Helper is not executable')
             found.add(name)
-            if name.endswith('.plist'):
+            if name.endswith('com.renatasy83.ppo.bridge.plist'):
+                raw = archive.extractfile(member).read()
+                require(plistlib.loads(raw) == plistlib.loads((ROOT / 'layout/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist').read_bytes()), 'Bridge service plist mismatch')
+            elif name.endswith('.plist'):
                 raw = archive.extractfile(member).read()
                 if raw.startswith(b'bplist') or raw.lstrip().startswith(b'<?xml'):
                     require(plistlib.loads(raw) == {'Filter': {'Bundles': ['com.apple.springboard']}},
@@ -67,11 +71,18 @@ for arg in sys.argv[1:]:
                             'Packaged OpenStep filter mismatch')
     require(found == required, f'Missing payload: {required - found}')
     metadata = subprocess.check_output(['dpkg-deb', '--ctrl-tarfile', str(deb)])
+    control_found = set()
     with tarfile.open(fileobj=io.BytesIO(metadata)) as archive:
         for member in archive:
             if member.isdir():
                 continue
             name = member.name.removeprefix('./')
-            require(member.isfile() and name in {'control', 'md5sums'},
+            require(member.isfile() and name in {'control', 'md5sums', 'postinst', 'prerm'},
                     f'Unexpected maintainer script or metadata: {name}')
+            control_found.add(name)
+            if name in {'postinst', 'prerm'}:
+                require(member.mode & 0o111, 'Nonexecutable service lifecycle script')
+                require(archive.extractfile(member).read() == (ROOT / 'layout/DEBIAN' / name).read_bytes(), 'Service lifecycle script mismatch')
+    require({'control', 'postinst', 'prerm'} <= control_found, 'Missing service lifecycle scripts')
     print(f'Rootless payload OK: {deb.name} (not a runtime test)')
+

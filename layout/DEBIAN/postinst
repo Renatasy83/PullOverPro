@@ -1,0 +1,8 @@
+#!/var/jb/bin/bash
+set -eu
+if [ "${1:-}" = configure ]; then
+    if /bin/launchctl print system/com.renatasy83.ppo.bridge >/dev/null 2>&1; then
+        exit 0
+    fi
+    /bin/launchctl bootstrap system /var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist
+fi

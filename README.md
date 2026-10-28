@@ -1,10 +1,9 @@
-# PullOver Pro port research
+# PullOver Pro port development
 
-Original PullOver Pro: [c1d3r / Will Smillie](https://github.com/c1d3rdev/PullOver-Pro), GPL-3.0; see [LICENSE](LICENSE).
+This is an incomplete GPL-3.0 port of c1d3rdev/Will Smillie’s PullOver Pro.
 
-`main` preserves Alpha 4. `beta-development` contains Safe 4 Fix 1. The branch `debug/safe4-startup` develops 0.5.5 diagnostic1 with an opt-in UIKit overlay and no private SpringBoard hooks or app-launch/hosting calls.
+`main` preserves Alpha 4. `stable/verified-app-picker` preserves the user-confirmed 0.5.8 picker. Work continues on `debug/autonomous-port`. Development artifacts are not final release candidates.
 
-The target device and iOS/jailbreak combination are user-reported and require confirmation from device logs. Successful compilation does not establish runtime compatibility.
+Current development implements the public UIKit overlay/picker and a bounded file bridge to a separate launchd service running as mobile. The service refreshes the app inventory and requests launches through runtime-guarded LaunchServices calls. SpringBoard creates no helper process and makes no private launch/hosting calls. This architecture has not yet been tested under the device’s actual sandbox or launchd environment.
 
-Read [DEBUGGING.md](DEBUGGING.md) for the comparison of versions, known limits, exact local build commands, CI evidence, staged testing, recovery and the steps toward real application windows. No automatic installation or respring is performed.
-
+**Application content in floating windows is not implemented. Dopamine/ElleKit compatibility is not confirmed.** See [AUTONOMOUS_PORT_STATUS.md](AUTONOMOUS_PORT_STATUS.md), [BRIDGE_DESIGN.md](BRIDGE_DESIGN.md) and [HOSTING_RESEARCH.md](HOSTING_RESEARCH.md). Older diagnostic guides describe their historical versions.

@@ -1,0 +1,7 @@
+#!/var/jb/bin/bash
+set -eu
+case "${1:-}" in
+    remove|upgrade|deconfigure)
+        /bin/launchctl bootout system/com.renatasy83.ppo.bridge >/dev/null 2>&1 || true
+        ;;
+esac
