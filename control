@@ -1,6 +1,6 @@
 Package: com.renatasy83.pulloverpro.diagnostic
 Name: PullOver Pro Development
-Version: 0.6.0~dev.bridge1
+Version: 0.6.1~dev.bridgefix1
 Architecture: iphoneos-arm64
 Description: App picker and isolated mobile launch service. App scene hosting is not implemented.
 Maintainer: Renatasy83

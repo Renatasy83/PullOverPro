@@ -2,6 +2,17 @@
 set -eu
 case "${1:-}" in
     remove|upgrade|deconfigure)
-        /bin/launchctl bootout system/com.renatasy83.ppo.bridge >/dev/null 2>&1 || true
+ppo_launchctl=
+for ppo_candidate in /var/jb/bin/launchctl /var/jb/usr/bin/launchctl /bin/launchctl /usr/bin/launchctl; do
+    if [ -f "$ppo_candidate" ] && [ -x "$ppo_candidate" ]; then
+        ppo_launchctl="$ppo_candidate"
+        break
+    fi
+done
+        if [ -n "$ppo_launchctl" ]; then
+            "$ppo_launchctl" bootout system/com.renatasy83.ppo.bridge >/dev/null 2>&1 || true
+        else
+            echo "PPO: launchctl unavailable; own service could not be stopped by this script." >&2
+        fi
         ;;
 esac

@@ -32,7 +32,10 @@ jobs:
           mkdir -p "$THEOS/sdks"
           cp -R "$RUNNER_TEMP/sdks/iPhoneOS16.5.sdk" "$THEOS/sdks/"
       - name: Static checks
-        run: python3 scripts/verify.py
+        run: |
+          python3 scripts/verify.py
+          mkdir -p diagnostics
+          python3 tests/LifecycleTests.py | tee diagnostics/lifecycle-tests.log
       - name: Clang static analysis
         shell: bash
         run: |
@@ -167,7 +170,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.6.0-development-${{ github.sha }}
+          name: PullOverPro-0.6.1-development-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

@@ -1,8 +1,19 @@
 #!/var/jb/bin/bash
 set -eu
 if [ "${1:-}" = configure ]; then
-    if /bin/launchctl print system/com.renatasy83.ppo.bridge >/dev/null 2>&1; then
+ppo_launchctl=
+for ppo_candidate in /var/jb/bin/launchctl /var/jb/usr/bin/launchctl /bin/launchctl /usr/bin/launchctl; do
+    if [ -f "$ppo_candidate" ] && [ -x "$ppo_candidate" ]; then
+        ppo_launchctl="$ppo_candidate"
+        break
+    fi
+done
+    if [ -z "$ppo_launchctl" ]; then
+        echo "PPO: launchctl was not found in the rootless or system binary directories." >&2
+        exit 127
+    fi
+    if "$ppo_launchctl" print system/com.renatasy83.ppo.bridge >/dev/null 2>&1; then
         exit 0
     fi
-    /bin/launchctl bootstrap system /var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist
+    "$ppo_launchctl" bootstrap system /var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist
 fi
