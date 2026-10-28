@@ -41,3 +41,7 @@ The UIKitCore dump exposes `uiPresentationManager` at0x1889e6d08 under a categor
 `_UIScenePresenter activate` at0x188ad5494 delegates to its owner through `_activatePresenter:`. `invalidate` at0x188d43cd8 sets its invalidated flag, calls `updateHostingStateIfNecessary`, updates its view and delegates `_invalidatePresenter:`. The owner maintains a separate active-prioritized-presenter state. These are not passive view-only operations. Restoration of SpringBoard's existing presentation, focus and foreground policy remains unverified.
 
 No private hosting calls were activated. Remaining work: concrete receiver verification, presenter priority/teardown semantics and input/foreground lifecycle, followed by target runtime validation.
+
+## Presentation-manager receiver correlation
+
+Additional exact-cache correlation: uiPresentationManager's guard loads the class reference at0x1e6b9fca0. `ipsw dyld dump ... --addr --count1` resolves that reference to0x1ed81f6c0, the FBScene class address in the FrontBoard verbose metadata. This resolves the earlier uncertainty about the class constant used in the receiver guard; it supports FBScene as the intended receiver rather than arbitrary NSObject. It does not by itself validate invoking the getter on the live device, presenter creation, activation side effects or teardown. The scene-0.7.0 device report now independently confirms a unique Safari FBScene and matching loaded framework UUIDs; it did not invoke this presentation-manager getter.
