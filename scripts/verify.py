@@ -32,6 +32,24 @@ for pattern in (r'%hook\b', r'%init\b', r'valueForKey:', r'method_getImplementat
                 r'method_invoke', r'dlopen', r'dlsym', r'performSelector',
                 r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\('):
     require(not re.search(pattern, scene_source), f'Unexpected scene operation: {pattern}')
+presenter_source = (ROOT / 'PPOScenePresenter.mm').read_text()
+require(presenter_source.count('objc_msgSend') == 4, 'Unexpected presenter dispatch surface')
+require(set(re.findall(r'PPOObject\([^\n]*?"(\w+)"', presenter_source)) ==
+        {'uiPresentationManager', 'identifier', 'presentationView'}, 'Unexpected presenter getter')
+require(set(re.findall(r'PPOTell\([^\n]*?"(\w+)"', presenter_source)) ==
+        {'activate', 'invalidate'}, 'Unexpected presenter mutation')
+require(set(re.findall(r'PPOFlag\([^\n]*?"(\w+)"', presenter_source)) ==
+        {'isInvalidated', 'isActive', 'isHosting'}, 'Unexpected presenter state getter')
+trial_source = (ROOT / 'PPOFloatingTrial.mm').read_text()
+for pattern in (r'%hook\b', r'%init\b', r'valueForKey:', r'method_getImplementation',
+                r'method_invoke', r'dlopen', r'dlsym', r'performSelector',
+                r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\(',
+                r'setForeground:', r'updateSettings', r'modifyPresentationContext',
+                r'createPresenterWithIdentifier:priority:', r'object_getIvar'):
+    require(not re.search(pattern, presenter_source + trial_source),
+            f'Unexpected hosting operation: {pattern}')
+require('objc_msgSend' not in trial_source, 'UIKit trial must not dispatch private APIs')
+require('self.content.userInteractionEnabled = NO' in trial_source, 'Unverified input must remain disabled')
 require('THEOS_PACKAGE_SCHEME := rootless' in (ROOT / 'Makefile').read_text(),
         'Rootless scheme missing')
 filter_path = ROOT / 'PullOverProDiagnostic.plist'
@@ -48,7 +66,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.7.0~dev.sceneselect1'), 'Unexpected version')
+    require(field('Version').startswith('0.7.1~dev.hosttrial1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

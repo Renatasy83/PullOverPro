@@ -99,7 +99,13 @@ int main(void) {
         NSDictionary *result = Run();
         Check([result[@"state"] isEqual:@"unique"] && [result[@"sceneIdentifier"] isEqual:@"exact"] &&
             [result[@"matched"] isEqual:@1], "exact identity across both chains");
+        id selectedScene = nil;
+        NSDictionary *lookup = PPOFindUniqueScene(PPOFixtureManager.class, PPOFixtureScene.class, safari, &selectedScene);
+        Check([lookup[@"state"] isEqual:@"unique"] && selectedScene == fixtureScenes[1],
+            "unique lookup returns exact instance after enumeration");
         fixtureScenes = @[Scene(safari, safari, @"A"), Scene(safari, safari, @"B")]; State(@"ambiguous");
+        PPOFindUniqueScene(PPOFixtureManager.class, PPOFixtureScene.class, safari, &selectedScene);
+        Check(selectedScene == nil, "ambiguous lookup clears prior reference");
         PPOFixtureScene *same = Scene(safari, safari, @"A");
         fixtureScenes = @[same, same]; State(@"ambiguous");
         fixtureScenes = @[Scene(safari, @"other.app", @"conflict")]; State(@"conflicting-identity");

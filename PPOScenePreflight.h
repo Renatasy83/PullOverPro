@@ -9,3 +9,8 @@ NSDictionary *PPOScenePreflight(NSString *bundleIdentifier);
 NSDictionary *PPOReadSceneSelection(Class managerClass, Class sceneClass,
                                    NSString *bundleIdentifier);
 NSDictionary *PPOSceneFrameworkIdentity(void);
+
+// Internal main-thread lookup: the strong result is used synchronously by the
+// hosting adapter only, after complete, unique enumeration. Never dispatch it.
+NSDictionary *PPOFindUniqueScene(Class managerClass, Class sceneClass,
+    NSString *bundleIdentifier, id __strong *sceneOut);

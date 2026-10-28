@@ -56,6 +56,12 @@ static BOOL PPOSceneEnumeratorABI(Method method) {
 }
 
 NSDictionary *PPOReadSceneSelection(Class managerClass, Class sceneClass, NSString *bundleIdentifier) {
+    return PPOFindUniqueScene(managerClass, sceneClass, bundleIdentifier, NULL);
+}
+
+NSDictionary *PPOFindUniqueScene(Class managerClass, Class sceneClass, NSString *bundleIdentifier,
+                               id __strong *sceneOut) {
+    if (sceneOut) *sceneOut = nil;
     if (!NSThread.isMainThread) return PPOSceneResult(@"wrong-thread", 0, 0, nil);
     if (!PPOBridgeValidIdentifier(bundleIdentifier) ||
         [bundleIdentifier isEqual:@"com.apple.springboard"] ||
@@ -67,6 +73,7 @@ NSDictionary *PPOReadSceneSelection(Class managerClass, Class sceneClass, NSStri
         return PPOSceneResult(@"unsupported-abi", 0, 0, nil);
     __block NSUInteger inspected = 0, matched = 0;
     __block NSString *selected = nil;
+    __block id selectedScene = nil;
     __block NSString *failure = nil;
     NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + 0.1;
     @try {
@@ -104,7 +111,7 @@ NSDictionary *PPOReadSceneSelection(Class managerClass, Class sceneClass, NSStri
                 failure = @"conflicting-identity"; *stop = YES; return;
             }
             matched++;
-            if (matched == 1) selected = [sceneID copy];
+            if (matched == 1) { selected = [sceneID copy]; selectedScene = scene; }
             // A duplicate callback is ambiguous too; never select a first match.
             if (matched > 1) { failure = @"ambiguous"; *stop = YES; }
         };
@@ -113,6 +120,7 @@ NSDictionary *PPOReadSceneSelection(Class managerClass, Class sceneClass, NSStri
     } @catch (NSException *exception) {
         (void)exception; failure = @"scene-exception";
     }
+    if (sceneOut && !failure && matched == 1) *sceneOut = selectedScene;
     return PPOSceneResult(failure ?: (matched == 1 ? @"unique" : @"not-found"),
         inspected, matched, failure ? nil : selected);
 }

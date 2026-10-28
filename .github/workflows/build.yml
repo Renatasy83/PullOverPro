@@ -136,6 +136,18 @@ jobs:
             tests/ScenePreflightTests.mm PPOScenePreflight.mm PPOBridgeProtocol.mm \
             -o "$RUNNER_TEMP/ppo-scene-preflight-tests"
           "$RUNNER_TEMP/ppo-scene-preflight-tests" | tee diagnostics/scene-tests.log
+      - name: Analyze and test owned scene presenter
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source in PPOScenePresenter.mm PPOFloatingTrial.mm; do
+            xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+              -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
+              -Xanalyzer -analyzer-output=text "$source"
+          done 2>&1 | tee diagnostics/hosting-analysis.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -framework Foundation \
+            tests/ScenePresenterTests.mm PPOScenePresenter.mm -o "$RUNNER_TEMP/ppo-presenter-tests"
+          "$RUNNER_TEMP/ppo-presenter-tests" | tee diagnostics/presenter-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -181,7 +193,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.7.0-scene-preflight-${{ github.sha }}
+          name: PullOverPro-0.7.1-host-trial-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

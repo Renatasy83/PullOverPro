@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
 Name: PullOver Pro Development
-Version: 0.7.0~dev.sceneselect1
+Version: 0.7.1~dev.hosttrial1
 Architecture: iphoneos-arm64
-Description: App picker and isolated mobile launch service. App scene hosting is not implemented.
+Description: App picker and isolated mobile launch service. Explicit, time-limited Safari live-hosting experiment; input routing is disabled and runtime behavior is unverified.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks
