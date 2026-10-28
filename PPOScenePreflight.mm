@@ -20,12 +20,29 @@ static BOOL PPOSceneText(id text) {
         [(NSString *)text length] <= 512;
 }
 
+// Read declared method tables without asking a private class to resolve a
+// missing selector. A missing method must not execute +resolveInstanceMethod:.
+static Method PPOSceneMethod(Class cls, SEL selector, BOOL factory = NO) {
+    if (factory && cls) cls = object_getClass((id)cls);
+    for (NSUInteger depth = 0; cls && depth < 64; depth++, cls = class_getSuperclass(cls)) {
+        unsigned int count = 0;
+        Method *methods = class_copyMethodList(cls, &count);
+        Method found = NULL;
+        for (unsigned int index = 0; index < count; index++) {
+            if (method_getName(methods[index]) == selector) { found = methods[index]; break; }
+        }
+        free(methods);
+        if (found) return found;
+    }
+    return NULL;
+}
+
 // Getter names below use Cocoa's +0 accessor convention. Recheck each actual
 // receiver's method before dispatch; never use KVC or invoke a guessed IMP.
 static id PPOSceneGet(id receiver, const char *name, BOOL *valid) {
     if (!*valid || !receiver) { *valid = NO; return nil; }
     SEL selector = sel_registerName(name);
-    Method method = class_getInstanceMethod(object_getClass(receiver), selector);
+    Method method = PPOSceneMethod(object_getClass(receiver), selector);
     if (!PPOGetterABI(method)) { *valid = NO; return nil; }
     return ((id (*)(id, SEL))objc_msgSend)(receiver, selector);
 }
@@ -45,8 +62,8 @@ NSDictionary *PPOReadSceneSelection(Class managerClass, Class sceneClass, NSStri
         [bundleIdentifier isEqual:@"com.apple.backboardd"])
         return PPOSceneResult(@"invalid-application", 0, 0, nil);
     if (!managerClass || !sceneClass ||
-        !PPOGetterABI(class_getClassMethod(managerClass, sel_registerName("sharedInstance"))) ||
-        !PPOSceneEnumeratorABI(class_getInstanceMethod(managerClass, sel_registerName("enumerateScenesWithBlock:"))))
+        !PPOGetterABI(PPOSceneMethod(managerClass, sel_registerName("sharedInstance"), YES)) ||
+        !PPOSceneEnumeratorABI(PPOSceneMethod(managerClass, sel_registerName("enumerateScenesWithBlock:"))))
         return PPOSceneResult(@"unsupported-abi", 0, 0, nil);
     __block NSUInteger inspected = 0, matched = 0;
     __block NSString *selected = nil;
@@ -56,7 +73,7 @@ NSDictionary *PPOReadSceneSelection(Class managerClass, Class sceneClass, NSStri
         BOOL valid = YES;
         id manager = PPOSceneGet((id)managerClass, "sharedInstance", &valid);
         if (!valid || ![manager isKindOfClass:managerClass] ||
-            !PPOSceneEnumeratorABI(class_getInstanceMethod(object_getClass(manager),
+            !PPOSceneEnumeratorABI(PPOSceneMethod(object_getClass(manager),
                 sel_registerName("enumerateScenesWithBlock:"))))
             return PPOSceneResult(@"unsupported-manager", 0, 0, nil);
         // Callback shape is supported by exact23A355 implementation at
@@ -160,7 +177,7 @@ static NSArray *PPOSceneABIMetadata(void) {
     for (const Entry &entry : entries) {
         Class cls = objc_lookUpClass(entry.className);
         SEL selector = sel_registerName(entry.selector);
-        Method method = entry.factory ? class_getClassMethod(cls, selector) : class_getInstanceMethod(cls, selector);
+        Method method = PPOSceneMethod(cls, selector, entry.factory);
         const char *types = method ? method_getTypeEncoding(method) : NULL;
         [metadata addObject:@{@"class": [NSString stringWithUTF8String:entry.className],
             @"selector": [NSString stringWithUTF8String:entry.selector],

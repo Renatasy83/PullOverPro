@@ -6,6 +6,7 @@
 static NSArray *fixtureScenes;
 static NSUInteger factoryCalls, enumerationCalls;
 static BOOL throwEnumeration, nullStop;
+static NSUInteger resolutionCalls;
 static void Check(BOOL condition, const char *message) {
     if (!condition) { fprintf(stderr, "FAIL: %s\n", message); exit(1); }
 }
@@ -64,6 +65,13 @@ static void Check(BOOL condition, const char *message) {
 - (int)bundleIdentifier { abort(); }
 @end
 
+@interface PPOMissingIdentity : NSObject
+ (BOOL)resolveInstanceMethod:(SEL)selector;
+@end
+@implementation PPOMissingIdentity
++ (BOOL)resolveInstanceMethod:(SEL)selector { (void)selector; resolutionCalls++; return NO; }
+@end
+
 static PPOFixtureScene *Scene(NSString *bundle, NSString *definitionBundle, NSString *identifier) {
     PPOFixtureIdentity *handle = [PPOFixtureIdentity new]; handle.bundleIdentifier = bundle;
     PPOFixtureIdentity *identity = [PPOFixtureIdentity new]; identity.bundleIdentifier = definitionBundle;
@@ -100,6 +108,10 @@ int main(void) {
         fixtureScenes = @[system, Scene(safari, safari, @"after-system")]; State(@"unique");
         PPOFixtureScene *bad = Scene(safari, safari, @"bad"); bad.clientHandle = [PPOBadIdentity new];
         fixtureScenes = @[bad]; State(@"unsupported-identity");
+        bad.clientHandle = [PPOMissingIdentity new];
+        resolutionCalls = 0;
+        State(@"unsupported-identity");
+        Check(resolutionCalls == 0, "missing getter does not invoke dynamic method resolution");
         fixtureScenes = @[@"not a scene"]; State(@"unexpected-scene");
         fixtureScenes = @[Scene(safari, safari, @"exact")];
         nullStop = YES; State(@"invalid-callback"); nullStop = NO;
