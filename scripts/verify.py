@@ -40,6 +40,7 @@ for arg in sys.argv[1:]:
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
     require(field('Version').startswith('0.6.0~dev.bridge1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
+    require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
     base = 'var/jb/Library/MobileSubstrate/DynamicLibraries/'
     required = {base + 'PullOverProDiagnostic.dylib', base + 'PullOverProDiagnostic.plist',

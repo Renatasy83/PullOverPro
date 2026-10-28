@@ -6,6 +6,6 @@ Description: App picker and isolated mobile launch service. App scene hosting is
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks
-Depends: firmware (>= 15.0), ellekit
+Depends: firmware (>= 15.0), ellekit, bash
 
 
