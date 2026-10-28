@@ -66,7 +66,7 @@ static void Check(BOOL condition, const char *message) {
 @end
 
 @interface PPOMissingIdentity : NSObject
- (BOOL)resolveInstanceMethod:(SEL)selector;
++ (BOOL)resolveInstanceMethod:(SEL)selector;
 @end
 @implementation PPOMissingIdentity
 + (BOOL)resolveInstanceMethod:(SEL)selector { (void)selector; resolutionCalls++; return NO; }
