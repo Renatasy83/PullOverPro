@@ -125,6 +125,17 @@ jobs:
             PPOBridgeClient.mm PPOBridgeProtocol.mm PPOAppData.mm tools/bridge/PPOBridgeService.mm \
             -o "$RUNNER_TEMP/ppo-bridge-integration-tests"
           "$RUNNER_TEMP/ppo-bridge-integration-tests" | tee diagnostics/bridge-integration-tests.log
+      - name: Analyze and test read-only scene preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
+            -Xanalyzer -analyzer-output=text PPOScenePreflight.mm 2>&1 | tee diagnostics/scene-analysis.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -framework Foundation -framework CoreFoundation \
+            tests/ScenePreflightTests.mm PPOScenePreflight.mm PPOBridgeProtocol.mm \
+            -o "$RUNNER_TEMP/ppo-scene-preflight-tests"
+          "$RUNNER_TEMP/ppo-scene-preflight-tests" | tee diagnostics/scene-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -170,7 +181,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.6.1-development-${{ github.sha }}
+          name: PullOverPro-0.7.0-scene-preflight-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

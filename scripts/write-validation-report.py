@@ -7,6 +7,7 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'scene-tests.log': 'Scene preflight tests passed;',
     'lifecycle-tests.log': 'Lifecycle tests passed:',
     'appdata-tests.log': 'App data tests passed',
     'launcher-tests.log': 'Launch ABI tests passed',
