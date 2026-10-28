@@ -12,7 +12,7 @@ INSTALL_TARGET_PROCESSES := SpringBoard
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME := PullOverProDiagnostic
-PullOverProDiagnostic_FILES := Tweak.xm PPOAppData.mm
+PullOverProDiagnostic_FILES := Tweak.xm PPOAppData.mm PPOLaunchProcess.mm
 PullOverProDiagnostic_CFLAGS := -fobjc-arc
 PullOverProDiagnostic_FRAMEWORKS := Foundation UIKit
 

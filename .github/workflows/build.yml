@@ -78,6 +78,17 @@ jobs:
           xcrun clang++ -Wall -Wextra -Werror -fobjc-arc -framework Foundation \
             tests/LaunchABITests.mm -o "$RUNNER_TEMP/ppo-abi-tests"
           "$RUNNER_TEMP/ppo-abi-tests" | tee diagnostics/launcher-tests.log
+      - name: Analyze and test process runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ --analyze -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
+            -Xanalyzer -analyzer-output=text PPOLaunchProcess.mm \
+            2>&1 | tee diagnostics/process-analysis.log
+          xcrun clang++ -Wall -Wextra -Werror -fobjc-arc -framework Foundation \
+            tests/ProcessTests.mm PPOLaunchProcess.mm -o "$RUNNER_TEMP/ppo-process-tests"
+          "$RUNNER_TEMP/ppo-process-tests" | tee diagnostics/process-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -117,7 +128,7 @@ jobs:
       - name: Upload diagnostic deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.5.9-launcher1-${{ github.sha }}
+          name: PullOverPro-0.5.10-panel-launch1-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

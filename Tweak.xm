@@ -3,6 +3,7 @@
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
 #import "PPOAppData.h"
+#import "PPOLaunchProcess.h"
 
 // Diagnostic baseline: public UIKit only. No SpringBoard hooks or private calls.
 // Overlay requires .ppo_enable_overlay; .ppo_disable takes precedence.
@@ -73,12 +74,18 @@ static dispatch_queue_t PPOFileQueue(void) {
 @property(nonatomic) NSUInteger page;
 @property(nonatomic) NSUInteger listEpoch;
 @property(nonatomic) NSUInteger saveEpoch;
+@property(nonatomic) BOOL selectionSaving;
+@property(nonatomic) BOOL launchInProgress;
+@property(nonatomic) BOOL launchStopped;
+@property(nonatomic,strong) UIButton *launchButton;
 @property(nonatomic,strong) UIView *listView;
 @property(nonatomic,strong) UIScrollView *listScroll;
 @property(nonatomic,strong) UILabel *pageLabel;
 @property(nonatomic,strong) UIButton *previousButton;
 @property(nonatomic,strong) UIButton *nextButton;
 - (void)showApps:(UIButton *)sender;
+- (void)launchSafari:(UIButton *)sender;
+- (void)updateLaunchButton;
 - (void)renderApps;
 - (void)closeApps:(id)sender;
 - (void)changePage:(UIButton *)sender;
@@ -87,6 +94,50 @@ static dispatch_queue_t PPOFileQueue(void) {
 @end
 
 @implementation PPOHandleTarget
+- (void)updateLaunchButton {
+    self.launchButton.enabled = !self.selectionSaving && !self.launchInProgress &&
+        !self.launchStopped && [self.selectedIdentifier isEqualToString:@"com.apple.mobilesafari"];
+}
+- (void)launchSafari:(UIButton *)sender {
+    (void)sender;
+    if (self.launchInProgress) return;
+    if (self.launchStopped) { ppoStatus.text = @"Test oprit; raportează rezultatul"; return; }
+    if (self.selectionSaving) { ppoStatus.text = @"Așteaptă salvarea selecției"; return; }
+    if (![self.selectedIdentifier isEqualToString:@"com.apple.mobilesafari"]) {
+        ppoStatus.text = @"Selectează Safari pentru test"; return;
+    }
+    self.launchInProgress = YES;
+    [self updateLaunchButton];
+    NSUInteger selectionEpoch = self.saveEpoch;
+    ppoStatus.text = @"Se solicită deschiderea Safari…";
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        PPOLaunchResult result = PPORunHelper("/var/jb/usr/bin/ppo-open", "--launch", 25);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.launchInProgress = NO;
+            self.launchStopped = result.timedOut || result.waitError ||
+                result.signalNumber || (!result.spawnError && result.exitCode == 4);
+            [self updateLaunchButton];
+            NSString *message = nil;
+            if (result.spawnError) {
+                message = [NSString stringWithFormat:@"Pornire utilitar: eroare %d", result.spawnError];
+            } else if (result.timedOut) {
+                message = @"Așteptare expirată; test oprit";
+            } else if (result.waitError) {
+                message = [NSString stringWithFormat:@"Rezultat necunoscut: %d", result.waitError];
+            } else if (result.signalNumber) {
+                message = [NSString stringWithFormat:@"Utilitar oprit: semnal %d", result.signalNumber];
+            } else if (result.exitCode == 0) {
+                message = @"Safari: cerere acceptată";
+            } else {
+                message = [NSString stringWithFormat:@"Utilitar: cod %d", result.exitCode];
+            }
+            if (selectionEpoch == self.saveEpoch || self.launchStopped) ppoStatus.text = message;
+            NSLog(@"[PPO 0.5.10] launch spawn=%d wait=%d exit=%d signal=%d timeout=%d",
+                result.spawnError, result.waitError, result.exitCode,
+                result.signalNumber, (int)result.timedOut);
+        });
+    });
+}
 - (void)inspectAPI:(UIButton *)sender {
     static BOOL requested = NO; // One bounded report per SpringBoard process.
     if (requested) { ppoStatus.text = @"Raport deja solicitat"; return; }
@@ -106,9 +157,9 @@ static dispatch_queue_t PPOFileQueue(void) {
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 0.5.8] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 0.5.10] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.5.8] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 0.5.10] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport API salvat (Filza)" : @"Raport API: eroare";
@@ -131,7 +182,7 @@ static dispatch_queue_t PPOFileQueue(void) {
     self.listView.hidden = YES;
     ppoPanel.hidden = !ppoExpanded;
     ppoStatus.text = @"Selectează o aplicație";
-    NSLog(@"[PPO 0.5.8] panel %@", ppoExpanded ? @"open" : @"closed");
+    NSLog(@"[PPO 0.5.10] panel %@", ppoExpanded ? @"open" : @"closed");
 }
 - (void)panned:(UIPanGestureRecognizer *)recognizer {
     if (!ppoWindow) return;
@@ -174,7 +225,7 @@ static dispatch_queue_t PPOFileQueue(void) {
                 }
                 if (!found) selected = nil;
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.5.8] app-file-exception=%@", exception.name);
+                NSLog(@"[PPO 0.5.10] app-file-exception=%@", exception.name);
                 apps = nil;
             }
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -184,6 +235,7 @@ static dispatch_queue_t PPOFileQueue(void) {
                 self.apps = apps;
                 self.page = 0;
                 self.selectedIdentifier = selected[@"bundleIdentifier"];
+                [self updateLaunchButton];
                 ppoStatus.text = selected ? [NSString stringWithFormat:@"Selectat: %@", selected[@"name"]]
                                          : @"Nicio aplicație selectată";
                 @try {
@@ -195,7 +247,7 @@ static dispatch_queue_t PPOFileQueue(void) {
                     self.listView = nil;
                     ppoPanel.hidden = NO;
                     ppoStatus.text = @"Lista nu poate fi afișată";
-                    NSLog(@"[PPO 0.5.8] app-ui-exception=%@", exception.name);
+                    NSLog(@"[PPO 0.5.10] app-ui-exception=%@", exception.name);
                 }
             });
         }
@@ -288,13 +340,15 @@ static dispatch_queue_t PPOFileQueue(void) {
     @catch (NSException *exception) {
         [self closeApps:nil];
         ppoStatus.text = @"Pagina nu poate fi afișată";
-        NSLog(@"[PPO 0.5.8] page-exception=%@", exception.name);
+        NSLog(@"[PPO 0.5.10] page-exception=%@", exception.name);
     }
 }
 - (void)selectApp:(UIButton *)sender {
     if (sender.tag < 0 || (NSUInteger)sender.tag >= self.apps.count) return;
     NSDictionary *selection = self.apps[(NSUInteger)sender.tag];
     self.selectedIdentifier = selection[@"bundleIdentifier"];
+    self.selectionSaving = YES;
+    [self updateLaunchButton];
     [self closeApps:nil];
     NSUInteger epoch = ++self.saveEpoch;
     ppoStatus.text = @"Se salvează selecția…";
@@ -309,13 +363,15 @@ static dispatch_queue_t PPOFileQueue(void) {
                     saved = [data writeToFile:PPOSelectionPath options:NSDataWritingAtomic error:NULL];
                 }
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.5.8] selection-exception=%@", exception.name);
+                NSLog(@"[PPO 0.5.10] selection-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (epoch != self.saveEpoch) return;
                 ppoStatus.text = saved ? [NSString stringWithFormat:@"Selectat: %@", selection[@"name"]]
                                       : @"Selecție nesalvată";
                 if (!saved) self.selectedIdentifier = nil;
+                self.selectionSaving = NO;
+                [self updateLaunchButton];
             });
         }
     });
@@ -354,7 +410,7 @@ static void PPOCommitOverlay(UIWindow *window, UIViewController *controller,
 }
 
 static void PPOBuildOverlay(UIWindowScene *scene) {
-    NSLog(@"[PPO 0.5.8] ui-build-begin");
+    NSLog(@"[PPO 0.5.10] ui-build-begin");
     UIWindow *ppoWindow = [[UIWindow alloc] initWithWindowScene:scene];
     ppoWindow.frame = CGRectMake(0, 170, PPOClosedWidth, 44);
     ppoWindow.windowLevel = UIWindowLevelStatusBar + 1;
@@ -369,7 +425,7 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
     ppoPanel.layer.cornerRadius = 12;
     ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.5.8", 8)];
+    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.5.10", 8)];
     [ppoPanel addSubview:PPOLabel(@"Aplicații", 43)];
     UIButton *apps = [UIButton buttonWithType:UIButtonTypeSystem];
     apps.frame = CGRectMake(10, 72, PPOOpenWidth - 20, 32);
@@ -378,9 +434,14 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [apps addTarget:ppoTarget action:@selector(showApps:) forControlEvents:UIControlEventTouchUpInside];
     [ppoPanel addSubview:apps];
     [ppoPanel addSubview:PPOLabel(@"Alege aplicația pentru PPO", 110)];
-    UILabel *notice = PPOLabel(@"Selectarea nu deschide aplicația", 143);
-    notice.font = [UIFont systemFontOfSize:11];
-    [ppoPanel addSubview:notice];
+    UIButton *launch = [UIButton buttonWithType:UIButtonTypeSystem];
+    launch.frame = CGRectMake(10, 143, PPOOpenWidth - 20, 32);
+    [launch setTitle:@"Deschide Safari" forState:UIControlStateNormal];
+    [launch setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [launch addTarget:ppoTarget action:@selector(launchSafari:) forControlEvents:UIControlEventTouchUpInside];
+    ppoTarget.launchButton = launch;
+    [ppoTarget updateLaunchButton];
+    [ppoPanel addSubview:launch];
     UILabel *ppoStatus = PPOLabel(@"Nicio aplicație selectată", 182);
     ppoStatus.numberOfLines = 2;
     ppoStatus.font = [UIFont systemFontOfSize:11];
@@ -419,10 +480,10 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [ppoHandle addGestureRecognizer:pan];
     [ppoController.view addSubview:ppoHandle];
 
-    NSLog(@"[PPO 0.5.8] ui-built; showing");
+    NSLog(@"[PPO 0.5.10] ui-built; showing");
     ppoWindow.hidden = NO;
     PPOCommitOverlay(ppoWindow, ppoController, ppoTarget, ppoPanel, ppoStatus, ppoHandle);
-    NSLog(@"[PPO 0.5.8] ui-visible");
+    NSLog(@"[PPO 0.5.10] ui-visible");
 }
 
 static BOOL ppoScheduled;
@@ -461,12 +522,12 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 0.5.8] no-active-scene; stopped");
+                NSLog(@"[PPO 0.5.10] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 0.5.8] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 0.5.10] ui-exception=%@; stopped", exception.name);
             ppoStopped = YES;
         }
         if (ppoStopped && ppoSceneObserver) {
@@ -478,10 +539,10 @@ static void PPOScheduleOverlay(void) {
 
 %ctor {
     @autoreleasepool {
-        NSLog(@"[PPO 0.5.8] loaded; os=%@",
+        NSLog(@"[PPO 0.5.10] loaded; os=%@",
               NSProcessInfo.processInfo.operatingSystemVersionString);
         if (!PPOOverlayAllowed()) {
-            NSLog(@"[PPO 0.5.8] overlay-disabled; no hooks installed");
+            NSLog(@"[PPO 0.5.10] overlay-disabled; no hooks installed");
             return;
         }
         // No UIKit objects or private SpringBoard methods touched in the ctor.
@@ -491,7 +552,7 @@ static void PPOScheduleOverlay(void) {
                 queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                     PPOScheduleOverlay();
                 }];
-            NSLog(@"[PPO 0.5.8] overlay-armed");
+            NSLog(@"[PPO 0.5.10] overlay-armed");
             PPOScheduleOverlay();
         });
     }

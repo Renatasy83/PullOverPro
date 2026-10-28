@@ -15,10 +15,11 @@ def require(condition, message):
         raise SystemExit(message)
 
 
-source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOAppData.mm'])
+source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOAppData.mm', 'PPOLaunchProcess.mm'])
 for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'NSSelectorFromString', r'valueForKey:', r'launchApplication',
                 r'method_getImplementation', r'method_invoke', r'dlopen', r'dlsym',
+                r'\bsystem\s*\(', r'\bpopen\s*\(', r'\bfork\s*\(', r'\bkill\s*\(',
                 r'performSelector', r'NSInvocation', r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\('):
     require(not re.search(pattern, source), f'Unexpected runtime operation: {pattern}')
 require('THEOS_PACKAGE_SCHEME := rootless' in (ROOT / 'Makefile').read_text(),
@@ -37,7 +38,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.5.9~launcher1'), 'Unexpected version')
+    require(field('Version').startswith('0.5.10~panel.launch1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
     base = 'var/jb/Library/MobileSubstrate/DynamicLibraries/'
