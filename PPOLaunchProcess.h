@@ -3,6 +3,13 @@
 
 struct PPOLaunchResult {
     pid_t pid;
+    const char *stage;
+    uid_t realUID;
+    uid_t effectiveUID;
+    int statError;
+    int accessError;
+    mode_t executableMode;
+    uid_t executableOwner;
     int spawnError;
     int waitError;
     int exitCode;

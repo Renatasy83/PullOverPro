@@ -24,7 +24,7 @@ clang --version | head -n 1
 # A command-line SHELL propagates through recursive make. Never create /bin/sh.
 make SHELL="$ppo_shell" clean
 make SHELL="$ppo_shell" package FINALPACKAGE=1
-for deb in packages/*0.5.10~panel.launch1*iphoneos-arm64.deb; do
+for deb in packages/*0.5.11~spawn.diag1*iphoneos-arm64.deb; do
     test -f "$deb" || { echo "Missing diagnostic deb" >&2; exit 1; }
     dpkg-deb -f "$deb" Package Version Architecture Depends
     dpkg-deb -c "$deb"

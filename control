@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro 0.5.10 Safari Panel Launch
-Version: 0.5.10~panel.launch1
+Name: PullOver Pro 0.5.11 Spawn Diagnostic
+Version: 0.5.11~spawn.diag1
 Architecture: iphoneos-arm64
-Description: Explicit Safari launch button via tested helper; no scene hosting.
+Description: Records exact helper startup phase and caller identity; no privilege changes.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks

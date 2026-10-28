@@ -1,5 +1,6 @@
 #import "../PPOLaunchProcess.h"
 #include <pthread.h>
+#include <unistd.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <errno.h>
@@ -15,10 +16,15 @@ static void *RunTests(void *value) {
     setenv("PPO_TEST_PARENT_MARKER", "must-not-be-inherited", 1);
     PPOLaunchResult ok = PPORunHelper(path, "--ok", 2);
     Check(!ok.spawnError && !ok.waitError && !ok.timedOut && ok.exitCode == 0, "successful clean-environment child");
+    Check(strcmp(ok.stage, "child-exit") == 0 && ok.realUID == getuid() &&
+          ok.effectiveUID == geteuid(), "successful stage and identity");
+    Check(!ok.statError && !ok.accessError && (ok.executableMode & 0111), "executable preflight");
     PPOLaunchResult failed = PPORunHelper(path, "--fail", 2);
     Check(failed.exitCode == 7 && !failed.waitError, "nonzero child exit");
     PPOLaunchResult missing = PPORunHelper("/nonexistent/ppo-helper-fixture", "--ok", 2);
     Check(missing.spawnError == ENOENT, "missing executable");
+    Check(strcmp(missing.stage, "posix_spawn") == 0 &&
+          missing.statError == ENOENT && missing.accessError == ENOENT, "spawn failure stage");
     PPOLaunchResult invalid = PPORunHelper(path, "--ok", 0);
     Check(invalid.spawnError == EINVAL, "invalid timeout");
     PPOLaunchResult slow = PPORunHelper(path, "--delay", 0.05);
