@@ -170,12 +170,18 @@ static BOOL PPOTrialAllowed(void) {
                           self.protectedObserver ?: NSNull.null])
         if (observer != NSNull.null) [NSNotificationCenter.defaultCenter removeObserver:observer];
     self.observer = nil; self.backgroundObserver = nil; self.protectedObserver = nil;
-    self.window.hidden = YES;
-    // Detach only our container's contents, never a view that failed adoption.
-    for (UIView *view in [self.content.subviews copy]) [view removeFromSuperview];
+    BOOL uiClean = YES;
+    @try {
+        self.window.hidden = YES;
+        // Detach only our container's contents, never a view that failed adoption.
+        for (UIView *view in [self.content.subviews copy]) [view removeFromSuperview];
+    } @catch (NSException *exception) { (void)exception; uiClean = NO; }
+    // Still invalidate our owned presenter if UIKit detachment raised.
     BOOL closed = !self.session || [self.session close];
-    self.window.rootViewController = nil; self.window = nil; self.content = nil;
-    [self record:closed ? @"close-returned" : @"cleanup-unconfirmed"];
+    @try { self.window.rootViewController = nil; }
+    @catch (NSException *exception) { (void)exception; uiClean = NO; }
+    if (uiClean) { self.window = nil; self.content = nil; }
+    [self record:closed && uiClean ? @"close-returned" : @"cleanup-unconfirmed"];
     // Keep the session retained even after a failed cleanup; no automatic retry.
 }
 @end

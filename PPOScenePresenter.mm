@@ -52,9 +52,9 @@ static bool PPOFlag(id receiver, const char *name) {
 @property(nonatomic,strong,readwrite) id presentationView;
 @property(nonatomic,copy,readwrite) NSString *state;
 @property(nonatomic,readwrite) BOOL poisoned;
-@property(nonatomic) Class managerClass;
-@property(nonatomic) Class presenterClass;
-@property(nonatomic) Class viewClass;
+@property(nonatomic,assign) Class managerClass;
+@property(nonatomic,assign) Class presenterClass;
+@property(nonatomic,assign) Class viewClass;
 @property(nonatomic,copy) NSString *identifier;
 @property(nonatomic) BOOL owned;
 @property(nonatomic) BOOL attempted;

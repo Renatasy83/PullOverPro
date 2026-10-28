@@ -1,42 +1,35 @@
 # Autonomous port status — 2026-10-28
 
-## Preservation
+## Preserved baselines
 
-`main` is unchanged. `stable/verified-app-picker` preserves commit 9bde2538367754343153c32becbc913254bc76c7 (0.5.8, user-confirmed picker functionality). This does not establish complete platform compatibility. Development is isolated on `debug/autonomous-port`, based on bd0433090111b884a73f04e82f08411cc8881b84.
+main remains Alpha 4 at af336d84a6b4812e6b6406af87803fb15bf29c3b.
+stable/verified-app-picker preserves the user-confirmed 0.5.8 picker.
+stable/verified-safari-launch preserves 0.6.1 at e22b2efab141fe31dfd7e39365ae42c7667fb116, with actual Safari opening from PPO confirmed by the user.
 
-## Evidence
+Development is isolated on debug/autonomous-port. None of these observations establishes complete Dopamine/ElleKit compatibility.
 
-The device's 0.5.11 report records real/effective UID 501, executable stat success, root ownership and mode 0755, access(X_OK) EPERM and posix_spawn EPERM. No timeout occurred. The helper works when invoked from NewTerm according to the user. The specific enforcement mechanism is not established. Changing mode or blaming ElleKit/Dopamine is not justified.
+## Device evidence
 
-Existing CI run 40629442968 at bd0433090111b884a73f04e82f08411cc8881b84 completed successfully. Its workflow includes Clang analysis, native macOS parser/persistence, ABI-guard and process-runner tests, Theos packaging and payload/architecture inspection. These are existing results, not tests of a new implementation or iOS runtime integration.
+The 0.5.11 report recorded UID501 and SpringBoard posix_spawn EPERM; the same helper opened Safari from NewTerm. The exact enforcement cause remains unconfirmed. The 0.6 bridge architecture uses a mobile launchd service and a bounded file mailbox instead of spawning a helper from SpringBoard. The 0.6.1 installer accommodates the device's /var/jb/usr/bin/launchctl.
 
-## Host investigation
+The supplied scene-0.7.0.json confirms the exact three 23A355 framework UUIDs, complete enumeration of 5 scenes, and one exact Safari identity match. Presenter methods were observed as metadata only. See DEVICE_VALIDATION.md.
 
-The accessible executor reports Linux 6.18.55 x86_64 and has no xcrun or clang on PATH. No physical Apple Silicon Mac is attached or configured in the inspected environment. Lakr233/vphone-cli README requires a physical Apple Silicon Mac, macOS 15+, Recovery security configuration and explicitly excludes macOS VMs. It was not installed or run. GitHub-hosted macOS builds do not establish availability of a compatible virtualization host. Even a virtual iPhone would require separate verification of its injection environment and would not prove Dopamine/ElleKit compatibility on iPhone12,5.
+## Current implementation: 0.7.1 live-rendering gate
 
-Source: https://github.com/Lakr233/vphone-cli/blob/main/README.md
+The ordinary public UIKit overlay/picker and service launch path are retained. A separately reviewed adapter can obtain the scene's presentation manager, create a unique PPO presenter, adopt its own unattached presentation view, activate it, and invalidate only that owned presenter on close. Dispatch is guarded by the exact framework UUIDs, declared method ABI and actual receiver/return types. No priorities, KVC/ivars, scene foreground mutations or process termination are used.
 
-## Original hosting investigation
+The explicit Safari-only button attempts live rendering once per SpringBoard process. It opens a draggable window for at most 15 seconds while the main queue remains responsive. Hosted content input is disabled. There is no hosting during initialization/respring or automatic retries after uncertain cleanup. Cleanup failures poison and retain the session. See HOSTING_TRIAL.md for the complete gate and recovery.
 
-Reviewed c1d3rdev/PullOver-Pro main, PullOverPro/ContextHostManager.mm and ContextInterfaces.h. iOS13 hosting uses FBSceneManager, KVC `_scenesByID`, `_mutableSettings`, layerManager/layers, _UIContextLayerHostView initWithSceneLayer:, _UIExternalSceneLayerHostView initWithSceneLayer:parentScene:, foreground settings updates and KVO layer observation. Those headers are historical declarations, not iOS26 runtime evidence. Method existence/type encodings alone cannot establish lifecycle, ownership, entitlements or thread constraints. None of this hosting code was enabled in SpringBoard.
+This path is implemented, but rendering, input, system presentation restoration and device lifecycle behavior are NOT established by native fixtures or compilation. No final candidate has been produced.
 
-## Delivery gate
+## Automated validation
 
-No final candidate DEB has been produced. Current diagnostic artifacts are not final candidates. Floating application hosting and panel launching remain incomplete. Dopamine/ElleKit compatibility is not confirmed.
+The workflow runs on a standard macos-15-intel runner, with pinned Theos and SDK16.5, strict Clang analysis, native fixture suites, sanitizer checks, real macOS subprocess mailbox tests, Theos arm64/arm64e packaging and exact rootless payload/lifecycle/license inspection. The artifact contains per-suite logs, SHA256 and VALIDATION.md/json. Read the specific successful run; implementation alone is not a test result.
 
-Required automated integration coverage on a suitable target: launch IPC under actual caller sandbox; scene selection by exact app identity; host creation and teardown; touch and keyboard routing; foreground/background transitions; lock/unlock; orientation; app termination/relaunch; repeated open/close cycles; injection startup and watchdog observations. Mock tests cannot replace these checks.
+Local Linux execution passed 365 transport checks with AddressSanitizer/UBSan, 24 package lifecycle checks and source-policy checks. Objective-C/UIKit compilation and native Foundation tests require Actions in this environment.
 
-Do not request further intermediate phone installations from the user. Continue automatable work on the development branch; do not promote a build solely because compilation succeeds. Preserve GPL-3.0 and original attribution. No device data, other tweaks, host security configuration or installed device packages were modified.
+## Runtime limit
 
+No compatible physical Apple Silicon Mac is accessible. Lakr233/vphone-cli requires physical Apple Silicon/macOS15+ and host security configuration, and does not support macOS VMs. It was not installed or run. The Intel Actions machine is a build/test host, not a compatible iPhone runtime.
 
-## Development implementation in this branch
-
-The panel no longer links the process-spawn runner. It uses a bounded file mailbox on its existing serial worker queue. A separate launchd service runs as mobile, refreshes the app inventory on demand and requests launches only after exact membership and expiry checks. No scene hosting calls were introduced. The own-service installation/removal scripts are payload-verified. See BRIDGE_DESIGN.md.
-
-The new portable transport passed365 filesystem/concurrency checks on Linux with ASan/UBSan. Foundation protocol/service policy and actual macOS subprocess integration are CI checks, not iOS runtime evidence. The branch's development package version is0.6.0~dev.bridge1. A development build must not be described as a completed port or final candidate.
-
-## Continued review: emergency disable and scene evidence
-
-A service control defect was found: the new service did not previously honor the overlay's `.ppo_disable` marker. It now fails closed before workspace access and rechecks after enumeration/before launch. Added policy and subprocess regression coverage for this behavior. This is a source-level correction, not a verified device fix.
-
-Pinned iOS26 headers and a recent installed-app hosting reference were reviewed. They document newer presenter/container boundaries, but not the exact device build or safe acquisition/adoption of a SpringBoard-owned scene. The source was not copied and no speculative hosting calls were enabled. See HOSTING_RESEARCH.md for precise remaining evidence requirements.
+The next indispensable real-device gate is the first actual presenter creation/activation/teardown: visible live Safari and restored SpringBoard/Safari after close. Touch/keyboard routing, other apps, scene resizing, foreground policy, lock/unlock, orientation, process death and repeated stress remain unimplemented or unverified. No phone installation, respring, personal-data deletion or change to other tweaks is automated.

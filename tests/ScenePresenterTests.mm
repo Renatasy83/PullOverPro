@@ -77,6 +77,25 @@ static void Check(BOOL ok, const char *message) {
 - (int)activate { abort(); }
 @end
 
+@interface WrongManagerScene : FixtureScene @end
+@implementation WrongManagerScene
+- (id)uiPresentationManager { return @"not a manager"; }
+@end
+@interface WrongFactory : FixtureManager @end
+@implementation WrongFactory
+- (id)createPresenterWithIdentifier:(id)identifier { (void)identifier; creates++; return @"foreign object"; }
+@end
+@interface WrongFactoryScene : FixtureScene @end
+@implementation WrongFactoryScene
+- (id)uiPresentationManager { return [WrongFactory new]; }
+@end
+@interface BadGetterScene : NSObject
+- (int)uiPresentationManager;
+@end
+@implementation BadGetterScene
+- (int)uiPresentationManager { abort(); }
+@end
+
 static PPOScenePresenter *NewSession(Class manager = FixtureManager.class,
                                      Class presenter = FixturePresenter.class) {
     return [[PPOScenePresenter alloc] initWithManagerClass:manager presenterClass:presenter
@@ -127,6 +146,15 @@ int main(void) {
             Check(![current close] && invalidations == 1, "unknown cleanup is not automatically retried");
             Check(current.presentationView != nil, "unknown ownership retains references");
         }
+        Reset(); current = NewSession();
+        Check(![current prepareScene:[WrongManagerScene new]] && creates == 0,
+              "actual manager type checked before factory invocation");
+        current = NewSession();
+        Check(![current prepareScene:[BadGetterScene new]] && creates == 0,
+              "scene getter return ABI rejected before call");
+        current = NewSession();
+        Check(![current prepareScene:[WrongFactoryScene new]] && current.poisoned && invalidations == 0,
+              "unexpected factory object quarantined without invalidation");
         Reset(); current = NewSession(BadManager.class);
         Check(![current prepareScene:[FixtureScene new]] && creates == 0, "factory ABI checked before invocation");
         current = NewSession(FixtureManager.class, BadPresenter.class);
