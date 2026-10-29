@@ -48,10 +48,11 @@ static BOOL PPOTrialAllowed(void) {
 - (void)record:(NSString *)event {
     if (!NSThread.isMainThread) return;
     if (!self.events) self.events = [NSMutableArray array];
+    NSDictionary *geometry = [self geometrySnapshot];
     if (self.events.count < 16) [self.events addObject:@{@"event": event,
         @"uptime": @(NSProcessInfo.processInfo.systemUptime),
         @"presenter": self.session.snapshot ?: @{},
-        @"geometry": [self geometrySnapshot],
+        @"geometry": geometry,
         @"lastLiveSample": self.lastLiveSample ?: @{},
         @"containerUserInteractionEnabled": @(self.content.userInteractionEnabled),
         @"closeReason": self.closeReason ?: @"none"}];
@@ -59,7 +60,7 @@ static BOOL PPOTrialAllowed(void) {
     NSDictionary *report = @{@"schema": @4, @"version": @"0.8.1~dev.layout1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
-        @"geometry": [self geometrySnapshot],
+        @"geometry": geometry,
         @"lastLiveSample": self.lastLiveSample ?: @{},
         @"presenter": self.session.snapshot ?: @{},
         @"presentationViewUserInteractionEnabled": @(presentation.userInteractionEnabled),
@@ -269,6 +270,7 @@ static BOOL PPOTrialAllowed(void) {
     return YES;
 }
 - (NSDictionary *)geometrySnapshot {
+    @try {
     UIView *presentation = self.session.presentationView;
     NSMutableArray *chain = [NSMutableArray array];
     for (UIView *v = presentation; v && chain.count < 8; v = v.superview) {
@@ -298,6 +300,9 @@ static BOOL PPOTrialAllowed(void) {
         @"windowFrame": self.window ? NSStringFromCGRect(self.window.frame) : @"none",
         @"windowHidden": @(!self.window || self.window.hidden),
         @"hostSceneState": self.windowScene ? @((NSInteger)self.windowScene.activationState) : @(-1)};
+    } @catch (NSException *exception) {
+        return @{@"status": @"geometry-exception", @"exceptionName": exception.name ?: @"unknown"};
+    }
 }
 - (void)captureLayout:(NSString *)event {
     if (!NSThread.isMainThread || self.closed || self.closing || self.closePending || !self.running) return;
