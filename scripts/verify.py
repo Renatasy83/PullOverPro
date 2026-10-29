@@ -32,6 +32,17 @@ for pattern in (r'%hook\b', r'%init\b', r'valueForKey:', r'method_getImplementat
                 r'method_invoke', r'dlopen', r'dlsym', r'performSelector',
                 r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\('):
     require(not re.search(pattern, scene_source), f'Unexpected scene operation: {pattern}')
+probe_source = (ROOT / 'PPOSceneLayerProbe.mm').read_text()
+require(probe_source.count('objc_msgSend') == 1, 'Unexpected layer probe dispatch surface')
+require(set(re.findall(r'ProbeGet<[^>]+>\([^\n]*?"(\w+)"', probe_source)) ==
+        {'layerManager', 'settings', 'layers', 'type', 'isActive', 'isBackgrounded'},
+        'Unexpected layer probe accessor')
+for pattern in (r'valueForKey:', r'object_getIvar', r'method_getImplementation',
+                r'performSelector', r'NSInvocation', r'setForeground:', r'updateSettings',
+                r'contextID', r'renderID', r'dispatch_sync', r'\bsleep\s*\('):
+    require(not re.search(pattern, probe_source), f'Unexpected layer probe operation: {pattern}')
+require('count > 32' in probe_source and 'NSThread.isMainThread' in probe_source and
+        'class_copyMethodList' in probe_source, 'Layer probe bounds and dispatch guards required')
 presenter_source = (ROOT / 'PPOScenePresenter.mm').read_text()
 require(presenter_source.count('objc_msgSend') == 4, 'Unexpected presenter dispatch surface')
 require(set(re.findall(r'PPOObject\([^\n]*?"(\w+)"', presenter_source)) ==
@@ -94,7 +105,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.8.1~dev.layout1'), 'Unexpected version')
+    require(field('Version').startswith('0.8.2~dev.layers1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

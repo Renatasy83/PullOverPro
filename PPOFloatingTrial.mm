@@ -1,6 +1,7 @@
 #import "PPOFloatingTrial.h"
 #import "PPOScenePreflight.h"
 #import "PPOScenePresenter.h"
+#import "PPOSceneLayerProbe.h"
 #include "PPOHostGeometry.h"
 #import <objc/runtime.h>
 #include <sys/stat.h>
@@ -20,6 +21,10 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic) CGRect fallbackNativeFrame;
 @property(nonatomic) BOOL usedFallbackFrame;
 @property(nonatomic,strong) NSDictionary *lastLiveSample;
+@property(nonatomic,strong) NSDictionary *lastSourceSample;
+@property(nonatomic,strong) id sourceScene;
+@property(nonatomic) BOOL sourceProbeStopped;
+@property(nonatomic) BOOL sampling;
 @property(nonatomic,copy) NSString *closeReason;
 @property(nonatomic,strong) id observer;
 @property(nonatomic,strong) id backgroundObserver;
@@ -42,6 +47,8 @@ static BOOL PPOTrialAllowed(void) {
 - (void)closeBecause:(NSString *)reason;
 - (BOOL)fitPresentation;
 - (void)captureLayout:(NSString *)event;
+- (void)captureState:(NSString *)event;
+- (void)sampleObservations;
 - (NSDictionary *)geometrySnapshot;
 @end
 @implementation PPOFloatingTrial
@@ -54,14 +61,16 @@ static BOOL PPOTrialAllowed(void) {
         @"presenter": self.session.snapshot ?: @{},
         @"geometry": geometry,
         @"lastLiveSample": self.lastLiveSample ?: @{},
+        @"lastSourceSample": self.lastSourceSample ?: @{},
         @"containerUserInteractionEnabled": @(self.content.userInteractionEnabled),
         @"closeReason": self.closeReason ?: @"none"}];
     UIView *presentation = self.session.presentationView;
-    NSDictionary *report = @{@"schema": @4, @"version": @"0.8.1~dev.layout1",
+    NSDictionary *report = @{@"schema": @5, @"version": @"0.8.2~dev.layers1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
         @"geometry": geometry,
         @"lastLiveSample": self.lastLiveSample ?: @{},
+        @"lastSourceSample": self.lastSourceSample ?: @{},
         @"presenter": self.session.snapshot ?: @{},
         @"presentationViewUserInteractionEnabled": @(presentation.userInteractionEnabled),
         @"hostWindowIsKey": @(self.window.isKeyWindow),
@@ -98,11 +107,11 @@ static BOOL PPOTrialAllowed(void) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.8.1.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.8.2.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.8.1] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.8.2] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -144,6 +153,7 @@ static BOOL PPOTrialAllowed(void) {
                 ? @"Deschide aplicația o dată, apoi revino aici"
                 : @"Scena aplicației nu poate fi selectată în siguranță";
         }
+        self.sourceScene = foreignScene;
         self.windowScene = scene;
         __weak PPOFloatingTrial *weakSelf = self;
         void (^inactive)(NSNotification *) = ^(NSNotification *note) {
@@ -237,6 +247,14 @@ static BOOL PPOTrialAllowed(void) {
                         [trial captureLayout:delay.doubleValue < 0.5 ? @"layout-100ms" : @"layout-750ms"];
                 });
         }
+        // Six extra state-only samples cover the observed foreground transition.
+        // No timer extension, private notifications or repeated layout writes.
+        for (NSNumber *delay in @[@2, @4, @6, @8, @10, @12]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)),
+                dispatch_get_main_queue(), ^{
+                    [weakSelf captureState:@"transition-sample"];
+                });
+        }
         result = @"Fereastră deschisă; închidere automată în 15 s";
         return result;
     } @catch (NSException *exception) {
@@ -312,12 +330,39 @@ static BOOL PPOTrialAllowed(void) {
         [(UIView *)self.session.presentationView layoutIfNeeded];
         if (self.closed || self.closing || self.closePending) return;
         if (![self fitPresentation]) { [self closeBecause:@"geometry-refused"]; return; }
-        NSMutableDictionary *sample = [[self.session sampleState] mutableCopy];
-        sample[@"sampleUptime"] = @(NSProcessInfo.processInfo.systemUptime);
-        self.lastLiveSample = [sample copy];
+        [self sampleObservations];
         [self record:event];
     } @catch (NSException *exception) {
         (void)exception; [self closeBecause:@"layout-exception"];
+    }
+}
+- (void)sampleObservations {
+    if (!NSThread.isMainThread || self.sampling || !self.running || self.closed || self.closing ||
+        self.closePending || !PPOTrialAllowed()) return;
+    self.sampling = YES;
+    @try {
+        NSMutableDictionary *sample = [[self.session sampleState] mutableCopy];
+        sample[@"sampleUptime"] = @(NSProcessInfo.processInfo.systemUptime);
+        self.lastLiveSample = [sample copy];
+        if (!self.sourceProbeStopped && self.sourceScene && [self.frameworks[@"matches"] boolValue]) {
+            sample = [PPOReadSceneLayerState(self.sourceScene, objc_lookUpClass("FBScene"),
+                objc_lookUpClass("FBSceneLayerManager"), objc_lookUpClass("FBSceneLayer"),
+                objc_lookUpClass("FBSSceneSettings")) mutableCopy];
+            sample[@"sampleUptime"] = @(NSProcessInfo.processInfo.systemUptime);
+            self.lastSourceSample = [sample copy];
+            // Unsupported/exceptional probes are not retried in this session.
+            self.sourceProbeStopped = ![sample[@"status"] isEqual:@"sampled"];
+        }
+    } @finally { self.sampling = NO; }
+}
+- (void)captureState:(NSString *)event {
+    if (!NSThread.isMainThread || !self.running || self.closed || self.closing || self.closePending) return;
+    if (!PPOTrialAllowed()) { [self closeBecause:@"disabled"]; return; }
+    @try {
+        [self sampleObservations];
+        if (self.running && !self.closed && !self.closing && !self.closePending) [self record:event];
+    } @catch (NSException *exception) {
+        (void)exception; self.sourceProbeStopped = YES;
     }
 }
 - (void)closeFromButton:(UIButton *)sender {
@@ -363,6 +408,7 @@ static BOOL PPOTrialAllowed(void) {
     @catch (NSException *exception) { (void)exception; uiClean = NO; }
     if (uiClean) { self.window = nil; self.content = nil; self.scalingWrapper = nil; }
     self.cleanupConfirmed = closed && uiClean;
+    if (self.cleanupConfirmed) self.sourceScene = nil;
     self.closing = NO;
     [self record:closed && uiClean ? @"close-returned" : @"cleanup-unconfirmed"];
     // Keep the session retained even after a failed cleanup; no automatic retry.

@@ -22,3 +22,6 @@ Current report correction: [INPUT_REPORT_CORRECTION.md](INPUT_REPORT_CORRECTION.
 0.8.1 is a rendering correction candidate: PPO scales an owned wrapper rather than assigning the private presentation view's geometry. Reports include bounded delayed layout and live-state samples. This does not establish that the observed black-content regression is fixed. See [RENDER_LAYOUT_23A355.md](RENDER_LAYOUT_23A355.md).
 
 The actual0.8.1 report shows valid visible geometry and live active/hosting state, but no context-host view in the recorded tree. The scaling-wrapper change did not restore visible content. Layer availability/filtering/attachment and the foreground/background distinction remain under investigation; see [LAYER_ATTACHMENT_23A355.md](LAYER_ATTACHMENT_23A355.md).
+
+
+0.8.2 development adds bounded read-only source layer/background-state samples across the observed Safari-to-NewTerm transition. It does not repair background hosting. Native fixtures and CI must pass before any device recommendation; actual private getter success and the transition still require the target. See [SCENE_LAYER_PROBE.md](SCENE_LAYER_PROBE.md).

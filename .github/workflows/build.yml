@@ -136,6 +136,16 @@ jobs:
             tests/ScenePreflightTests.mm PPOScenePreflight.mm PPOBridgeProtocol.mm \
             -o "$RUNNER_TEMP/ppo-scene-preflight-tests"
           "$RUNNER_TEMP/ppo-scene-preflight-tests" | tee diagnostics/scene-tests.log
+      - name: Analyze and test read-only scene layer probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
+            -Xanalyzer -analyzer-output=text PPOSceneLayerProbe.mm 2>&1 | tee diagnostics/layer-probe-analysis.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
+            tests/SceneLayerProbeTests.mm PPOSceneLayerProbe.mm -o "$RUNNER_TEMP/ppo-layer-probe-tests"
+          "$RUNNER_TEMP/ppo-layer-probe-tests" | tee diagnostics/layer-probe-tests.log
       - name: Test owned wrapper geometry
         shell: bash
         run: |
@@ -203,7 +213,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.8.1-layout-${{ github.sha }}
+          name: PullOverPro-0.8.2-layers-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/
