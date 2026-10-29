@@ -28,6 +28,9 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic) BOOL running;
 @property(nonatomic) BOOL closePending;
 @property(nonatomic) BOOL closed;
+@property(nonatomic) BOOL cleanupConfirmed;
+@property(nonatomic,copy) NSString *bundleIdentifier;
+@property(nonatomic,copy) NSString *reportID;
 @property(nonatomic) NSTimeInterval deadline;
 - (void)closeFromButton:(UIButton *)sender;
 - (void)closeBecause:(NSString *)reason;
@@ -42,7 +45,9 @@ static BOOL PPOTrialAllowed(void) {
         @"containerUserInteractionEnabled": @(self.content.userInteractionEnabled),
         @"closeReason": self.closeReason ?: @"none"}];
     UIView *presentation = self.session.presentationView;
-    NSDictionary *report = @{@"schema": @2, @"version": @"0.7.3~dev.inputreportfix1",
+    NSDictionary *report = @{@"schema": @3, @"version": @"0.8.0~dev.hostsessions1",
+        @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
+        @"replacementAllowed": @(self.replacementAllowed),
         @"presenter": self.session.snapshot ?: @{},
         @"presentationViewUserInteractionEnabled": @(presentation.userInteractionEnabled),
         @"hostWindowIsKey": @(self.window.isKeyWindow),
@@ -54,6 +59,20 @@ static BOOL PPOTrialAllowed(void) {
         @"closeReason": self.closeReason ?: @"none",
         @"touchDeliveryVerified": @NO, @"keyboardRoutingVerified": @NO,
         @"runtimeCompatibilityConfirmed": @NO};
+    // Keep the latest bounded snapshots of up to eight sessions. The cached
+    // dictionaries never contain this history, so nesting cannot grow.
+    static NSMutableArray<NSDictionary *> *history;
+    if (!history) history = [NSMutableArray array];
+    NSUInteger existing = NSNotFound;
+    for (NSUInteger i = 0; i < history.count; i++) {
+        if ([history[i][@"sessionID"] isEqual:report[@"sessionID"]]) { existing = i; break; }
+    }
+    if (existing != NSNotFound) history[existing] = report;
+    else [history addObject:report];
+    if (history.count > 8) [history removeObjectAtIndex:0];
+    NSMutableDictionary *withHistory = [report mutableCopy];
+    withHistory[@"sessions"] = [history copy];
+    report = [withHistory copy];
     // Serialize immutable snapshots off the main thread, in order. No app data.
     static dispatch_queue_t queue;
     static dispatch_once_t once;
@@ -65,28 +84,52 @@ static BOOL PPOTrialAllowed(void) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.7.3.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.8.0.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.7.3] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.8.0] host=%@ state=%@", event, self.session.state ?: @"none");
 }
-- (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier {
+- (BOOL)isFinished {
+    return NSThread.isMainThread && self.attempted && !self.opening && !self.running;
+}
+- (BOOL)replacementAllowed {
+    if (!self.finished) return NO;
+    if (self.closed) return self.cleanupConfirmed;
+    // Refusal before resource acquisition is also safe to replace.
+    return !self.session && !self.window && !self.observer && !self.backgroundObserver &&
+        !self.protectedObserver && !self.timer;
+}
+- (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier
+              displayName:(NSString *)displayName {
     if (!NSThread.isMainThread || self.attempted) return @"Probă deja solicitată";
     self.attempted = YES;
+    self.bundleIdentifier = [bundleIdentifier copy];
+    self.reportID = NSUUID.UUID.UUIDString;
     self.frameworks = PPOSceneFrameworkIdentity();
-    if (!PPOTrialAllowed()) return @"PPO este dezactivat";
-    if (![bundleIdentifier isEqual:@"com.apple.mobilesafari"]) return @"Proba este limitată la Safari";
-    if (![self.frameworks[@"matches"] boolValue]) return @"Firmware diferit; probă refuzată";
-    if (!scene || scene.activationState != UISceneActivationStateForegroundActive)
-        return @"Scena PPO nu este activă";
+    if (!PPOTrialAllowed()) { [self record:@"disabled"]; return @"PPO este dezactivat"; }
+    if (!PPOHostApplicationAllowed(bundleIdentifier)) {
+        [self record:@"application-refused"];
+        return @"Fereastra este disponibilă pentru Safari și Configurări";
+    }
+    if (![self.frameworks[@"matches"] boolValue]) {
+        [self record:@"framework-refused"]; return @"Firmware diferit; probă refuzată";
+    }
+    if (!scene || scene.activationState != UISceneActivationStateForegroundActive) {
+        [self record:@"host-inactive"]; return @"Scena PPO nu este activă";
+    }
     self.opening = YES;
     NSString *result = @"Probă de prezentare refuzată";
     @try {
         id foreignScene = nil;
         self.selection = PPOFindUniqueScene(objc_lookUpClass("FBSceneManager"),
             objc_lookUpClass("FBScene"), bundleIdentifier, &foreignScene);
-        if (!foreignScene) { [self record:@"selection-refused"]; return @"Deschide întâi Safari; scena trebuie să fie unică"; }
+        if (!foreignScene) {
+            [self record:@"selection-refused"];
+            return [self.selection[@"state"] isEqual:@"not-found"]
+                ? @"Deschide aplicația o dată, apoi revino aici"
+                : @"Scena aplicației nu poate fi selectată în siguranță";
+        }
         self.windowScene = scene;
         __weak PPOFloatingTrial *weakSelf = self;
         void (^inactive)(NSNotification *) = ^(NSNotification *note) {
@@ -122,7 +165,10 @@ static BOOL PPOTrialAllowed(void) {
         self.window.rootViewController = root;
         root.view.frame = CGRectMake(0, 0, width, height);
         UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, width - 60, 44)];
-        title.text = @"Safari · 15 s"; title.textColor = UIColor.whiteColor;
+        NSString *name = [displayName isKindOfClass:NSString.class] && displayName.length > 0 && displayName.length <= 128
+            ? displayName : @"PPO";
+        title.text = [NSString stringWithFormat:@"%@ · 15 s", name];
+        title.lineBreakMode = NSLineBreakByTruncatingTail; title.textColor = UIColor.whiteColor;
         title.font = [UIFont systemFontOfSize:12]; title.userInteractionEnabled = YES;
         [title addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)]];
         [root.view addSubview:title];
@@ -168,7 +214,7 @@ static BOOL PPOTrialAllowed(void) {
         });
         dispatch_resume(self.timer);
         self.running = YES;
-        result = @"Probă Safari: închidere automată în 15 s";
+        result = @"Fereastră deschisă; închidere automată în 15 s";
         return result;
     } @catch (NSException *exception) {
         (void)exception;
@@ -220,6 +266,7 @@ static BOOL PPOTrialAllowed(void) {
     @try { self.window.rootViewController = nil; }
     @catch (NSException *exception) { (void)exception; uiClean = NO; }
     if (uiClean) { self.window = nil; self.content = nil; }
+    self.cleanupConfirmed = closed && uiClean;
     [self record:closed && uiClean ? @"close-returned" : @"cleanup-unconfirmed"];
     // Keep the session retained even after a failed cleanup; no automatic retry.
 }

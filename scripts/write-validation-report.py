@@ -7,6 +7,7 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'host-slot-tests.log': 'Host session slot tests passed:',
     'presenter-tests.log': 'Scene presenter tests passed:',
     'scene-tests.log': 'Scene preflight tests passed;',
     'lifecycle-tests.log': 'Lifecycle tests passed:',
@@ -39,7 +40,7 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'experimental Safari hosting; UIView flags do not establish remote input blocking; routing mechanism unconfirmed',
+    'floating_application_hosting_implemented': 'experimental single-session Safari/Settings hosting; reopen requires confirmed cleanup; Settings and repeated UIKit lifecycle untested on device',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -48,7 +49,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Not a final candidate. Misleading touch switch removed; report schema2 separates UIKit property flags from unconfirmed remote input routing. On0.7.2 the user observed scrolling while the switch said off, and timeout cleanup completed. This correction revision is not device-tested.**\n\n'
+    '**Not a final candidate. Controlled Safari/Settings sessions with explicit reopen after confirmed cleanup. On0.7.2 the user confirmed Safari interaction over NewTerm and automatic close. Settings hosting and repeated actual UIKit sessions in this revision are not device-tested.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)

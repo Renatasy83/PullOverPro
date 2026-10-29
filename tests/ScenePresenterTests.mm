@@ -170,6 +170,17 @@ int main(void) {
         Check(dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)) == 0,
               "worker guard returns immediately");
         Check(creates == 0 && activations == 0 && invalidations == 0, "worker has no side effects");
+        // Exercise the actual adapter's ownership transitions repeatedly with
+        // fake receivers. This does not reproduce UIKit owner arbitration.
+        for (unsigned cycle = 0; cycle < 100; cycle++) {
+            @autoreleasepool {
+                Reset(); current = NewSession();
+                Check([current prepareScene:[FixtureScene new]], "repeat presenter preparation");
+                Check([current activate], "repeat presenter activation");
+                Check([current close] && invalidations == 1 && !current.presentationView,
+                      "repeat presenter releases its owned references");
+            }
+        }
         printf("Scene presenter tests passed: %u checks; native fixtures, not iOS hosting\n", checks);
     }
     return 0;

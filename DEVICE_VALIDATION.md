@@ -67,3 +67,11 @@ The user clarified that full-screen Safari was behind the small PPO Safari windo
 The current source review confirms that selecting Safari in PPO's picker only persists the selection; the separate launch action brings Safari forward. A discriminating device test can use the already installed0.7.2 build: after a manual respring/new attempt, open Safari normally so it has a scene, switch to NewTerm, select Safari in the PPO picker without pressing the separate app-launch action, then press the floating Safari trial. Observe whether NewTerm stays behind the small window and Safari's Tab/address/keyboard/navigation controls respond there; allow timeout cleanup and provide the existing host-0.7.2.json report. If the trial refuses or Safari becomes full-screen, record that result rather than adding guessed foreground/focus calls.
 
 No executable code was changed for this clarification. This runtime configuration cannot be established by the current Linux/macOS native fixture environment. Main and all stable source branches remain unchanged.
+
+## User-confirmed Safari window over NewTerm
+
+After the specified existing-build test (Safari scene first, switch to NewTerm, select Safari without the foreground-launch action, then open the floating trial), the user confirmed that it works as described: NewTerm remains visible and the Safari window closes automatically. This is an actual user observation of the requested background-app arrangement on0.7.2, supplementing the previously confirmed Safari scrolling/Tab/keyboard/navigation observations.
+
+No additional JSON report was supplied for this particular background test; the earlier report's timeout trace must not be misrepresented as a trace of the newly clarified foreground context. Repeated presenter creation, Settings hosting, lock/orientation/process death and complete Dopamine/ElleKit compatibility remain unverified.
+
+The code exercised on the phone is preserved at411cd127fa18005989d05f2aefff59b697ee1029, also on stable/verified-safari-over-newterm. Main and all previous stable branches remain untouched.

@@ -45,3 +45,7 @@ The user observed scrolling while0.7.2 displayed Atingeri: oprite. Its JSON also
 ## Safari keyboard/navigation observation
 
 The user now confirms that keyboard entry and navigation work in the small Safari window on the installed0.7.2 build. No additional private input/focus API was required for that observed operation. Context of the underlying foreground app remains to be established before treating this as independent multitasking/background focus. Continue from the existing working path; do not add event-deferral or key-window changes without evidence of a missing behavior.
+
+##0.8.0 development: controlled sessions
+
+The user confirmed the requested Safari-over-NewTerm scenario, with NewTerm visible and automatic close. The exercised0.7.2 source is preserved on stable/verified-safari-over-newterm. Development now introduces an explicit one-session slot, allowing replacement only after confirmed cleanup or resource-free refusal. Active/uncertain sessions cannot be overwritten; unknown cleanup poisons the slot until process restart. Settings is the first additional controlled target. Private getter/create/activate/invalidate calls, framework UUID guards, and the15-second timeout are unchanged. New native ownership/failure/reentrancy fixtures and repeated presenter fixtures run with sanitizers. Actual repeated UIKit/WindowServer sessions and Settings hosting remain unverified. See HOST_SESSIONS.md.

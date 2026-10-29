@@ -15,7 +15,7 @@ def require(condition, message):
         raise SystemExit(message)
 
 
-source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp'])
+source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm'])
 for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'NSSelectorFromString', r'valueForKey:', r'launchApplication',
                 r'method_getImplementation', r'method_invoke', r'dlopen', r'dlsym',
@@ -61,6 +61,15 @@ require('@"containerUserInteractionEnabled"' in trial_source and
         '@"inputBlockingGuaranteed": @NO' in trial_source and
         '@"inputRoutingMechanism": @"unconfirmed"' in trial_source,
         'Separate UIView flags from remote input guarantees')
+slot_source = (ROOT / 'PPOHostSessionSlot.mm').read_text()
+require('self.session.finished' in slot_source and 'self.session.replacementAllowed' in slot_source and
+        'self.poisoned = YES' in slot_source, 'Session replacement must fail closed')
+require('static BOOL attempted' not in (ROOT / 'Tweak.xm').read_text(),
+        'Replace per-process trial block with owned session gate')
+require('PPOHostApplicationAllowed(bundleIdentifier)' in trial_source,
+        'Floating session target policy missing')
+require('@"com.apple.mobilesafari"' in slot_source and '@"com.apple.Preferences"' in slot_source,
+        'Unexpected controlled hosting targets')
 require('THEOS_PACKAGE_SCHEME := rootless' in (ROOT / 'Makefile').read_text(),
         'Rootless scheme missing')
 filter_path = ROOT / 'PullOverProDiagnostic.plist'
@@ -77,7 +86,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.7.3~dev.inputreportfix1'), 'Unexpected version')
+    require(field('Version').startswith('0.8.0~dev.hostsessions1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

@@ -103,6 +103,11 @@ int main(void) {
         NSDictionary *lookup = PPOFindUniqueScene(PPOFixtureManager.class, PPOFixtureScene.class, safari, &selectedScene);
         Check([lookup[@"state"] isEqual:@"unique"] && selectedScene == fixtureScenes[1],
             "unique lookup returns exact instance after enumeration");
+        fixtureScenes = @[Scene(@"com.apple.Preferences", @"com.apple.Preferences", @"settings")];
+        NSDictionary *settings = PPOFindUniqueScene(PPOFixtureManager.class, PPOFixtureScene.class,
+            @"com.apple.Preferences", &selectedScene);
+        Check([settings[@"state"] isEqual:@"unique"] && selectedScene == fixtureScenes[0],
+            "Settings uses the same exact dual-identity lookup");
         fixtureScenes = @[Scene(safari, safari, @"A"), Scene(safari, safari, @"B")]; State(@"ambiguous");
         PPOFindUniqueScene(PPOFixtureManager.class, PPOFixtureScene.class, safari, &selectedScene);
         Check(selectedScene == nil, "ambiguous lookup clears prior reference");
