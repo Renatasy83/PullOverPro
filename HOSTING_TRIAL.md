@@ -1,5 +1,7 @@
 # 0.7.1 Safari live-rendering gate
 
+Historical trial: the user subsequently confirmed live Safari rendering and normal restoration after manual X-close. See DEVICE_VALIDATION.md. Current touch development and remaining test instructions are in TOUCH_TRIAL.md.
+
 This is a development trial, not a final candidate or confirmed Dopamine/ElleKit compatibility. Stable baseline remains `stable/verified-safari-launch` at e22b2efab141fe31dfd7e39365ae42c7667fb116; main is untouched.
 
 ## What changed

@@ -1,4 +1,4 @@
-# Autonomous port status — 2026-10-28
+# Autonomous port status — 2026-10-29
 
 ## Preserved baselines
 
@@ -14,13 +14,13 @@ The 0.5.11 report recorded UID501 and SpringBoard posix_spawn EPERM; the same he
 
 The supplied scene-0.7.0.json confirms the exact three 23A355 framework UUIDs, complete enumeration of 5 scenes, and one exact Safari identity match. Presenter methods were observed as metadata only. See DEVICE_VALIDATION.md.
 
-## Current implementation: 0.7.1 live-rendering gate
+## 0.7.1 rendering baseline
 
 The ordinary public UIKit overlay/picker and service launch path are retained. A separately reviewed adapter can obtain the scene's presentation manager, create a unique PPO presenter, adopt its own unattached presentation view, activate it, and invalidate only that owned presenter on close. Dispatch is guarded by the exact framework UUIDs, declared method ABI and actual receiver/return types. No priorities, KVC/ivars, scene foreground mutations or process termination are used.
 
 The explicit Safari-only button attempts live rendering once per SpringBoard process. It opens a draggable window for at most 15 seconds while the main queue remains responsive. Hosted content input is disabled. There is no hosting during initialization/respring or automatic retries after uncertain cleanup. Cleanup failures poison and retain the session. See HOSTING_TRIAL.md for the complete gate and recovery.
 
-This path is implemented, but rendering, input, system presentation restoration and device lifecycle behavior are NOT established by native fixtures or compilation. No final candidate has been produced.
+The user has since supplied host-0.7.1.json and confirmed actual live Safari rendering and normal restoration after manual X-close. This is one device operation; automatic close, touch, keyboard and lifecycle stress remain unverified. No final candidate has been produced.
 
 ## Automated validation
 
@@ -32,4 +32,8 @@ Local Linux execution passed 365 transport checks with AddressSanitizer/UBSan, 2
 
 No compatible physical Apple Silicon Mac is accessible. Lakr233/vphone-cli requires physical Apple Silicon/macOS15+ and host security configuration, and does not support macOS VMs. It was not installed or run. The Intel Actions machine is a build/test host, not a compatible iPhone runtime.
 
-The next indispensable real-device gate is the first actual presenter creation/activation/teardown: visible live Safari and restored SpringBoard/Safari after close. Touch/keyboard routing, other apps, scene resizing, foreground policy, lock/unlock, orientation, process death and repeated stress remain unimplemented or unverified. No phone installation, respring, personal-data deletion or change to other tweaks is automated.
+The first actual Safari presentation/manual-close device gate passed on0.7.1. The next device gate is touch/scroll delivery via the public UIKit opt-in on0.7.2. Touch/keyboard routing, other apps, scene resizing, foreground policy, lock/unlock, orientation, process death and repeated stress remain unimplemented or unverified. No phone installation, respring, personal-data deletion or change to other tweaks is automated.
+
+## Current implementation: 0.7.2 touch acceptance
+
+Preserved `stable/verified-safari-rendering` at3c7d3f0265e4a9b938ec45dd5ea7ad99ad06fa1e. Content still starts read-only. An explicit header button toggles only public UIKit userInteractionEnabled while the trial is active and permitted. No private dispatch surface was expanded; no key-window/first-responder/event-deferral APIs were enabled. Reports now identify opt-in, final presenter state and close reason. Touch/keyboard delivery remains unverified; source analysis is not proof of input reaching Safari. See TOUCH_TRIAL.md and INPUT_23A355.md.

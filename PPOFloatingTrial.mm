@@ -15,6 +15,9 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic,strong) UIWindow *window;
 @property(nonatomic,strong) UIWindowScene *windowScene;
 @property(nonatomic,strong) UIView *content;
+@property(nonatomic,strong) UIButton *inputButton;
+@property(nonatomic,copy) NSString *closeReason;
+@property(nonatomic) BOOL inputEverEnabled;
 @property(nonatomic,strong) id observer;
 @property(nonatomic,strong) id backgroundObserver;
 @property(nonatomic,strong) id protectedObserver;
@@ -28,6 +31,9 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic) BOOL closePending;
 @property(nonatomic) BOOL closed;
 @property(nonatomic) NSTimeInterval deadline;
+- (void)toggleInput:(UIButton *)sender;
+- (void)closeFromButton:(UIButton *)sender;
+- (void)closeBecause:(NSString *)reason;
 @end
 @implementation PPOFloatingTrial
 - (void)record:(NSString *)event {
@@ -35,11 +41,21 @@ static BOOL PPOTrialAllowed(void) {
     if (!self.events) self.events = [NSMutableArray array];
     if (self.events.count < 16) [self.events addObject:@{@"event": event,
         @"uptime": @(NSProcessInfo.processInfo.systemUptime),
-        @"presenter": self.session.snapshot ?: @{}}];
-    NSDictionary *report = @{@"schema": @1, @"version": @"0.7.1~dev.hosttrial1",
+        @"presenter": self.session.snapshot ?: @{},
+        @"inputEnabled": @(self.content.userInteractionEnabled),
+        @"closeReason": self.closeReason ?: @"none"}];
+    UIView *presentation = self.session.presentationView;
+    NSDictionary *report = @{@"schema": @1, @"version": @"0.7.2~dev.touchtrial1",
+        @"presenter": self.session.snapshot ?: @{},
+        @"presentationViewInteractionEnabled": @(presentation.userInteractionEnabled),
+        @"hostWindowIsKey": @(self.window.isKeyWindow),
         @"frameworks": self.frameworks ?: @{}, @"selection": self.selection ?: @{},
         @"events": [self.events copy], @"hostingRequested": @YES,
-        @"inputEnabled": @NO, @"runtimeCompatibilityConfirmed": @NO};
+        @"inputEnabled": @(self.content.userInteractionEnabled),
+        @"inputEverEnabled": @(self.inputEverEnabled),
+        @"closeReason": self.closeReason ?: @"none",
+        @"touchDeliveryVerified": @NO, @"keyboardRoutingVerified": @NO,
+        @"runtimeCompatibilityConfirmed": @NO};
     // Serialize immutable snapshots off the main thread, in order. No app data.
     static dispatch_queue_t queue;
     static dispatch_once_t once;
@@ -51,11 +67,11 @@ static BOOL PPOTrialAllowed(void) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.7.1.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.7.2.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.7.1] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.7.2] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier {
     if (!NSThread.isMainThread || self.attempted) return @"Probă deja solicitată";
@@ -75,13 +91,18 @@ static BOOL PPOTrialAllowed(void) {
         if (!foreignScene) { [self record:@"selection-refused"]; return @"Deschide întâi Safari; scena trebuie să fie unică"; }
         self.windowScene = scene;
         __weak PPOFloatingTrial *weakSelf = self;
-        void (^stop)(NSNotification *) = ^(NSNotification *note) { (void)note; [weakSelf close]; };
+        void (^inactive)(NSNotification *) = ^(NSNotification *note) {
+            (void)note; [weakSelf closeBecause:@"host-inactive"];
+        };
+        void (^protectedStop)(NSNotification *) = ^(NSNotification *note) {
+            (void)note; [weakSelf closeBecause:@"protected-data-unavailable"];
+        };
         self.observer = [NSNotificationCenter.defaultCenter addObserverForName:UISceneWillDeactivateNotification
-            object:scene queue:NSOperationQueue.mainQueue usingBlock:stop];
+            object:scene queue:NSOperationQueue.mainQueue usingBlock:inactive];
         self.backgroundObserver = [NSNotificationCenter.defaultCenter addObserverForName:UISceneDidEnterBackgroundNotification
-            object:scene queue:NSOperationQueue.mainQueue usingBlock:stop];
+            object:scene queue:NSOperationQueue.mainQueue usingBlock:inactive];
         self.protectedObserver = [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationProtectedDataWillBecomeUnavailable
-            object:nil queue:NSOperationQueue.mainQueue usingBlock:stop];
+            object:nil queue:NSOperationQueue.mainQueue usingBlock:protectedStop];
         self.session = [[PPOScenePresenter alloc] initWithManagerClass:objc_lookUpClass("UIScenePresentationManager")
             presenterClass:objc_lookUpClass("_UIScenePresenter") viewClass:UIView.class];
         [self record:@"prepare-requested"];
@@ -93,7 +114,7 @@ static BOOL PPOTrialAllowed(void) {
         CGRect screen = scene.coordinateSpace.bounds;
         CGFloat width = MIN(300, CGRectGetWidth(screen) - 24);
         CGFloat height = MIN(480, CGRectGetHeight(screen) - 100);
-        if (width < 180 || height < 240) return result;
+        if (width < 240 || height < 240) return result;
         self.window = [[UIWindow alloc] initWithWindowScene:scene];
         self.window.frame = CGRectMake(CGRectGetMidX(screen) - width / 2, 60, width, height);
         self.window.windowLevel = UIWindowLevelStatusBar + 2;
@@ -102,19 +123,27 @@ static BOOL PPOTrialAllowed(void) {
         UIViewController *root = [UIViewController new];
         self.window.rootViewController = root;
         root.view.frame = CGRectMake(0, 0, width, height);
-        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, width - 60, 44)];
-        title.text = @"Safari · probă 15 secunde"; title.textColor = UIColor.whiteColor;
+        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, width - 180, 44)];
+        title.text = @"Safari · 15 s"; title.textColor = UIColor.whiteColor;
         title.font = [UIFont systemFontOfSize:12]; title.userInteractionEnabled = YES;
         [title addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)]];
         [root.view addSubview:title];
+        self.inputButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.inputButton.frame = CGRectMake(width - 156, 6, 108, 32);
+        self.inputButton.titleLabel.font = [UIFont systemFontOfSize:10];
+        [self.inputButton setTitle:@"Atingeri: oprite" forState:UIControlStateNormal];
+        [self.inputButton addTarget:self action:@selector(toggleInput:) forControlEvents:UIControlEventTouchUpInside];
+        self.inputButton.enabled = NO;
+        [root.view addSubview:self.inputButton];
         UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
         close.frame = CGRectMake(width - 44, 0, 44, 44);
         [close setTitle:@"✕" forState:UIControlStateNormal];
-        [close addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
+        [close addTarget:self action:@selector(closeFromButton:) forControlEvents:UIControlEventTouchUpInside];
         [root.view addSubview:close];
         self.content = [[UIView alloc] initWithFrame:CGRectMake(0, 44, width, height - 44)];
         self.content.clipsToBounds = YES;
-        // Read-only rendering first: no unverified touch/focus/keyboard routing.
+        // Starts read-only. Touch acceptance requires the explicit header button;
+        // UIKit performs hit testing/coordinate conversion. No synthetic events.
         self.content.userInteractionEnabled = NO;
         [root.view addSubview:self.content];
         CGSize native = view.bounds.size;
@@ -126,7 +155,7 @@ static BOOL PPOTrialAllowed(void) {
         view.transform = CGAffineTransformMakeScale(scale, scale);
         view.center = CGPointMake(width / 2, (height - 44) / 2);
         [self.content addSubview:view];
-        // Do not makeKeyWindow or alter the app scene's foreground/geometry.
+        // Keep existing key-window ownership and app scene foreground/geometry.
         self.window.hidden = NO;
         [self record:@"activate-requested"];
         if (self.closePending || !PPOTrialAllowed() || ![self.session activate]) return result;
@@ -138,20 +167,55 @@ static BOOL PPOTrialAllowed(void) {
             NSEC_PER_SEC / 4, NSEC_PER_MSEC * 25);
         dispatch_source_set_event_handler(self.timer, ^{
             PPOFloatingTrial *trial = weakSelf;
-            if (trial && (!PPOTrialAllowed() || NSProcessInfo.processInfo.systemUptime >= trial.deadline ||
-                trial.windowScene.activationState != UISceneActivationStateForegroundActive)) [trial close];
+            if (!trial) return;
+            if (!PPOTrialAllowed()) [trial closeBecause:@"disabled"];
+            else if (trial.windowScene.activationState != UISceneActivationStateForegroundActive)
+                [trial closeBecause:@"host-inactive"];
+            else if (NSProcessInfo.processInfo.systemUptime >= trial.deadline)
+                [trial closeBecause:@"timeout"];
         });
         dispatch_resume(self.timer);
         self.running = YES;
+        self.inputButton.enabled = YES;
         result = @"Probă Safari: închidere automată în 15 s";
         return result;
     } @catch (NSException *exception) {
-        (void)exception; [self record:@"ui-exception"];
+        (void)exception;
+        if (!self.closeReason) self.closeReason = @"ui-exception";
+        [self record:@"ui-exception"];
         return @"Proba s-a oprit după o excepție";
     } @finally {
         self.opening = NO;
-        if (self.closePending || !self.running) [self close];
+        if (self.closePending || !self.running) [self closeBecause:self.closeReason ?: @"opening-failed"];
     }
+}
+- (void)toggleInput:(UIButton *)sender {
+    if (!NSThread.isMainThread || self.closed || self.opening || !self.running || self.closePending) return;
+    if (!PPOTrialAllowed()) { [self closeBecause:@"disabled"]; return; }
+    if (self.windowScene.activationState != UISceneActivationStateForegroundActive) {
+        [self closeBecause:@"host-inactive"]; return;
+    }
+    if (NSProcessInfo.processInfo.systemUptime >= self.deadline) {
+        [self closeBecause:@"timeout"]; return;
+    }
+    @try {
+        self.content.userInteractionEnabled = !self.content.userInteractionEnabled;
+        if (self.content.userInteractionEnabled) self.inputEverEnabled = YES;
+        [sender setTitle:self.content.userInteractionEnabled ? @"Atingeri: pornite" : @"Atingeri: oprite"
+            forState:UIControlStateNormal];
+        [self record:self.content.userInteractionEnabled ? @"input-enabled" : @"input-disabled"];
+    } @catch (NSException *exception) {
+        (void)exception; [self closeBecause:@"input-toggle-exception"];
+    }
+}
+- (void)closeFromButton:(UIButton *)sender {
+    (void)sender; [self closeBecause:@"manual"];
+}
+- (void)closeBecause:(NSString *)reason {
+    if (!NSThread.isMainThread || self.closed) return;
+    // Preserve the first reason even if notifications reenter during cleanup.
+    if (!self.closeReason) self.closeReason = [reason copy];
+    [self close];
 }
 - (void)pan:(UIPanGestureRecognizer *)pan {
     if (!self.window || self.closed) return;
@@ -163,8 +227,11 @@ static BOOL PPOTrialAllowed(void) {
 }
 - (void)close {
     if (!NSThread.isMainThread || self.closed) return;
+    if (!self.closeReason) self.closeReason = @"external";
     if (self.opening) { self.closePending = YES; return; }
     self.closed = YES;
+    self.running = NO;
+    self.inputButton.enabled = NO;
     if (self.timer) { dispatch_source_cancel(self.timer); self.timer = nil; }
     for (id observer in @[self.observer ?: NSNull.null, self.backgroundObserver ?: NSNull.null,
                           self.protectedObserver ?: NSNull.null])
@@ -172,6 +239,7 @@ static BOOL PPOTrialAllowed(void) {
     self.observer = nil; self.backgroundObserver = nil; self.protectedObserver = nil;
     BOOL uiClean = YES;
     @try {
+        self.content.userInteractionEnabled = NO;
         self.window.hidden = YES;
         // Detach only our container's contents, never a view that failed adoption.
         for (UIView *view in [self.content.subviews copy]) [view removeFromSuperview];

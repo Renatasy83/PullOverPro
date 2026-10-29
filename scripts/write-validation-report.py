@@ -39,7 +39,7 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'experimental Safari rendering path only; input disabled; not device-tested',
+    'floating_application_hosting_implemented': 'experimental Safari hosting; public UIKit touch opt-in; touch/keyboard behavior not device-tested in this revision',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -48,11 +48,11 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Not a final candidate. Experimental Safari live-rendering trial implemented; untested on device; input disabled.**\n\n'
+    '**Not a final candidate. Experimental Safari touch opt-in implemented; this revision is not device-tested. The previous 0.7.1 revision displayed Safari and closed manually on the user device.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)
-    + '\n\nNot executed:\n\n'
+    + '\n\nNot executed by this CI run:\n\n'
     + '\n'.join(f'- {name}' for name in not_run)
     + '\n\nNative subprocess integration uses a fake workspace. It exercises the actual mailbox/client/event loop, not private iOS APIs.\n\n'
     + report['sha256sums'] + '\n'

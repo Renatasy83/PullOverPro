@@ -45,11 +45,21 @@ for pattern in (r'%hook\b', r'%init\b', r'valueForKey:', r'method_getImplementat
                 r'method_invoke', r'dlopen', r'dlsym', r'performSelector',
                 r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\(',
                 r'setForeground:', r'updateSettings', r'modifyPresentationContext',
-                r'createPresenterWithIdentifier:priority:', r'object_getIvar'):
+                r'createPresenterWithIdentifier:priority:', r'object_getIvar',
+                r'makeKeyWindow', r'makeKeyAndVisible', r'becomeFirstResponder',
+                r'BKSHID', r'IOHID', r'GS\w*Event'):
     require(not re.search(pattern, presenter_source + trial_source),
             f'Unexpected hosting operation: {pattern}')
 require('objc_msgSend' not in trial_source, 'UIKit trial must not dispatch private APIs')
-require('self.content.userInteractionEnabled = NO' in trial_source, 'Unverified input must remain disabled')
+require('self.content.userInteractionEnabled = NO' in trial_source, 'Input must start disabled')
+toggle = trial_source.split('- (void)toggleInput:(UIButton *)sender {', 1)[1].split('\n- (void)', 1)[0]
+require('self.content.userInteractionEnabled = !self.content.userInteractionEnabled' in toggle,
+        'Touch opt-in must use only the public UIKit property')
+require('self.closed || self.opening || !self.running || self.closePending' in toggle and
+        'PPOTrialAllowed()' in toggle and 'systemUptime >= self.deadline' in toggle,
+        'Touch opt-in lifecycle guards missing')
+require('session activate' not in toggle and 'prepareScene:' not in toggle,
+        'Touch toggle must not recreate or reactivate private presenters')
 require('THEOS_PACKAGE_SCHEME := rootless' in (ROOT / 'Makefile').read_text(),
         'Rootless scheme missing')
 filter_path = ROOT / 'PullOverProDiagnostic.plist'
@@ -66,7 +76,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.7.1~dev.hosttrial1'), 'Unexpected version')
+    require(field('Version').startswith('0.7.2~dev.touchtrial1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
