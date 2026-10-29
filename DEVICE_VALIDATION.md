@@ -59,3 +59,11 @@ After being asked to test the address field, keyboard entry and navigation using
 The underlying foreground application during this test has not yet been recorded. Therefore this confirms the tested Safari interaction, but does not yet establish independent focus while another app is underneath, background execution, app switching or cross-app routing. The report's conservative keyboardRoutingVerified=false constant is not a rejection of the user's separately supplied observation; JSON alone does not instrument actual text delivery.
 
 Do not introduce speculative keyboard/focus APIs to solve an unobserved problem. The next gate is the existing presentation's behavior with a different foreground app; first obtain the context of the completed test to avoid asking the user to repeat it unnecessarily. Other-app hosting, lock/orientation/process death and complete platform compatibility remain unverified.
+
+## Foreground context clarified by the user
+
+The user clarified that full-screen Safari was behind the small PPO Safari window during the successful scrolling, Tab button, keyboard and navigation observations. Those observations therefore establish behavior in that foreground-Safari arrangement. They do not yet demonstrate independent Safari interaction over NewTerm/another foreground app or Safari background execution.
+
+The current source review confirms that selecting Safari in PPO's picker only persists the selection; the separate launch action brings Safari forward. A discriminating device test can use the already installed0.7.2 build: after a manual respring/new attempt, open Safari normally so it has a scene, switch to NewTerm, select Safari in the PPO picker without pressing the separate app-launch action, then press the floating Safari trial. Observe whether NewTerm stays behind the small window and Safari's Tab/address/keyboard/navigation controls respond there; allow timeout cleanup and provide the existing host-0.7.2.json report. If the trial refuses or Safari becomes full-screen, record that result rather than adding guessed foreground/focus calls.
+
+No executable code was changed for this clarification. This runtime configuration cannot be established by the current Linux/macOS native fixture environment. Main and all stable source branches remain unchanged.
