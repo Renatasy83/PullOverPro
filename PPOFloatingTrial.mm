@@ -28,6 +28,7 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic) BOOL running;
 @property(nonatomic) BOOL closePending;
 @property(nonatomic) BOOL closed;
+@property(nonatomic) BOOL closing;
 @property(nonatomic) BOOL cleanupConfirmed;
 @property(nonatomic,copy) NSString *bundleIdentifier;
 @property(nonatomic,copy) NSString *reportID;
@@ -91,7 +92,7 @@ static BOOL PPOTrialAllowed(void) {
     NSLog(@"[PPO 0.8.0] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
-    return NSThread.isMainThread && self.attempted && !self.opening && !self.running;
+    return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
 }
 - (BOOL)replacementAllowed {
     if (!self.finished) return NO;
@@ -248,6 +249,7 @@ static BOOL PPOTrialAllowed(void) {
     if (!self.closeReason) self.closeReason = @"external";
     if (self.opening) { self.closePending = YES; return; }
     self.closed = YES;
+    self.closing = YES;
     self.running = NO;
     if (self.timer) { dispatch_source_cancel(self.timer); self.timer = nil; }
     for (id observer in @[self.observer ?: NSNull.null, self.backgroundObserver ?: NSNull.null,
@@ -267,6 +269,7 @@ static BOOL PPOTrialAllowed(void) {
     @catch (NSException *exception) { (void)exception; uiClean = NO; }
     if (uiClean) { self.window = nil; self.content = nil; }
     self.cleanupConfirmed = closed && uiClean;
+    self.closing = NO;
     [self record:closed && uiClean ? @"close-returned" : @"cleanup-unconfirmed"];
     // Keep the session retained even after a failed cleanup; no automatic retry.
 }

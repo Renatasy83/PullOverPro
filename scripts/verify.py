@@ -66,6 +66,8 @@ require('self.session.finished' in slot_source and 'self.session.replacementAllo
         'self.poisoned = YES' in slot_source, 'Session replacement must fail closed')
 require('static BOOL attempted' not in (ROOT / 'Tweak.xm').read_text(),
         'Replace per-process trial block with owned session gate')
+require('!self.running && !self.closing' in trial_source,
+        'Session must remain busy until synchronous cleanup returns')
 require('PPOHostApplicationAllowed(bundleIdentifier)' in trial_source,
         'Floating session target policy missing')
 require('@"com.apple.mobilesafari"' in slot_source and '@"com.apple.Preferences"' in slot_source,

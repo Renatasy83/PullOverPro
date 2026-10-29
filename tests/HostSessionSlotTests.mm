@@ -53,6 +53,9 @@ int main(void) {
               "not-yet-opened/current active session refuses replacement");
         Check(!slot.poisoned, "busy refusal does not poison a healthy session");
         Check(![slot adopt:first error:&error] && error.code == EINVAL, "same object cannot be readopted");
+        first.clean = YES; // Cleanup may have substeps complete before it returns.
+        Check(![slot adopt:second error:&error] && error.code == EBUSY && !slot.poisoned,
+              "in-progress cleanup remains busy rather than poisoning/replacing");
         first.done = first.clean = YES;
         reenter = YES;
         Check([slot adopt:second error:&error] && slot.session == second && error == nil,
