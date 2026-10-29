@@ -31,3 +31,15 @@ The activeAfterActivation/hostingAfterActivation flags are historical observatio
 This validates one manual Safari render/close operation on this particular device. It does not establish touch/keyboard routing, automatic timeout, repeated cycles, lock/orientation/process death or complete Dopamine/ElleKit compatibility.
 
 Preserved branch: stable/verified-safari-rendering at 3c7d3f0265e4a9b938ec45dd5ea7ad99ad06fa1e. Previous launch-only baseline and main remain intact.
+
+## Device report and observation: 0.7.2~dev.touchtrial1
+
+The supplied host-0.7.2.json matches all three framework UUIDs and selects one Safari scene among5 inspected scenes. The owned presenter activates with activeAfterActivation=true and hostingAfterActivation=true. About15.03 seconds later closeReason=timeout, state=closed, invalidateReturned=true, owned=false and poisoned=false establish completion of the automatic-close code path.
+
+The report has inputEverEnabled=false, all inputEnabled fields false and no input-enabled event. The user nevertheless explicitly observed scrolling inside the small Safari window while the header read "Atingeri: oprite".
+
+Consequently the0.7.2 switch and the old report field names do not reliably describe remote-scene input blocking. The observation is accepted as scrolling seen in the hosted content, but direct hosted-surface routing versus events reaching Safari underneath is not distinguished by this report. Do not reject the user's observation based on the UIView flag or promote it to proof of isolated input routing. No keyboard entry was confirmed.
+
+The0.7.3 correction removes the misleading switch, keeps the same container flag used in the observed trial, and reports schema2 fields containerUserInteractionEnabled/presentationViewUserInteractionEnabled, inputBlockingGuaranteed=false and inputRoutingMechanism=unconfirmed. It does not add a private input API or claim a blocking fix.
+
+Preserved timeout-tested source: stable/verified-safari-timeout at411cd127fa18005989d05f2aefff59b697ee1029. main and previous stable branches are unchanged. This is not confirmation of full Dopamine/ElleKit compatibility.

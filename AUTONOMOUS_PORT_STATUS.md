@@ -34,6 +34,10 @@ No compatible physical Apple Silicon Mac is accessible. Lakr233/vphone-cli requi
 
 The first actual Safari presentation/manual-close device gate passed on0.7.1. The next device gate is touch/scroll delivery via the public UIKit opt-in on0.7.2. Touch/keyboard routing, other apps, scene resizing, foreground policy, lock/unlock, orientation, process death and repeated stress remain unimplemented or unverified. No phone installation, respring, personal-data deletion or change to other tweaks is automated.
 
-## Current implementation: 0.7.2 touch acceptance
+## Historical 0.7.2 touch switch (not a reliable blocking control)
 
 Preserved `stable/verified-safari-rendering` at3c7d3f0265e4a9b938ec45dd5ea7ad99ad06fa1e. Content still starts read-only. An explicit header button toggles only public UIKit userInteractionEnabled while the trial is active and permitted. No private dispatch surface was expanded; no key-window/first-responder/event-deferral APIs were enabled. Reports now identify opt-in, final presenter state and close reason. Touch/keyboard delivery remains unverified; source analysis is not proof of input reaching Safari. See TOUCH_TRIAL.md and INPUT_23A355.md.
+
+## Current correction: 0.7.3 input reporting
+
+The user observed scrolling while0.7.2 displayed Atingeri: oprite. Its JSON also completed automatic timeout invalidation after15.03s, without an input-enabled event. UIView.userInteractionEnabled cannot be treated as proof of remote input blocking in this configuration. The exact routing mechanism and possible interaction with Safari underneath remain unconfirmed. The0.7.3 code removes the misleading switch and renames report fields (schema2), while retaining the existing container flag and unchanged private presenter lifecycle. No new device installation is needed solely to validate this label/report correction. See INPUT_REPORT_CORRECTION.md.

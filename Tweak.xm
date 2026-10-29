@@ -180,9 +180,9 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 0.7.2] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 0.7.3] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.7.2] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 0.7.3] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport scenă salvat (Filza)" : @"Raport API: eroare";
@@ -205,7 +205,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
     self.listView.hidden = YES;
     ppoPanel.hidden = !ppoExpanded;
     ppoStatus.text = @"Selectează o aplicație";
-    NSLog(@"[PPO 0.7.2] panel %@", ppoExpanded ? @"open" : @"closed");
+    NSLog(@"[PPO 0.7.3] panel %@", ppoExpanded ? @"open" : @"closed");
 }
 - (void)panned:(UIPanGestureRecognizer *)recognizer {
     if (!ppoWindow) return;
@@ -254,7 +254,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
                     if (!found) selected = nil;
                 }
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.7.2] app-file-exception=%@", exception.name);
+                NSLog(@"[PPO 0.7.3] app-file-exception=%@", exception.name);
                 apps = nil;
             }
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -276,7 +276,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
                     self.listView = nil;
                     ppoPanel.hidden = NO;
                     ppoStatus.text = @"Lista nu poate fi afișată";
-                    NSLog(@"[PPO 0.7.2] app-ui-exception=%@", exception.name);
+                    NSLog(@"[PPO 0.7.3] app-ui-exception=%@", exception.name);
                 }
             });
         }
@@ -369,7 +369,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
     @catch (NSException *exception) {
         [self closeApps:nil];
         ppoStatus.text = @"Pagina nu poate fi afișată";
-        NSLog(@"[PPO 0.7.2] page-exception=%@", exception.name);
+        NSLog(@"[PPO 0.7.3] page-exception=%@", exception.name);
     }
 }
 - (void)selectApp:(UIButton *)sender {
@@ -392,7 +392,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
                     saved = [data writeToFile:PPOSelectionPath options:NSDataWritingAtomic error:NULL];
                 }
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.7.2] selection-exception=%@", exception.name);
+                NSLog(@"[PPO 0.7.3] selection-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (epoch != self.saveEpoch) return;
@@ -439,7 +439,7 @@ static void PPOCommitOverlay(UIWindow *window, UIViewController *controller,
 }
 
 static void PPOBuildOverlay(UIWindowScene *scene) {
-    NSLog(@"[PPO 0.7.2] ui-build-begin");
+    NSLog(@"[PPO 0.7.3] ui-build-begin");
     UIWindow *ppoWindow = [[UIWindow alloc] initWithWindowScene:scene];
     ppoWindow.frame = CGRectMake(0, 170, PPOClosedWidth, 44);
     ppoWindow.windowLevel = UIWindowLevelStatusBar + 1;
@@ -454,7 +454,7 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
     ppoPanel.layer.cornerRadius = 12;
     ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.7.2-dev", 8)];
+    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.7.3-dev", 8)];
     [ppoPanel addSubview:PPOLabel(@"Aplicații", 43)];
     UIButton *apps = [UIButton buttonWithType:UIButtonTypeSystem];
     apps.frame = CGRectMake(10, 72, PPOOpenWidth - 20, 32);
@@ -515,10 +515,10 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [ppoHandle addGestureRecognizer:pan];
     [ppoController.view addSubview:ppoHandle];
 
-    NSLog(@"[PPO 0.7.2] ui-built; showing");
+    NSLog(@"[PPO 0.7.3] ui-built; showing");
     ppoWindow.hidden = NO;
     PPOCommitOverlay(ppoWindow, ppoController, ppoTarget, ppoPanel, ppoStatus, ppoHandle);
-    NSLog(@"[PPO 0.7.2] ui-visible");
+    NSLog(@"[PPO 0.7.3] ui-visible");
 }
 
 static BOOL ppoScheduled;
@@ -557,12 +557,12 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 0.7.2] no-active-scene; stopped");
+                NSLog(@"[PPO 0.7.3] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 0.7.2] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 0.7.3] ui-exception=%@; stopped", exception.name);
             ppoStopped = YES;
         }
         if (ppoStopped && ppoSceneObserver) {
@@ -574,10 +574,10 @@ static void PPOScheduleOverlay(void) {
 
 %ctor {
     @autoreleasepool {
-        NSLog(@"[PPO 0.7.2] loaded; os=%@",
+        NSLog(@"[PPO 0.7.3] loaded; os=%@",
               NSProcessInfo.processInfo.operatingSystemVersionString);
         if (!PPOOverlayAllowed()) {
-            NSLog(@"[PPO 0.7.2] overlay-disabled; no hooks installed");
+            NSLog(@"[PPO 0.7.3] overlay-disabled; no hooks installed");
             return;
         }
         // No UIKit objects or private SpringBoard methods touched in the ctor.
@@ -587,7 +587,7 @@ static void PPOScheduleOverlay(void) {
                 queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                     PPOScheduleOverlay();
                 }];
-            NSLog(@"[PPO 0.7.2] overlay-armed");
+            NSLog(@"[PPO 0.7.3] overlay-armed");
             PPOScheduleOverlay();
         });
     }

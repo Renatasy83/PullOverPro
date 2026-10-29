@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
 Name: PullOver Pro Development
-Version: 0.7.2~dev.touchtrial1
+Version: 0.7.3~dev.inputreportfix1
 Architecture: iphoneos-arm64
-Description: App picker and isolated mobile launch service. Explicit, time-limited Safari live-hosting experiment; touch acceptance is opt-in and touch/keyboard routing remains unverified.
+Description: App picker and isolated mobile launch service. Explicit, time-limited Safari live-hosting experiment; UIKit flags are reported separately from unconfirmed remote input routing.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks

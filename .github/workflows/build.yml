@@ -193,7 +193,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.7.2-touch-trial-${{ github.sha }}
+          name: PullOverPro-0.7.3-input-report-fix-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

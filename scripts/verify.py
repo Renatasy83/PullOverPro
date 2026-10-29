@@ -51,15 +51,16 @@ for pattern in (r'%hook\b', r'%init\b', r'valueForKey:', r'method_getImplementat
     require(not re.search(pattern, presenter_source + trial_source),
             f'Unexpected hosting operation: {pattern}')
 require('objc_msgSend' not in trial_source, 'UIKit trial must not dispatch private APIs')
-require('self.content.userInteractionEnabled = NO' in trial_source, 'Input must start disabled')
-toggle = trial_source.split('- (void)toggleInput:(UIButton *)sender {', 1)[1].split('\n- (void)', 1)[0]
-require('self.content.userInteractionEnabled = !self.content.userInteractionEnabled' in toggle,
-        'Touch opt-in must use only the public UIKit property')
-require('self.closed || self.opening || !self.running || self.closePending' in toggle and
-        'PPOTrialAllowed()' in toggle and 'systemUptime >= self.deadline' in toggle,
-        'Touch opt-in lifecycle guards missing')
-require('session activate' not in toggle and 'prepareScene:' not in toggle,
-        'Touch toggle must not recreate or reactivate private presenters')
+require('self.content.userInteractionEnabled = NO' in trial_source,
+        'Preserve the container flag used in the observed device trial')
+require('toggleInput:' not in trial_source and 'inputButton' not in trial_source,
+        'Remove the misleading remote input switch')
+for obsolete in ('@"inputEnabled"', '@"inputEverEnabled"', 'Atingeri: oprite', 'Atingeri: pornite'):
+    require(obsolete not in trial_source, f'Ambiguous input claim: {obsolete}')
+require('@"containerUserInteractionEnabled"' in trial_source and
+        '@"inputBlockingGuaranteed": @NO' in trial_source and
+        '@"inputRoutingMechanism": @"unconfirmed"' in trial_source,
+        'Separate UIView flags from remote input guarantees')
 require('THEOS_PACKAGE_SCHEME := rootless' in (ROOT / 'Makefile').read_text(),
         'Rootless scheme missing')
 filter_path = ROOT / 'PullOverProDiagnostic.plist'
@@ -76,7 +77,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.7.2~dev.touchtrial1'), 'Unexpected version')
+    require(field('Version').startswith('0.7.3~dev.inputreportfix1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

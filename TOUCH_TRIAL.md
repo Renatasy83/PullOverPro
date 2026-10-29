@@ -1,4 +1,6 @@
-# 0.7.2 Safari touch-acceptance gate
+# Historical 0.7.2 Safari touch trial
+
+This trial revealed that the displayed switch did not reliably describe observed scrolling: the user scrolled while it said off. Its timeout cleanup completed. The opt-in/blocking assumptions below are superseded by INPUT_REPORT_CORRECTION.md; do not reinstall0.7.2 just to repeat this switch test.
 
 This development DEB is not the final port. The existing Safari render/manual-close path was user-confirmed in0.7.1. 0.7.2 enables only a public UIKit touch-acceptance opt-in; actual touch delivery and keyboard focus are unverified. main, stable/verified-safari-launch and stable/verified-safari-rendering are preserved.
 

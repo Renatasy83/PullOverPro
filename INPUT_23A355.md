@@ -1,5 +1,7 @@
 # Safari input investigation — exact23A355
 
+Correction after actual0.7.2 device feedback: the user observed scrolling while the UIView switch was off. The historical opt-in description below is not a guarantee of remote input blocking. See INPUT_REPORT_CORRECTION.md.
+
 ## Preserved evidence
 
 0.7.1 displayed live Safari and closed with X on the user's iPhone12,5/iOS26.0.1. The actual JSON completed owned presenter invalidation, and the user confirmed normal visual restoration. This is one operation, not general runtime compatibility.
@@ -27,3 +29,7 @@ LiveContainer's current AppSceneViewController.m source discusses iOS26 keyboard
 Exact23A355 includes _UISceneHostingEventDeferringExtension and _UISceneHostingEventDeferringHostComponent (declarations in UIKitCore). Presence/ABI alone does not establish token ownership, correct parent scene, arbitration behavior or cleanup. No such APIs are enabled in PPO.
 
 Public UIKit touch acceptance can now be tested on the actual phone without introducing an unverified private focus mechanism. Native CI does not reproduce UIKit/WindowServer/Safari cross-process routing; its success cannot confirm touch or keyboard. If touches fail, collect the report and observed behavior before introducing new APIs.
+
+## Observed limitation
+
+The exact firmware hit-test implementation does not establish that a parent UIView.userInteractionEnabled flag controls every path to hosted content. The0.7.2 report and visual observation disagree with that assumption. A compositor/remote-input path and events reaching Safari underneath remain possibilities, not diagnosed causes.0.7.3 removes the categorical switch, preserves the tested container flag, and separates property values from verified delivery/blocking claims. Keyboard focus changes remain disabled.
