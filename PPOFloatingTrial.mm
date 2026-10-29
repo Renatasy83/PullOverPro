@@ -52,7 +52,7 @@ static BOOL PPOTrialAllowed(void) {
         @"uptime": @(NSProcessInfo.processInfo.systemUptime),
         @"presenter": self.session.snapshot ?: @{},
         @"geometry": [self geometrySnapshot],
-        @"livePresenter": self.lastLiveSample ?: @{},
+        @"lastLiveSample": self.lastLiveSample ?: @{},
         @"containerUserInteractionEnabled": @(self.content.userInteractionEnabled),
         @"closeReason": self.closeReason ?: @"none"}];
     UIView *presentation = self.session.presentationView;
@@ -60,7 +60,7 @@ static BOOL PPOTrialAllowed(void) {
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
         @"geometry": [self geometrySnapshot],
-        @"livePresenter": self.lastLiveSample ?: @{},
+        @"lastLiveSample": self.lastLiveSample ?: @{},
         @"presenter": self.session.snapshot ?: @{},
         @"presentationViewUserInteractionEnabled": @(presentation.userInteractionEnabled),
         @"hostWindowIsKey": @(self.window.isKeyWindow),
@@ -227,12 +227,12 @@ static BOOL PPOTrialAllowed(void) {
         dispatch_resume(self.timer);
         self.running = YES;
         [self captureLayout:@"post-layout"];
-        if (self.closed || !self.running) return @"Fereastra nu poate fi afișată";
+        if (self.closed || self.closePending || !self.running) return @"Fereastra nu poate fi afișată";
         for (NSNumber *delay in @[@0.1, @0.75]) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)),
                 dispatch_get_main_queue(), ^{
                     PPOFloatingTrial *trial = weakSelf;
-                    if (trial && trial.running && !trial.closed && !trial.closing)
+                    if (trial && trial.running && !trial.closed && !trial.closing && !trial.closePending)
                         [trial captureLayout:delay.doubleValue < 0.5 ? @"layout-100ms" : @"layout-750ms"];
                 });
         }
@@ -300,13 +300,16 @@ static BOOL PPOTrialAllowed(void) {
         @"hostSceneState": self.windowScene ? @((NSInteger)self.windowScene.activationState) : @(-1)};
 }
 - (void)captureLayout:(NSString *)event {
-    if (!NSThread.isMainThread || self.closed || self.closing || !self.running) return;
+    if (!NSThread.isMainThread || self.closed || self.closing || self.closePending || !self.running) return;
     if (!PPOTrialAllowed()) { [self closeBecause:@"disabled"]; return; }
     @try {
         [self.window.rootViewController.view layoutIfNeeded];
         [(UIView *)self.session.presentationView layoutIfNeeded];
+        if (self.closed || self.closing || self.closePending) return;
         if (![self fitPresentation]) { [self closeBecause:@"geometry-refused"]; return; }
-        self.lastLiveSample = [self.session sampleState];
+        NSMutableDictionary *sample = [[self.session sampleState] mutableCopy];
+        sample[@"sampleUptime"] = @(NSProcessInfo.processInfo.systemUptime);
+        self.lastLiveSample = [sample copy];
         [self record:event];
     } @catch (NSException *exception) {
         (void)exception; [self closeBecause:@"layout-exception"];
