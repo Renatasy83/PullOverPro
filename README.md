@@ -1,6 +1,6 @@
 # PullOver Pro port development
 
-**Known0.8.0 device regression:** the user reports black hosted content for Safari and Settings, with close/reopen controls responding. Rendering is under investigation; successful CI is not runtime validation. The previously working0.7.2 source remains preserved. See DEVICE_VALIDATION.md.
+**Known0.8.0/0.8.1 device regression:** the user reports black hosted content for Safari and Settings, with close/reopen controls responding. Rendering is under investigation; successful CI is not runtime validation. The previously working0.7.2 source remains preserved. See DEVICE_VALIDATION.md.
 
 This is an incomplete GPL-3.0 port of c1d3rdev/Will Smillie’s PullOver Pro.
 
@@ -20,3 +20,5 @@ Current report correction: [INPUT_REPORT_CORRECTION.md](INPUT_REPORT_CORRECTION.
 0.8.0 development adds explicit single-session ownership/reopen after confirmed cleanup and a controlled Settings target, using the existing presenter API surface. Only Safari is device-confirmed so far; repeated UIKit sessions and Settings require the next real-device gate. See [HOST_SESSIONS.md](HOST_SESSIONS.md). The timeout remains15 seconds; this is not a final release.
 
 0.8.1 is a rendering correction candidate: PPO scales an owned wrapper rather than assigning the private presentation view's geometry. Reports include bounded delayed layout and live-state samples. This does not establish that the observed black-content regression is fixed. See [RENDER_LAYOUT_23A355.md](RENDER_LAYOUT_23A355.md).
+
+The actual0.8.1 report shows valid visible geometry and live active/hosting state, but no context-host view in the recorded tree. The scaling-wrapper change did not restore visible content. Layer availability/filtering/attachment and the foreground/background distinction remain under investigation; see [LAYER_ATTACHMENT_23A355.md](LAYER_ATTACHMENT_23A355.md).

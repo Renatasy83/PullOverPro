@@ -95,3 +95,15 @@ Each session reaches prepared then activate-returned with activeAfterActivation=
 The report only stores the activation flags sampled immediately after activate. It does not sample current active/hosting state later, nor does it record runtime view frames/bounds/transforms. Its top-level presentationViewUserInteractionEnabled=false and hostWindowIsKey=false were captured after close cleared those objects; they do not establish either property's in-window value. No geometry, priority, process-background, injection or ownership root cause is established by this JSON.
 
 0.8.1 adds an owned scaling wrapper and bounded post-layout/live-state observations. Exact UIKitCore implementation evidence shows that the private presentation view itself can write its frame/transform, so direct scaling of that view is a fragile integration. This also existed in0.7.2 and is therefore not a demonstrated explanation of the regression. Recovery of visible pixels must be observed on the phone. See RENDER_LAYOUT_23A355.md.
+
+## Received host-0.8.1.json: geometry valid, recorded host tree has no context-host view
+
+The schema4 report contains three attempts. The first Safari lookup found no scene among4 and refused without creating a presenter. The next Safari lookup matched one scene among5, and Settings matched one among6. Both successful attempts closed manually and completed invalidation without poison.
+
+At post-layout,100ms and750ms in both apps: the private presentation view is attached to PPO's window, hidden=false, alpha=1, frame/bounds414x896, identity transform; PPO's wrapper scales by0.486607142857, producing201.455x436 inside a300x436 viewport. The visible window is300x480 at57,60, the host scene is foreground-active and usedFallbackFrame=false. Current sampled presenter flags remain active=true, hosting=true, invalidated=false at both delayed observations.
+
+The complete recorded three-view descendant chain is _UIScenePresentationView -> _UISceneLayerHostContainerView -> _UITouchPassthroughView. The last view has no subviews or layer children; no _UIContextLayerHostView or _UIExternalSceneLayerHostView appears. This narrows the investigation to availability/selection/attachment of the scene's render layers rather than supporting zero-size, off-window or initially hidden geometry. It does not establish why a context-host view is absent, or rule out every possible rendering issue.
+
+Exact23A355 filtering code reads FBScene.layerManager.layers and applies presentation-context target filters. No runtime layer-manager counts or filter values have yet been recorded, so absent source layers, filtering and other attachment-state causes remain hypotheses. No priority/foreground/security flags were changed. See LAYER_ATTACHMENT_23A355.md.
+
+Before another diagnostic installation, the existing0.8.1 can distinguish whether the failure is restricted to the NewTerm/background arrangement: keep Safari full-screen and open its PPO window there. The visual result of that observation is pending.
