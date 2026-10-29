@@ -53,3 +53,16 @@ This establishes an attachment-tree difference and repeatable owned-presenter cl
 The original project's ContextHostManager.mm was rechecked: its iOS13 hosting path calls forceApplicationForegroundForBundleId before reading scene layers; that method uses KVC _mutableSettings, setForeground:YES and updateSettings:withTransitionContext:completion:. Close unconditionally writes foreground=false. This is historical design evidence, not a verified iOS26 lifecycle contract. No original KVC/foreground mutation, presumed layer mask, priority or process assertion was copied into the port.
 
 Next live discriminator can use the installed build: create the visible small Safari window while full-screen Safari is underneath, then switch to NewTerm before the15-second timeout. Distinguish retained content, black content and automatic close rather than treating those outcomes as equivalent. This is a real UIKit/client lifecycle observation and cannot be simulated by the present native fixture tests. No new package is required. No executable change or new build was made for this evidence update.
+
+
+## Observed transition: visible Safari becomes black over NewTerm
+
+The user performed the existing-build transition on0.8.1: open the small window over full-screen Safari, then switch to NewTerm before timeout. The small PPO window remains open but becomes black. This is a within-session visual observation of content loss on the app switch, not a failure to create PPO's window. No transition JSON was supplied, so the earlier750ms samples must not be represented as samples of this switch or as proof that source layers were removed at that instant.
+
+Combined with the paired reports, this prioritizes the target scene/client foreground-to-background lifecycle and layer availability/attachment path. It does not establish process suspension, a particular assertion requirement, security/injection policy or filter mask. The cause remains unconfirmed. Existing0.7.2 cross-app success is retained as a historical user observation; its earlier report did not instrument that background arrangement, and it cannot establish which state differed.
+
+No additional installation or blind foreground/priority mutation is justified by this observation. Before a functional change, the next instrumentation must distinguish source scene/layer state from hosted-view state across the same transition, use verified encodings and declared method-table checks, remain bounded/main-thread, and add native rejection/exception fixtures. A run-time dependency or full compatibility claim must not be derived from a successful build.
+
+Static follow-up inspected FBScene updateSettings:withTransitionContext:completion: at0x1a842b00c in the pinned23A355 FrontBoard image. The method performs nontrivial work, including a settings getter and diffFromSettings:toSettings: dispatch (stubs0x1a849bbe0 and0x1a8496300). Presence of this method and the original project's usage do not establish reversible ownership of scene settings or a safe background-hosting contract. No settings setter or update callback was invoked or enabled in the port.
+
+This update changes documentation only. Main/stable source and the installed executable remain unchanged; no new CI runtime-validation claim is made.
