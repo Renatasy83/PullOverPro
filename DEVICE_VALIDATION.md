@@ -75,3 +75,13 @@ After the specified existing-build test (Safari scene first, switch to NewTerm, 
 No additional JSON report was supplied for this particular background test; the earlier report's timeout trace must not be misrepresented as a trace of the newly clarified foreground context. Repeated presenter creation, Settings hosting, lock/orientation/process death and complete Dopamine/ElleKit compatibility remain unverified.
 
 The code exercised on the phone is preserved at411cd127fa18005989d05f2aefff59b697ee1029, also on stable/verified-safari-over-newterm. Main and all previous stable branches remain untouched.
+
+##0.8.0 device regression: black hosted content
+
+The user found Settings in the picker, resolving the earlier list-discovery issue without a code change. In0.8.0 they observed a black small window for Settings and Safari. The X button/manual close works and reopening after manual close works. No visible application content or scroll behavior can be verified from the black window. No crash was reported in this observation.
+
+Treat this as a rendering regression against the user-confirmed0.7.2 Safari behavior, not a successful Settings-hosting test. The new native/sanitizer/build checks did not establish real UIKit rendering.
+
+The supplied0.8.0 runtime JSON has been offered by the user but is not yet attached in the current message. Analyze it before attributing a cause or selecting another device build. The GitHub comparison411cd127...3651ec9 confirms PPOScenePresenter.mm and PPOScenePreflight.mm are unchanged; ownership, wrapper/UI and reporting changes still require review and are not ruled out by that fact.
+
+Main and the working0.7.2 stable branches remain preserved. Do not infer an ElleKit/Dopamine defect, an Objective-C exception, presenter priority failure, or a geometry/lifetime cause from a black window alone.
