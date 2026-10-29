@@ -41,3 +41,7 @@ Preserved `stable/verified-safari-rendering` at3c7d3f0265e4a9b938ec45dd5ea7ad99a
 ## Current correction: 0.7.3 input reporting
 
 The user observed scrolling while0.7.2 displayed Atingeri: oprite. Its JSON also completed automatic timeout invalidation after15.03s, without an input-enabled event. UIView.userInteractionEnabled cannot be treated as proof of remote input blocking in this configuration. The exact routing mechanism and possible interaction with Safari underneath remain unconfirmed. The0.7.3 code removes the misleading switch and renames report fields (schema2), while retaining the existing container flag and unchanged private presenter lifecycle. No new device installation is needed solely to validate this label/report correction. See INPUT_REPORT_CORRECTION.md.
+
+## Safari keyboard/navigation observation
+
+The user now confirms that keyboard entry and navigation work in the small Safari window on the installed0.7.2 build. No additional private input/focus API was required for that observed operation. Context of the underlying foreground app remains to be established before treating this as independent multitasking/background focus. Continue from the existing working path; do not add event-deferral or key-window changes without evidence of a missing behavior.

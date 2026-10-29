@@ -51,3 +51,11 @@ The user explicitly confirmed that pressing Safari's Tab button inside the small
 This supports functional touch interaction with the presented Safari UI on this device. It is a visual user observation, not a trace of WindowServer/event-target ownership, and does not establish an input-blocking guarantee or interaction while a different underlying app is active. Keyboard entry/focus has not been tested or confirmed. No private keyboard/focus calls are enabled on the basis of this observation.
 
 Next indispensable device observation can use the already installed0.7.2 build: tap the address field in the small Safari window, enter about:blank and verify that input reaches that field and that closing the window restores normal operation. No new package is needed for this observation.
+
+## Follow-up: keyboard entry and navigation
+
+After being asked to test the address field, keyboard entry and navigation using the already installed0.7.2 build, the user confirmed that the keyboard and navigation both work. This adds a positive visual device observation for Safari input; no private key-window, first-responder or event-deferral calls were added.
+
+The underlying foreground application during this test has not yet been recorded. Therefore this confirms the tested Safari interaction, but does not yet establish independent focus while another app is underneath, background execution, app switching or cross-app routing. The report's conservative keyboardRoutingVerified=false constant is not a rejection of the user's separately supplied observation; JSON alone does not instrument actual text delivery.
+
+Do not introduce speculative keyboard/focus APIs to solve an unobserved problem. The next gate is the existing presentation's behavior with a different foreground app; first obtain the context of the completed test to avoid asking the user to repeat it unnecessarily. Other-app hosting, lock/orientation/process death and complete platform compatibility remain unverified.
