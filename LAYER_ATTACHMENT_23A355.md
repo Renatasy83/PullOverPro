@@ -27,3 +27,14 @@ Keep Safari full-screen and open its small PPO window without switching to NewTe
 If the small window renders there but not over NewTerm, the failure is conditional on the background arrangement; that still does not identify the exact process/layer/filter policy. If it remains black over foreground Safari as well, the issue is not restricted to that arrangement. Record the result before choosing an additional private inspection or a functional mutation.
 
 A compatible live target is required for this observation. Native geometry/ownership tests and binary disassembly cannot reproduce actual WindowServer/client rendering state in the current execution environment.
+
+
+## Follow-up:0.8.1 renders over foreground Safari
+
+On the same installed0.8.1 build, the user explicitly answered that the small PPO window displays content when Safari stays full-screen underneath, without switching to NewTerm. This contrasts with the earlier black-content observations over the other-app arrangement. It establishes rendering in this foreground-Safari condition, not a general rendering fix or independent background execution.
+
+The earlier host-0.8.1.json was captured for the black sessions and must not be presented as instrumentation of this later successful observation. Obtain the report generated after this successful operation to compare the same build's descendant tree and sampled presenter state. No package installation or respring is needed for this comparison.
+
+The source comparison against the user-confirmed0.7.2 baseline shows the presenter creation/activation and unique-scene selection paths unchanged;0.8.1 adds read-only presenter state sampling, while wrapper geometry, session lifecycle, UI and reporting changed. None of those differences alone proves the cause. In particular, foreground rendering does not demonstrate that a specific background assertion, foreground flag, layer mask or priority mutation is required or safe.
+
+Main and every stable branch remain unchanged. No new private runtime call or executable change was made for this observation.

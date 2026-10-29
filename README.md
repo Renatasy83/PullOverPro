@@ -1,6 +1,6 @@
 # PullOver Pro port development
 
-**Known0.8.0/0.8.1 device regression:** the user reports black hosted content for Safari and Settings, with close/reopen controls responding. Rendering is under investigation; successful CI is not runtime validation. The previously working0.7.2 source remains preserved. See DEVICE_VALIDATION.md.
+**Known0.8.0/0.8.1 device regression:** the user reports black hosted content for Safari and Settings in the other-app arrangement, with close/reopen controls responding. On the same0.8.1 build the user confirms content is visible when full-screen Safari stays underneath. This foreground/background distinction narrows the investigation but does not identify the cause or establish background-hosting support. Successful CI is not runtime validation. The previously working0.7.2 source remains preserved. See DEVICE_VALIDATION.md.
 
 This is an incomplete GPL-3.0 port of c1d3rdev/Will Smillie’s PullOver Pro.
 

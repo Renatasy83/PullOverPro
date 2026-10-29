@@ -107,3 +107,14 @@ The complete recorded three-view descendant chain is _UIScenePresentationView ->
 Exact23A355 filtering code reads FBScene.layerManager.layers and applies presentation-context target filters. No runtime layer-manager counts or filter values have yet been recorded, so absent source layers, filtering and other attachment-state causes remain hypotheses. No priority/foreground/security flags were changed. See LAYER_ATTACHMENT_23A355.md.
 
 Before another diagnostic installation, the existing0.8.1 can distinguish whether the failure is restricted to the NewTerm/background arrangement: keep Safari full-screen and open its PPO window there. The visual result of that observation is pending.
+
+
+## Follow-up:0.8.1 renders over foreground Safari
+
+On the same installed0.8.1 build, the user explicitly answered that the small PPO window displays content when Safari stays full-screen underneath, without switching to NewTerm. This contrasts with the earlier black-content observations over the other-app arrangement. It establishes rendering in this foreground-Safari condition, not a general rendering fix or independent background execution.
+
+The earlier host-0.8.1.json was captured for the black sessions and must not be presented as instrumentation of this later successful observation. Obtain the report generated after this successful operation to compare the same build's descendant tree and sampled presenter state. No package installation or respring is needed for this comparison.
+
+The source comparison against the user-confirmed0.7.2 baseline shows the presenter creation/activation and unique-scene selection paths unchanged;0.8.1 adds read-only presenter state sampling, while wrapper geometry, session lifecycle, UI and reporting changed. None of those differences alone proves the cause. In particular, foreground rendering does not demonstrate that a specific background assertion, foreground flag, layer mask or priority mutation is required or safe.
+
+Main and every stable branch remain unchanged. No new private runtime call or executable change was made for this observation.
