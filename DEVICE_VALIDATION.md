@@ -85,3 +85,13 @@ Treat this as a rendering regression against the user-confirmed0.7.2 Safari beha
 The supplied0.8.0 runtime JSON has been offered by the user but is not yet attached in the current message. Analyze it before attributing a cause or selecting another device build. The GitHub comparison411cd127...3651ec9 confirms PPOScenePresenter.mm and PPOScenePreflight.mm are unchanged; ownership, wrapper/UI and reporting changes still require review and are not ruled out by that fact.
 
 Main and the working0.7.2 stable branches remain preserved. Do not infer an ElleKit/Dopamine defect, an Objective-C exception, presenter priority failure, or a geometry/lifetime cause from a black window alone.
+
+## Received host-0.8.0.json: four complete sessions
+
+The actual schema3 report was supplied and parsed. It contains two Settings sessions followed by two Safari sessions. Every lookup inspected10 scenes and selected one exact match. All three observed framework UUIDs match the pinned23A355 values.
+
+Each session reaches prepared then activate-returned with activeAfterActivation=true/hostingAfterActivation=true, then closed with invalidateReturned=true, owned=false, poisoned=false and replacementAllowed=true. Settings closes manually after roughly5.59s, then by timeout after15.02s; Safari closes by timeout after15.03s, then manually after2.12s. This supplies actual runtime evidence for multiple explicit reopen/cleanup cycles while the user reports black content. It is not evidence of visible application rendering.
+
+The report only stores the activation flags sampled immediately after activate. It does not sample current active/hosting state later, nor does it record runtime view frames/bounds/transforms. Its top-level presentationViewUserInteractionEnabled=false and hostWindowIsKey=false were captured after close cleared those objects; they do not establish either property's in-window value. No geometry, priority, process-background, injection or ownership root cause is established by this JSON.
+
+0.8.1 adds an owned scaling wrapper and bounded post-layout/live-state observations. Exact UIKitCore implementation evidence shows that the private presentation view itself can write its frame/transform, so direct scaling of that view is a fragile integration. This also existed in0.7.2 and is therefore not a demonstrated explanation of the regression. Recovery of visible pixels must be observed on the phone. See RENDER_LAYOUT_23A355.md.

@@ -1,6 +1,7 @@
 #import "PPOFloatingTrial.h"
 #import "PPOScenePreflight.h"
 #import "PPOScenePresenter.h"
+#include "PPOHostGeometry.h"
 #import <objc/runtime.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -15,6 +16,10 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic,strong) UIWindow *window;
 @property(nonatomic,strong) UIWindowScene *windowScene;
 @property(nonatomic,strong) UIView *content;
+@property(nonatomic,strong) UIView *scalingWrapper;
+@property(nonatomic) CGRect fallbackNativeFrame;
+@property(nonatomic) BOOL usedFallbackFrame;
+@property(nonatomic,strong) NSDictionary *lastLiveSample;
 @property(nonatomic,copy) NSString *closeReason;
 @property(nonatomic,strong) id observer;
 @property(nonatomic,strong) id backgroundObserver;
@@ -35,6 +40,9 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic) NSTimeInterval deadline;
 - (void)closeFromButton:(UIButton *)sender;
 - (void)closeBecause:(NSString *)reason;
+- (BOOL)fitPresentation;
+- (void)captureLayout:(NSString *)event;
+- (NSDictionary *)geometrySnapshot;
 @end
 @implementation PPOFloatingTrial
 - (void)record:(NSString *)event {
@@ -43,12 +51,16 @@ static BOOL PPOTrialAllowed(void) {
     if (self.events.count < 16) [self.events addObject:@{@"event": event,
         @"uptime": @(NSProcessInfo.processInfo.systemUptime),
         @"presenter": self.session.snapshot ?: @{},
+        @"geometry": [self geometrySnapshot],
+        @"livePresenter": self.lastLiveSample ?: @{},
         @"containerUserInteractionEnabled": @(self.content.userInteractionEnabled),
         @"closeReason": self.closeReason ?: @"none"}];
     UIView *presentation = self.session.presentationView;
-    NSDictionary *report = @{@"schema": @3, @"version": @"0.8.0~dev.hostsessions1",
+    NSDictionary *report = @{@"schema": @4, @"version": @"0.8.1~dev.layout1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
+        @"geometry": [self geometrySnapshot],
+        @"livePresenter": self.lastLiveSample ?: @{},
         @"presenter": self.session.snapshot ?: @{},
         @"presentationViewUserInteractionEnabled": @(presentation.userInteractionEnabled),
         @"hostWindowIsKey": @(self.window.isKeyWindow),
@@ -85,11 +97,11 @@ static BOOL PPOTrialAllowed(void) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.8.0.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.8.1.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.8.0] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.8.1] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -185,15 +197,14 @@ static BOOL PPOTrialAllowed(void) {
         // No event synthesis or private input/focus calls are introduced.
         self.content.userInteractionEnabled = NO;
         [root.view addSubview:self.content];
-        CGSize native = view.bounds.size;
-        if (!std::isfinite(native.width) || !std::isfinite(native.height) ||
-            native.width <= 0 || native.height <= 0 || native.width > 8192 || native.height > 8192)
-            native = screen.size;
-        view.bounds = CGRectMake(0, 0, native.width, native.height);
-        CGFloat scale = MIN(width / native.width, (height - 44) / native.height);
-        view.transform = CGAffineTransformMakeScale(scale, scale);
-        view.center = CGPointMake(width / 2, (height - 44) / 2);
-        [self.content addSubview:view];
+        // UIKit's private presentation view owns its frame and transform.
+        // Apply PPO scaling only to our own wrapper and leave that view alone.
+        self.scalingWrapper = [UIView new];
+        self.scalingWrapper.clipsToBounds = YES;
+        self.fallbackNativeFrame = screen;
+        [self.scalingWrapper addSubview:view];
+        [self.content addSubview:self.scalingWrapper];
+        if (![self fitPresentation]) return @"Geometria ferestrei nu este disponibilă";
         // Keep existing key-window ownership and app scene foreground/geometry.
         self.window.hidden = NO;
         [self record:@"activate-requested"];
@@ -215,6 +226,16 @@ static BOOL PPOTrialAllowed(void) {
         });
         dispatch_resume(self.timer);
         self.running = YES;
+        [self captureLayout:@"post-layout"];
+        if (self.closed || !self.running) return @"Fereastra nu poate fi afișată";
+        for (NSNumber *delay in @[@0.1, @0.75]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)),
+                dispatch_get_main_queue(), ^{
+                    PPOFloatingTrial *trial = weakSelf;
+                    if (trial && trial.running && !trial.closed && !trial.closing)
+                        [trial captureLayout:delay.doubleValue < 0.5 ? @"layout-100ms" : @"layout-750ms"];
+                });
+        }
         result = @"Fereastră deschisă; închidere automată în 15 s";
         return result;
     } @catch (NSException *exception) {
@@ -225,6 +246,70 @@ static BOOL PPOTrialAllowed(void) {
     } @finally {
         self.opening = NO;
         if (self.closePending || !self.running) [self closeBecause:self.closeReason ?: @"opening-failed"];
+    }
+}
+- (BOOL)fitPresentation {
+    UIView *presentation = self.session.presentationView;
+    if (!presentation || !self.scalingWrapper || !self.content) return NO;
+    CGRect native = presentation.frame;
+    PPOHostRect rectangle = {native.origin.x, native.origin.y, native.size.width, native.size.height};
+    CGRect viewport = self.content.bounds;
+    PPOHostFit fit{};
+    PPOHostRect target = {viewport.origin.x, viewport.origin.y, viewport.size.width, viewport.size.height};
+    self.usedFallbackFrame = native.size.width < 32 || native.size.height < 32 ||
+        !PPOHostFitRect(rectangle, target, &fit);
+    if (self.usedFallbackFrame) {
+        native = self.fallbackNativeFrame;
+        rectangle = {native.origin.x, native.origin.y, native.size.width, native.size.height};
+        if (!PPOHostFitRect(rectangle, target, &fit)) return NO;
+    }
+    self.scalingWrapper.bounds = native;
+    self.scalingWrapper.transform = CGAffineTransformMakeScale(fit.scale, fit.scale);
+    self.scalingWrapper.center = CGPointMake(fit.centerX, fit.centerY);
+    return YES;
+}
+- (NSDictionary *)geometrySnapshot {
+    UIView *presentation = self.session.presentationView;
+    NSMutableArray *chain = [NSMutableArray array];
+    for (UIView *v = presentation; v && chain.count < 8; v = v.superview) {
+        [chain addObject:@{@"class": NSStringFromClass(v.class),
+            @"frame": NSStringFromCGRect(v.frame), @"bounds": NSStringFromCGRect(v.bounds),
+            @"transform": NSStringFromCGAffineTransform(v.transform), @"hidden": @(v.hidden),
+            @"alpha": @(v.alpha), @"subviews": @(v.subviews.count),
+            @"attachedToPPOWindow": @(v.window != nil && v.window == self.window)}];
+    }
+    NSMutableArray *descendants = [NSMutableArray array];
+    NSMutableArray<UIView *> *pending = [NSMutableArray array];
+    if (presentation) [pending addObject:presentation];
+    for (NSUInteger i = 0; i < pending.count && i < 8; i++) {
+        UIView *v = pending[i];
+        [descendants addObject:@{@"class": NSStringFromClass(v.class),
+            @"frame": NSStringFromCGRect(v.frame), @"bounds": NSStringFromCGRect(v.bounds),
+            @"hidden": @(v.hidden), @"alpha": @(v.alpha),
+            @"layerClass": NSStringFromClass(v.layer.class),
+            @"layerChildren": @(v.layer.sublayers.count), @"subviews": @(v.subviews.count)}];
+        for (UIView *child in v.subviews) {
+            if (pending.count >= 8) break;
+            [pending addObject:child];
+        }
+    }
+    return @{@"chain": chain, @"descendants": descendants,
+        @"usedFallbackFrame": @(self.usedFallbackFrame),
+        @"windowFrame": self.window ? NSStringFromCGRect(self.window.frame) : @"none",
+        @"windowHidden": @(!self.window || self.window.hidden),
+        @"hostSceneState": self.windowScene ? @((NSInteger)self.windowScene.activationState) : @(-1)};
+}
+- (void)captureLayout:(NSString *)event {
+    if (!NSThread.isMainThread || self.closed || self.closing || !self.running) return;
+    if (!PPOTrialAllowed()) { [self closeBecause:@"disabled"]; return; }
+    @try {
+        [self.window.rootViewController.view layoutIfNeeded];
+        [(UIView *)self.session.presentationView layoutIfNeeded];
+        if (![self fitPresentation]) { [self closeBecause:@"geometry-refused"]; return; }
+        self.lastLiveSample = [self.session sampleState];
+        [self record:event];
+    } @catch (NSException *exception) {
+        (void)exception; [self closeBecause:@"layout-exception"];
     }
 }
 - (void)closeFromButton:(UIButton *)sender {
@@ -261,13 +346,14 @@ static BOOL PPOTrialAllowed(void) {
         self.content.userInteractionEnabled = NO;
         self.window.hidden = YES;
         // Detach only our container's contents, never a view that failed adoption.
+        [(UIView *)self.session.presentationView removeFromSuperview];
         for (UIView *view in [self.content.subviews copy]) [view removeFromSuperview];
     } @catch (NSException *exception) { (void)exception; uiClean = NO; }
     // Still invalidate our owned presenter if UIKit detachment raised.
     BOOL closed = !self.session || [self.session close];
     @try { self.window.rootViewController = nil; }
     @catch (NSException *exception) { (void)exception; uiClean = NO; }
-    if (uiClean) { self.window = nil; self.content = nil; }
+    if (uiClean) { self.window = nil; self.content = nil; self.scalingWrapper = nil; }
     self.cleanupConfirmed = closed && uiClean;
     self.closing = NO;
     [self record:closed && uiClean ? @"close-returned" : @"cleanup-unconfirmed"];

@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
 Name: PullOver Pro Development
-Version: 0.8.0~dev.hostsessions1
+Version: 0.8.1~dev.layout1
 Architecture: iphoneos-arm64
-Description: App picker and isolated mobile launch service. Single-window Safari/Settings hosting development; explicit reopen requires confirmed cleanup. Other-app support and repeat lifecycle remain unverified on device.
+Description: App picker and isolated mobile launch service. Single-session Safari/Settings hosting with a PPO scaling wrapper and delayed layout observations. Black-content recovery remains unverified on device.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks

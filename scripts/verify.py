@@ -61,6 +61,12 @@ require('@"containerUserInteractionEnabled"' in trial_source and
         '@"inputBlockingGuaranteed": @NO' in trial_source and
         '@"inputRoutingMechanism": @"unconfirmed"' in trial_source,
         'Separate UIView flags from remote input guarantees')
+for attribute in ('bounds', 'transform', 'center', 'frame'):
+    require(not re.search(r'(?<![\w.])(?:view|presentation)\.' + attribute + r'\s*=(?!=)', trial_source),
+            'Private presentation geometry must remain UIKit-owned')
+require('self.scalingWrapper.transform = CGAffineTransformMakeScale' in trial_source and
+        '@"layout-100ms"' in trial_source and '@"layout-750ms"' in trial_source,
+        'Owned-wrapper layout and bounded observations are required')
 slot_source = (ROOT / 'PPOHostSessionSlot.mm').read_text()
 require('self.session.finished' in slot_source and 'self.session.replacementAllowed' in slot_source and
         'self.poisoned = YES' in slot_source, 'Session replacement must fail closed')
@@ -88,7 +94,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.8.0~dev.hostsessions1'), 'Unexpected version')
+    require(field('Version').startswith('0.8.1~dev.layout1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

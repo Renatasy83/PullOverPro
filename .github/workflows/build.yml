@@ -136,6 +136,13 @@ jobs:
             tests/ScenePreflightTests.mm PPOScenePreflight.mm PPOBridgeProtocol.mm \
             -o "$RUNNER_TEMP/ppo-scene-preflight-tests"
           "$RUNNER_TEMP/ppo-scene-preflight-tests" | tee diagnostics/scene-tests.log
+      - name: Test owned wrapper geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/HostGeometryTests.cpp -o "$RUNNER_TEMP/ppo-geometry-tests"
+          "$RUNNER_TEMP/ppo-geometry-tests" | tee diagnostics/geometry-tests.log
       - name: Analyze and test owned scene presenter
         shell: bash
         run: |
@@ -196,7 +203,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.8.0-host-sessions-${{ github.sha }}
+          name: PullOverPro-0.8.1-layout-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

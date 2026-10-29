@@ -18,3 +18,5 @@ The render-confirmed 0.7.1 source is preserved on `stable/verified-safari-render
 Current report correction: [INPUT_REPORT_CORRECTION.md](INPUT_REPORT_CORRECTION.md). The 0.7.2 source is preserved on `stable/verified-safari-timeout`; it does not provide verified remote input blocking.
 
 0.8.0 development adds explicit single-session ownership/reopen after confirmed cleanup and a controlled Settings target, using the existing presenter API surface. Only Safari is device-confirmed so far; repeated UIKit sessions and Settings require the next real-device gate. See [HOST_SESSIONS.md](HOST_SESSIONS.md). The timeout remains15 seconds; this is not a final release.
+
+0.8.1 is a rendering correction candidate: PPO scales an owned wrapper rather than assigning the private presentation view's geometry. Reports include bounded delayed layout and live-state samples. This does not establish that the observed black-content regression is fixed. See [RENDER_LAYOUT_23A355.md](RENDER_LAYOUT_23A355.md).

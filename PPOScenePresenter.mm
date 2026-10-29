@@ -164,6 +164,19 @@ static bool PPOFlag(id receiver, const char *name) {
         self.poisoned = YES; self.state = @"close-exception"; return NO;
     } @finally { self.busy = NO; }
 }
+- (NSDictionary *)sampleState {
+    if (!NSThread.isMainThread) return @{@"status": @"wrong-thread"};
+    if (self.busy) return @{@"status": @"busy"};
+    if (!self.presenter || !self.owned) return @{@"status": @"no-owned-presenter"};
+    self.busy = YES;
+    @try {
+        return @{@"status": @"sampled", @"active": @(PPOFlag(self.presenter, "isActive")),
+            @"hosting": @(PPOFlag(self.presenter, "isHosting")),
+            @"invalidated": @(PPOFlag(self.presenter, "isInvalidated"))};
+    } @catch (NSException *exception) {
+        (void)exception; return @{@"status": @"sample-exception"};
+    } @finally { self.busy = NO; }
+}
 - (NSDictionary *)snapshot {
     return @{@"state": self.state, @"poisoned": @(self.poisoned),
         @"owned": @(self.owned), @"invalidateReturned": @(self.invalidateReturned),

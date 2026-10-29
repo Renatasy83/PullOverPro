@@ -5,7 +5,8 @@
 
 static unsigned checks, creates, activations, invalidations, resolutions;
 static BOOL badView, foreignID, throwCreate, throwView, throwActivate, throwClose, failInvalidate;
-static BOOL reenter;
+static BOOL reenter, throwFlag;
+static unsigned flagReads;
 static PPOScenePresenter *current;
 static void Check(BOOL ok, const char *message) {
     checks++;
@@ -38,9 +39,13 @@ static void Check(BOOL ok, const char *message) {
     if (throwClose) [NSException raise:@"fixture" format:@"close"];
     if (!failInvalidate) self.invalid = YES;
 }
-- (bool)isInvalidated { return self.invalid; }
-- (bool)isActive { return activations > 0 && !self.invalid; }
-- (bool)isHosting { return false; } // may be asynchronous, never equate with pixels
+- (bool)isInvalidated { flagReads++; return self.invalid; }
+- (bool)isActive {
+    flagReads++;
+    if (throwFlag) [NSException raise:@"fixture" format:@"flag"];
+    return activations > 0 && !self.invalid;
+}
+- (bool)isHosting { flagReads++; return false; } // may be asynchronous, never equate with pixels
 @end
 @interface FixtureManager : NSObject
 - (id)createPresenterWithIdentifier:(id)identifier;
@@ -103,7 +108,8 @@ static PPOScenePresenter *NewSession(Class manager = FixtureManager.class,
 }
 static void Reset(void) {
     badView = foreignID = throwCreate = throwView = throwActivate = throwClose = failInvalidate = reenter = NO;
-    creates = activations = invalidations = resolutions = 0;
+    creates = activations = invalidations = resolutions = flagReads = 0;
+    throwFlag = NO;
 }
 int main(void) {
     @autoreleasepool {
@@ -115,10 +121,19 @@ int main(void) {
         reenter = YES;
         Check([current activate] && activations == 1, "activation once");
         Check(![current activate] && activations == 1, "no repeated activation");
+        NSDictionary *live = [current sampleState];
+        Check([live[@"status"] isEqual:@"sampled"] && [live[@"active"] boolValue],
+              "live state samples the current owned presenter");
+        throwFlag = YES;
+        Check([[current sampleState][@"status"] isEqual:@"sample-exception"] && !current.poisoned,
+              "diagnostic getter exception is contained");
+        throwFlag = NO;
         Check(![current.snapshot[@"hostingAfterActivation"] boolValue] &&
               ![current.snapshot[@"visiblePixelsVerified"] boolValue], "flags do not establish rendering");
         Check([current close] && invalidations == 1 && !current.presentationView, "cleanup releases owned references");
         Check([current close] && invalidations == 1, "idempotent close");
+        Check([[current sampleState][@"status"] isEqual:@"no-owned-presenter"],
+              "closed presenter is not sampled");
         Check(![current activate] && ![current prepareScene:[FixtureScene new]], "closed session cannot reopen");
         for (unsigned failure = 0; failure < 3; failure++) {
             Reset(); badView = failure == 0; throwView = failure == 1;
@@ -164,12 +179,15 @@ int main(void) {
         Reset(); current = NewSession();
         dispatch_group_t group = dispatch_group_create();
         dispatch_group_async(group, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+            Check([[current sampleState][@"status"] isEqual:@"wrong-thread"],
+                  "live sampling refuses a worker");
             Check(![current prepareScene:[FixtureScene new]] && ![current activate] && ![current close],
                 "worker rejected without private calls");
         });
         Check(dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)) == 0,
               "worker guard returns immediately");
-        Check(creates == 0 && activations == 0 && invalidations == 0, "worker has no side effects");
+        Check(creates == 0 && activations == 0 && invalidations == 0 && flagReads == 0,
+              "worker has no private getter/operation side effects");
         // Exercise the actual adapter's ownership transitions repeatedly with
         // fake receivers. This does not reproduce UIKit owner arbitration.
         for (unsigned cycle = 0; cycle < 100; cycle++) {

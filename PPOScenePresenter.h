@@ -11,5 +11,7 @@
 - (BOOL)prepareScene:(id)scene;
 - (BOOL)activate;
 - (BOOL)close;
+// Bounded diagnostic read using only the same ABI-checked bool getters.
+- (NSDictionary *)sampleState;
 - (NSDictionary *)snapshot;
 @end
