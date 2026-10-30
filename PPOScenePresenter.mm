@@ -78,6 +78,7 @@ static void PPOContextFlag(id context) {
 @property(nonatomic) BOOL lastHosting;
 @property(nonatomic) BOOL visibilityAttempted;
 @property(nonatomic) BOOL visibilityConfigured;
+@property(nonatomic,strong) NSNumber *visibilityInitiallyEnabled;
 @end
 @implementation PPOScenePresenter
 - (instancetype)initWithManagerClass:(Class)managerClass presenterClass:(Class)presenterClass
@@ -158,9 +159,12 @@ static void PPOContextFlag(id context) {
             if (![original isKindOfClass:contextClass] ||
                 !PPOShape(object_getClass(original), "_isVisibilityPropagationEnabled", @encode(bool))) {
                 self.state = @"unsupported-visibility-context";
-            } else if (PPOFlag(original, "_isVisibilityPropagationEnabled")) {
-                success = YES;
             } else {
+                self.visibilityInitiallyEnabled = @(PPOFlag(original, "_isVisibilityPropagationEnabled"));
+                if (self.visibilityInitiallyEnabled.boolValue) {
+                    self.visibilityConfigured = YES;
+                    return YES;
+                }
                 __block NSUInteger callbacks = 0;
                 __block BOOL changed = NO;
                 accepting = YES;
@@ -256,6 +260,7 @@ static void PPOContextFlag(id context) {
         @"activeAfterActivation": @(self.lastActive), @"hostingAfterActivation": @(self.lastHosting),
         @"visibilityConfigurationAttempted": @(self.visibilityAttempted),
         @"visibilityPropagationConfigured": @(self.visibilityConfigured),
+        @"visibilityPropagationInitiallyEnabled": self.visibilityInitiallyEnabled ?: (id)NSNull.null,
         @"visiblePixelsVerified": @NO, @"inputRoutingVerified": @NO,
         @"systemPresentationRestoredVerified": @NO};
 }

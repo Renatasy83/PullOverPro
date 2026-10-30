@@ -223,6 +223,8 @@ int main(void) {
               "success remains prepared with exactly one setter and modifier");
         Check([current.snapshot[@"visibilityPropagationConfigured"] boolValue] &&
               [current.snapshot[@"visibilityConfigurationAttempted"] boolValue], "historical success flags recorded");
+        Check([current.snapshot[@"visibilityPropagationInitiallyEnabled"] isEqual:@NO],
+              "initially disabled state is distinguished from an already-enabled context");
         SharedUnchanged();
         Check(!Configure() && setters == 1 && modifierCalls == 1, "success cannot configure twice");
         Check([current activate] && activations == 1, "configured owned presenter can activate");
@@ -246,6 +248,8 @@ int main(void) {
         Reset(); initialContext = [[VisibilityContext alloc] initWithEnabled:true]; Prepare();
         Check(Configure() && modifierCalls == 0 && setters == 0,
               "already-enabled owned context needs no setter or modifier");
+        Check([current.snapshot[@"visibilityPropagationInitiallyEnabled"] isEqual:@YES],
+              "already-enabled context is recorded without claiming a new mutation");
         Check([current.snapshot[@"visibilityPropagationConfigured"] boolValue] && [current close],
               "already-enabled context is recorded and releases normally");
         SharedUnchanged();
