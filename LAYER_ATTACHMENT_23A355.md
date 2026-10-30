@@ -66,3 +66,31 @@ No additional installation or blind foreground/priority mutation is justified by
 Static follow-up inspected FBScene updateSettings:withTransitionContext:completion: at0x1a842b00c in the pinned23A355 FrontBoard image. The method performs nontrivial work, including a settings getter and diffFromSettings:toSettings: dispatch (stubs0x1a849bbe0 and0x1a8496300). Presence of this method and the original project's usage do not establish reversible ownership of scene settings or a safe background-hosting contract. No settings setter or update callback was invoked or enabled in the port.
 
 This update changes documentation only. Main/stable source and the installed executable remain unchanged; no new CI runtime-validation claim is made.
+
+
+## Device evidence:0.8.2 source layers disappear on the foreground-to-background transition
+
+The actual schema5 host-0.8.2.json contains one Safari session and13 events, with all pinned framework UUIDs matching and unique source selection. The guarded source reader succeeds on the device: layerManager/settings/isActive, layers, type and isBackgrounded reads complete without reported ABI/class failure or exception. This validates those bounded reads for this sample, not arbitrary scene mutations or full runtime compatibility.
+
+Observed timeline, relative to prepare-requested:
+
+| Sample time | settingsBackgrounded | sceneActive | Source layer count/types | Context-host views | PPO presenter active/hosting |
+| --- | --- | --- | --- | --- | --- |
+|0.019s to2.038s|false|true|2 / [1,1]|2|true / true|
+|4.032s to12.039s|true|true|0 / []|0|true / true|
+
+The first background/empty observation occurs at4.032s; the transition is bracketed between the2.038s and4.032s samples, not timed exactly to4 seconds. Across those five later samples, the PPO window remains visible and its host UIWindowScene remains foreground-active. The private source FBScene.isActive flag also remains true: it is not equivalent to application foreground state or available render content. The layer type values are observed integers, not an inferred layer-type enum definition.
+
+The automatic-close path completes at approximately15.043s: closed, invalidateReturned=true, owned=false, poisoned=false, replacementAllowed=true. The close record carries the historical last source/presenter samples from12 seconds; it is not a new source-state read after teardown.
+
+This is direct runtime evidence that source-layer loss accompanies backgrounding in the reproduced failure. A geometry-only correction, presenter.isHosting or an invented presentedLayerTypes mask cannot be treated as a demonstrated remedy for an observed empty source set. This does not establish why the client stops supplying layers, actual process suspension/death, missing entitlements, injection failure, or the precise lifecycle operation needed to keep rendering. No crash/watchdog cause is inferred.
+
+No repeat of the same device test or another diagnostic-only installation is requested for these already successful reads. The next functional work must address source scene/client lifecycle with a separately owned, releasable request and verified semantics, instead of silently changing foreign scene settings. Restoring an old full settings snapshot could overwrite newer system state, while blindly setting foreground=false at close could background an application the user has since opened. Neither is accepted as a recovery strategy.
+
+### Static lifecycle follow-up
+
+The exact23A355 SpringBoard framework in the already verified dyld cache was inspected locally; no Apple binary is distributed with the project. SBSceneManager.assertBackgroundedStatusForScenes: at0x21d6d38d4 returns a SBSceneBackgroundedStatusAssertion, and the inspected paths track an NSCountedSet named _assertedBackgroundScenes and invoke manager state-update work. The method name alone does not establish a foreground-rendering lease; it was not invoked. SBDeviceApplicationSceneHandle also declares activity/jetsam/resource assertions whose signed-char modes are not defined by their ABI. No guessed modes are used. The application-protection visibility assertion found on a separate assistant is not an app-rendering lease and is outside this port's scope.
+
+FBScene.isMutable at0x1a83debfc consults internal transaction/update/deactivation/invalidation state; this is evidence of lifecycle constraints, not permission to mutate scene state whenever a Boolean is true. The original port's KVC _mutableSettings/setForeground/updateSettings sequence does not supply a verified current ownership/rollback contract. Static method presence is insufficient to bypass those constraints.
+
+No new private runtime operation, source mutation, DEB version, install or respring was introduced by this evidence update. Main and all stable branches remain untouched. The existing successful Actions result for executable source59773b51c37578c33e062d0a1d55439ce51a1c7a remains the automated baseline; documentation-only evidence does not require or claim another runtime validation run.
