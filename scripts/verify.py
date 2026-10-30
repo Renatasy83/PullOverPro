@@ -87,6 +87,33 @@ for attribute in ('bounds', 'transform', 'center', 'frame'):
 require('self.scalingWrapper.transform = CGAffineTransformMakeScale' in trial_source and
         '@"layout-100ms"' in trial_source and '@"layout-750ms"' in trial_source,
         'Owned-wrapper layout and bounded observations are required')
+owned_source = (ROOT / 'PPOOwnedSceneHost.mm').read_text()
+owned_trial = (ROOT / 'PPOOwnedSafariTrial.mm').read_text()
+for pattern in (r'valueForKey:', r'object_getIvar', r'method_getImplementation', r'performSelector',
+                r'dlopen', r'dlsym', r'setForeground:', r'updateSettings', r'setHostedSecureApp',
+                r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\(',
+                r'foregroundAssertionForReason:', r'createSceneWithDefinition:'):
+    require(not re.search(pattern, owned_source + owned_trial), f'Unexpected separate-scene operation: {pattern}')
+require(owned_source.count('objc_msgSend') == 4, 'Unexpected separate-scene dispatch surface')
+require(set(re.findall(r'HostSet\([^\n]*?"(\w+:)"', owned_source)) ==
+        {'setSceneWorkspace:', 'setSceneIdentifier:', 'setSceneSpecification:'},
+        'Separate-scene setters must only configure owned constructor input')
+require(set(re.findall(r'HostTell\([^\n]*?"(\w+)"', owned_source)) == {'invalidate'},
+        'Separate-scene operations must only invalidate verified own objects')
+require('objc_msgSend' not in owned_trial and 'initWithClasses:classes' in owned_trial,
+        'Separate-scene UI must delegate private operations to ownership adapter')
+require('[bundleIdentifier isEqual:@"com.apple.mobilesafari"]' in owned_trial,
+        'Only firmware-manifest-verified Safari may create a separate scene')
+require('childView.frame =' in owned_trial and
+        owned_trial.index('childView.frame =') < owned_trial.index('[root addChildViewController:child]'),
+        'Provide public native child geometry before attachment/appearance')
+require('self.cleanupPolls >= 8' in owned_trial and 'NSEC_PER_SEC / 4' in owned_trial and
+        'self.deadline = NSProcessInfo.processInfo.systemUptime + 15' in owned_trial,
+        'Bounded trial and asynchronous cleanup required')
+production_sources = (ROOT / 'Makefile').read_text()
+require('PPOOwnedSceneHost.mm PPOOwnedSafariTrial.mm' in production_sources and
+        'PPOFloatingTrial.mm' not in production_sources,
+        'Production must use the separate-scene adapter without borrowed-scene fallback')
 slot_source = (ROOT / 'PPOHostSessionSlot.mm').read_text()
 require('self.session.finished' in slot_source and 'self.session.replacementAllowed' in slot_source and
         'self.poisoned = YES' in slot_source, 'Session replacement must fail closed')
@@ -114,7 +141,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.8.3~dev.visibility1'), 'Unexpected version')
+    require(field('Version').startswith('0.9.0~dev.ownedscene1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

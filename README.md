@@ -28,3 +28,6 @@ The actual0.8.1 report shows valid visible geometry and live active/hosting stat
 
 
 0.8.3 development tests visibility propagation through a mutable copy of PPO's own presenter context. This uses UIKit's scoped visibility-inheritance path, without changing foreign scene foreground/security settings or the shared default context. Background rendering remains unverified until an actual device transition succeeds. See [VISIBILITY_PROPAGATION_23A355.md](VISIBILITY_PROPAGATION_23A355.md).
+
+
+Current isolated work on debug/owned-safari-scene is0.9.0: a Safari-only independent scene/workspace trial. Exact firmware declares Safari multiple-scene support and Settings does not. The new controller must prove ownership and inactivity before UIKit attachment, and cleanup requires an invalid scene plus an empty own workspace. This is not a final release or verified background-rendering repair. See [OWNED_SAFARI_SCENE_23A355.md](OWNED_SAFARI_SCENE_23A355.md). The0.8.3 report confirms visibility propagation alone was insufficient; no repeated visibility test is needed.

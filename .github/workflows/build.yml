@@ -157,7 +157,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for source in PPOScenePresenter.mm PPOFloatingTrial.mm PPOHostSessionSlot.mm; do
+          for source in PPOScenePresenter.mm PPOFloatingTrial.mm PPOOwnedSafariTrial.mm PPOOwnedSceneHost.mm PPOHostSessionSlot.mm; do
             xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
               -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
               -Xanalyzer -analyzer-output=text "$source"
@@ -171,6 +171,13 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
             tests/HostSessionSlotTests.mm PPOHostSessionSlot.mm -o "$RUNNER_TEMP/ppo-host-slot-tests"
           "$RUNNER_TEMP/ppo-host-slot-tests" | tee diagnostics/host-slot-tests.log
+      - name: Test isolated scene and workspace ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
+            tests/OwnedSceneHostTests.mm PPOOwnedSceneHost.mm -o "$RUNNER_TEMP/ppo-owned-scene-tests"
+          "$RUNNER_TEMP/ppo-owned-scene-tests" | tee diagnostics/owned-scene-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -216,7 +223,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.8.3-visibility-${{ github.sha }}
+          name: PullOverPro-0.9.0-ownedscene-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

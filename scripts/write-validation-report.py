@@ -7,6 +7,7 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'owned-scene-tests.log': 'Owned scene host tests passed:',
     'visibility-tests.log': 'Visibility context tests passed:',
     'layer-probe-tests.log': 'Scene layer probe tests passed:',
     'geometry-tests.log': 'Host geometry tests passed:',
@@ -43,7 +44,7 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'owned-context visibility propagation and source-layer diagnostics; background rendering not device-verified',
+    'floating_application_hosting_implemented': 'Safari-only isolated own-scene/workspace trial; client admission and rendering not device-verified',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -52,7 +53,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Not a final candidate. Owned-context visibility propagation candidate. On0.8.2 Safari loses source layers when backgrounded. This build changes only PPO presenter visibility propagation; it does not establish restored background rendering.**\n\n'
+    '**Not a final candidate. Safari-only independent scene candidate. Firmware declares Safari supports multiple scenes and Settings does not. No original source scene is hosted or mutated. Client admission, rendering and actual teardown remain device-unverified.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)
