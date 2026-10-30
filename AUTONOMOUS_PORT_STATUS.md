@@ -1,37 +1,29 @@
 # Autonomous port status — 2026-10-30
 
-## Scope and preserved baselines
+Current isolated candidate:0.9.0~dev.ownedscene1 on debug/owned-safari-scene. This is an incomplete Safari-only independent-scene trial, not a final release or confirmed Dopamine/ElleKit compatibility.
 
-Development remains on debug/autonomous-port. main is unchanged Alpha4 at af336d84a6b4812e6b6406af87803fb15bf29c3b. The verified picker and Safari launch references remain preserved; stable/verified-safari-over-newterm and stable/verified-safari-timeout preserve the previously user-tested0.7.2 source at411cd127fa18005989d05f2aefff59b697ee1029. Original PullOver Pro by c1d3rdev/Will Smillie remains attributed under GPL-3.0.
+## Preserved references
 
-This is an incomplete port. Current hosting is an explicit, single-session,15-second trial restricted to Safari and Settings. Arbitrary-app hosting, a persistent window product, independent input isolation and full platform compatibility are not established.
+main remains Alpha4 at af336d84a6b4812e6b6406af87803fb15bf29c3b. Existing picker/launch baselines remain. stable/verified-safari-over-newterm and stable/verified-safari-timeout preserve the previously user-tested0.7.2 source411cd127fa18005989d05f2aefff59b697ee1029. debug/autonomous-port retains the0.8.3 work. Original PullOver Pro attribution and GPL-3.0 remain.
 
-## Actual device evidence
+## Device evidence driving the change
 
-The target is iPhone12,5, iOS26.0.1 build23A355. Dopamine rootless is user-reported; ElleKit1.2 and OS/device identifiers were shown on the phone. The exact Dopamine version is not recorded.
+The target is iPhone12,5, iOS26.0.1 build23A355; Dopamine rootless is user-reported and ElleKit1.2 was shown on the phone. The exact Dopamine version is not recorded.
 
-The public UIKit overlay and application picker work according to the user. Safari launch from the panel through the mobile launchd/file-mailbox service was confirmed on0.6.1. SpringBoard does not spawn a helper or call private LaunchServices. Rootless launchctl lookup was corrected to accommodate /var/jb/usr/bin/launchctl. Personal data and other tweaks are outside this task.
+The user confirmed overlay/picker operation, Safari launching from the panel through the mobile file-mailbox service, and earlier Safari rendering/input observations.0.8.2 directly recorded source layer count2 to0 while settingsBackgrounded became true, with PPO window visible and presenter active/hosting still true.0.8.3 recorded visibility already enabled in two sessions, and a successful false-to-true context operation in another; background source layers remained absent. All three owned presenter cleanups completed. JSON is not a visual or input ownership trace. The historical watchdog root cause remains unconfirmed because the actual reports were not supplied. See DEVICE_VALIDATION.md.
 
-The user confirmed Safari rendering, touch controls and keyboard/navigation on0.7.2, then confirmed Safari over NewTerm and automatic close. The old touch toggle was misleading and removed: UIView.userInteractionEnabled does not prove remote event blocking. Those observations are separate from trace-level input ownership.
+## Independent scene architecture
 
-0.8.0/0.8.1 produced black content in the other-app arrangement. On0.8.1, foreground Safari rendered, but became black after switching to NewTerm. Reports showed context-host views present in the later Safari sessions and absent in the black ones with equal geometry.
+Verified exact firmware manifests declare Safari supports multiple application scenes (BrowserWindowScene/BrowserSceneDelegateRouter), while Settings does not. The candidate therefore creates only a new Safari scene in a fresh empty random workspace. The original Safari scene supplies immutable identity/specification inputs and is never hosted, invalidated or mutated by this adapter. Before UIKit attachment, guards prove new pointer/namespace/client identity, component binding and inactive state. Native public child geometry precedes attachment; UIKit's own lifecycle/provider performs activation and settings updates for the new scene.
 
-The actual0.8.2 report now brackets the source-layer transition between2.038s and4.032s: source layer count2 to0, settingsBackgrounded false totrue, while source FBScene.isActive and the owned presenter active/hosting flags remain true. The own window stays visible, and owned teardown completes by timeout at15.043s without poisoning. This confirms source-layer loss accompanying backgrounding in the reproduced failure. It does not demonstrate process suspension, a specific entitlement/injection failure or a safe foreign-scene foreground mutation. The original watchdog reports were not supplied; their root cause remains unconfirmed. See DEVICE_VALIDATION.md.
+Uncertain private constructors remain strongly pinned because their automatic destruction can invalidate scene state. Cleanup invalidates only the verified owned controller, then requires invalid own scene and empty workspace before workspace invalidation. The UI remains bounded to15 seconds, cleanup polling to2 seconds, and uncertain cleanup blocks another attempt. The old borrowed-scene UI adapter is excluded from the production Makefile. No guessed foreground/security/mask/assertion mode or manual event-deferral operation is added.
 
-## Current candidate:0.8.3~dev.visibility1
+See OWNED_SAFARI_SCENE_23A355.md for concrete static evidence, native test boundaries, normal destructor semantics and recovery. Report schema7:/var/mobile/Library/Logs/PullOverPro/host-0.9.0.json separates hosted-scene samples from original-scene samples.
 
-Exact23A355 static inspection identified a scoped option: _UIScenePresenter.modifyPresentationContext: copies its own context/settings, invokes a synchronous mutable-copy callback and updates its own view. The candidate changes only that copy's visibility-propagation Boolean, with declared-ABI/class/callback/readback guards. UIKit manages its own scoped visibility-inheritance grant and drops its own propagation target on invalidation.
+## Completed automation and remaining live gate
 
-No foreign scene foreground/security flag, shared default context, guessed layer mask or assertion mode is changed. The broad SBAppViewController path was rejected because it changes existing secure-host state, workspace/layout transactions and can background the scene at close. Background source rendering from the new scoped propagation operation remains a live-device question, not a conclusion from binary inspection or fake receivers.
+Executable sourcea51c7cdfbb5515cff23f0ec29fc60dd29184f9a0 passed GitHub Actions run41116185796. New ownership tests573 checks with ASan/UBSan; existing suites, iOS Clang analysis, Theos rootless build, arm64/arm64e binary checks, package/lifecycle/license inspection and evidence generation passed. Artifact13005358295 contains DEB and full validation reports.
 
-All trial bounds, cleanup ownership and emergency-disable behavior remain. Report schema6 is /var/mobile/Library/Logs/PullOverPro/host-0.8.3.json; historical configuration-before/after flags do not establish delivered OS grants. See VISIBILITY_PROPAGATION_23A355.md.
+Local execution is Linux; Actions uses macOS Intel native mocks, not iOS SpringBoard/WindowServer. No compatible physical Apple Silicon Mac is accessible for vphone-cli; it was not used. Actual Safari scene admission/connection, pixels, input and client/process/session persistence cleanup remain untested for this candidate. All-app support, persistent windows, lock/orientation/process-death stress and full platform compatibility remain outstanding.
 
-## Execution and remaining gate
-
-Executable source1e2fc59dd5659451ed63618093b0308d12f44e25 completed GitHub Actions run41023747037 successfully: iOS Clang analysis,613 native visibility-context checks with ASan/UBSan, all existing suites, rootless Theos compilation for arm64/arm64e, payload/lifecycle/license inspection and generated validation reports. Artifact12962158828 contains the DEB and evidence. These are completed automated checks, not actual WindowServer/client background-rendering tests.
-
-The available local environment is Linux, and Actions uses macOS Intel for SDK/Theos and native fixtures. No compatible physical Apple Silicon Mac is accessible for vphone-cli; it was not used. Native UIKit/WindowServer/RunningBoard behavior, lock/orientation/process-death handling and full Dopamine/ElleKit compatibility cannot be claimed from this environment.
-
-The next indispensable device gate is one0.8.3 foreground-Safari to NewTerm transition, its visible outcome and host-0.8.3.json. No automatic install/respring is performed. No repeated tests on the already understood0.8.2 transition are needed.
-
-Recovery remains manual X or the15-second timeout, with /var/mobile/.ppo_disable checked for active/new trials and overlay startup. If SpringBoard injection prevents startup, boot Dopamine without tweak injection and remove only this package. Complete compatibility and final-candidate status remain false until broader actual-device evidence exists.
+The indispensable next gate is one separate Safari trial over NewTerm plus visual outcome and host-0.9.0.json. No repeat of the already understood visibility-only experiment is requested. Nothing was installed or resprung automatically. Recovery is X/timeout, disabling new attempts with /var/mobile/.ppo_disable, and manual respring for quarantined resources. If injection prevents startup, boot Dopamine without injection and remove only this package. Personal data and other tweaks are not modified.
