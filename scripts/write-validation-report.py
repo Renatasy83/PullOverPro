@@ -7,6 +7,7 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'visibility-tests.log': 'Visibility context tests passed:',
     'layer-probe-tests.log': 'Scene layer probe tests passed:',
     'geometry-tests.log': 'Host geometry tests passed:',
     'host-slot-tests.log': 'Host session slot tests passed:',
@@ -42,7 +43,7 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'bounded read-only source layer and background-state diagnostics; background hosting not repaired or verified',
+    'floating_application_hosting_implemented': 'owned-context visibility propagation and source-layer diagnostics; background rendering not device-verified',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -51,7 +52,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Not a final candidate. Read-only layer diagnostic build. On0.8.1 Safari renders over foreground Safari and becomes black when switching to NewTerm. This build does not repair or verify background hosting.**\n\n'
+    '**Not a final candidate. Owned-context visibility propagation candidate. On0.8.2 Safari loses source layers when backgrounded. This build changes only PPO presenter visibility propagation; it does not establish restored background rendering.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)

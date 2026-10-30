@@ -166,6 +166,9 @@ jobs:
             tests/ScenePresenterTests.mm PPOScenePresenter.mm -o "$RUNNER_TEMP/ppo-presenter-tests"
           "$RUNNER_TEMP/ppo-presenter-tests" | tee diagnostics/presenter-tests.log
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
+            tests/VisibilityContextTests.mm PPOScenePresenter.mm -o "$RUNNER_TEMP/ppo-visibility-tests"
+          "$RUNNER_TEMP/ppo-visibility-tests" | tee diagnostics/visibility-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
             tests/HostSessionSlotTests.mm PPOHostSessionSlot.mm -o "$RUNNER_TEMP/ppo-host-slot-tests"
           "$RUNNER_TEMP/ppo-host-slot-tests" | tee diagnostics/host-slot-tests.log
       - name: Compile and package
@@ -213,7 +216,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.8.2-layers-${{ github.sha }}
+          name: PullOverPro-0.8.3-visibility-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

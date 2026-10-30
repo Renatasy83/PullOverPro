@@ -9,6 +9,10 @@
 - (instancetype)initWithManagerClass:(Class)managerClass presenterClass:(Class)presenterClass
                           viewClass:(Class)viewClass;
 - (BOOL)prepareScene:(id)scene;
+// Own presenter context only; exact23A355 synchronous mutable-copy callback.
+// Failure closes the owned presenter. No foreign scene/default-manager writes.
+- (BOOL)enableVisibilityPropagationWithContextClass:(Class)contextClass
+                               mutableContextClass:(Class)mutableContextClass;
 - (BOOL)activate;
 - (BOOL)close;
 // Bounded diagnostic read using only the same ABI-checked bool getters.

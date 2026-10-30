@@ -65,7 +65,7 @@ static BOOL PPOTrialAllowed(void) {
         @"containerUserInteractionEnabled": @(self.content.userInteractionEnabled),
         @"closeReason": self.closeReason ?: @"none"}];
     UIView *presentation = self.session.presentationView;
-    NSDictionary *report = @{@"schema": @5, @"version": @"0.8.2~dev.layers1",
+    NSDictionary *report = @{@"schema": @6, @"version": @"0.8.3~dev.visibility1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
         @"geometry": geometry,
@@ -107,11 +107,11 @@ static BOOL PPOTrialAllowed(void) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.8.2.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.8.3.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.8.2] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.8.3] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -172,6 +172,12 @@ static BOOL PPOTrialAllowed(void) {
             presenterClass:objc_lookUpClass("_UIScenePresenter") viewClass:UIView.class];
         [self record:@"prepare-requested"];
         if (self.closePending || !PPOTrialAllowed() || ![self.session prepareScene:foreignScene]) return result;
+        if (![self.session enableVisibilityPropagationWithContextClass:objc_lookUpClass("UIScenePresentationContext")
+                mutableContextClass:objc_lookUpClass("UIMutableScenePresentationContext")]) {
+            [self record:@"visibility-refused"];
+            return @"Propagarea vizibilității nu este disponibilă";
+        }
+        [self record:@"visibility-configured"];
         UIView *view = self.session.presentationView;
         // A new presenter must supply an unattached view. Never steal/reparent
         // an existing system-owned view, even if a getter returns one.

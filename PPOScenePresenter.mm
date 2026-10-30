@@ -46,6 +46,20 @@ static bool PPOFlag(id receiver, const char *name) {
         [NSException raise:@"PPOUnsupportedABI" format:@"state"];
     return ((bool (*)(id, SEL))objc_msgSend)(receiver, sel_registerName(name));
 }
+static BOOL PPOArgumentShape(Class cls, const char *name, const char *argument) {
+    Method m = PPOMethod(cls, name);
+    return m && method_getNumberOfArguments(m) == 3 &&
+        PPOTypeMatches(method_copyReturnType(m), @encode(void)) &&
+        PPOTypeMatches(method_copyArgumentType(m, 0), @encode(id)) &&
+        PPOTypeMatches(method_copyArgumentType(m, 1), @encode(SEL)) &&
+        PPOTypeMatches(method_copyArgumentType(m, 2), argument);
+}
+static void PPOContextFlag(id context) {
+    if (!PPOArgumentShape(object_getClass(context), "_setVisibilityPropagationEnabled:", @encode(bool)))
+        [NSException raise:@"PPOUnsupportedContext" format:@"setter"];
+    ((void (*)(id, SEL, bool))objc_msgSend)(context,
+        sel_registerName("_setVisibilityPropagationEnabled:"), true);
+}
 
 @interface PPOScenePresenter ()
 @property(nonatomic,strong) id presenter;
@@ -62,6 +76,8 @@ static bool PPOFlag(id receiver, const char *name) {
 @property(nonatomic) BOOL invalidateReturned;
 @property(nonatomic) BOOL lastActive;
 @property(nonatomic) BOOL lastHosting;
+@property(nonatomic) BOOL visibilityAttempted;
+@property(nonatomic) BOOL visibilityConfigured;
 @end
 @implementation PPOScenePresenter
 - (instancetype)initWithManagerClass:(Class)managerClass presenterClass:(Class)presenterClass
@@ -123,6 +139,62 @@ static bool PPOFlag(id receiver, const char *name) {
         }
     }
 }
+- (BOOL)enableVisibilityPropagationWithContextClass:(Class)contextClass
+                               mutableContextClass:(Class)mutableContextClass {
+    if (!NSThread.isMainThread || self.busy || self.poisoned || !self.owned ||
+        self.visibilityAttempted || ![self.state isEqual:@"prepared"]) return NO;
+    self.visibilityAttempted = YES; self.busy = YES;
+    BOOL success = NO;
+    __block BOOL accepting = NO;
+    @try {
+        if (PPOFlag(self.presenter, "isInvalidated")) {
+            self.state = @"visibility-presenter-invalidated";
+        } else if (!contextClass || !mutableContextClass ||
+            !PPOShape(object_getClass(self.presenter), "presentationContext", @encode(id)) ||
+            !PPOArgumentShape(object_getClass(self.presenter), "modifyPresentationContext:", "@?")) {
+            self.state = @"unsupported-visibility-abi";
+        } else {
+            id original = PPOObject(self.presenter, "presentationContext");
+            if (![original isKindOfClass:contextClass] ||
+                !PPOShape(object_getClass(original), "_isVisibilityPropagationEnabled", @encode(bool))) {
+                self.state = @"unsupported-visibility-context";
+            } else if (PPOFlag(original, "_isVisibilityPropagationEnabled")) {
+                success = YES;
+            } else {
+                __block NSUInteger callbacks = 0;
+                __block BOOL changed = NO;
+                accepting = YES;
+                void (^configure)(id) = ^(id context) {
+                    // Reject asynchronous/retained callbacks without touching any
+                    // context. Exact firmware invokes one callback synchronously.
+                    if (!NSThread.isMainThread || !accepting) return;
+                    callbacks++;
+                    if (callbacks != 1 || context == original ||
+                        ![context isKindOfClass:mutableContextClass])
+                        [NSException raise:@"PPOUnsupportedContext" format:@"callback"];
+                    PPOContextFlag(context);
+                    changed = YES;
+                };
+                ((void (*)(id, SEL, void (^)(id)))objc_msgSend)(self.presenter,
+                    sel_registerName("modifyPresentationContext:"), configure);
+                accepting = NO;
+                id updated = PPOObject(self.presenter, "presentationContext");
+                success = callbacks == 1 && changed && updated != original &&
+                    [updated isKindOfClass:contextClass] &&
+                    PPOFlag(updated, "_isVisibilityPropagationEnabled");
+                if (!success) self.state = @"visibility-readback-failed";
+            }
+        }
+        self.visibilityConfigured = success;
+    } @catch (NSException *exception) {
+        (void)exception; self.state = @"visibility-configuration-exception";
+    } @finally { accepting = NO; self.busy = NO; }
+    if (!success) {
+        NSString *failure = self.state;
+        if ([self close]) self.state = failure;
+    }
+    return success;
+}
 - (BOOL)activate {
     if (!NSThread.isMainThread || self.busy || self.poisoned ||
         ![self.state isEqual:@"prepared"]) return NO;
@@ -172,7 +244,8 @@ static bool PPOFlag(id receiver, const char *name) {
     @try {
         return @{@"status": @"sampled", @"active": @(PPOFlag(self.presenter, "isActive")),
             @"hosting": @(PPOFlag(self.presenter, "isHosting")),
-            @"invalidated": @(PPOFlag(self.presenter, "isInvalidated"))};
+            @"invalidated": @(PPOFlag(self.presenter, "isInvalidated")),
+            @"visibilityPropagationConfigured": @(self.visibilityConfigured)};
     } @catch (NSException *exception) {
         (void)exception; return @{@"status": @"sample-exception"};
     } @finally { self.busy = NO; }
@@ -181,6 +254,8 @@ static bool PPOFlag(id receiver, const char *name) {
     return @{@"state": self.state, @"poisoned": @(self.poisoned),
         @"owned": @(self.owned), @"invalidateReturned": @(self.invalidateReturned),
         @"activeAfterActivation": @(self.lastActive), @"hostingAfterActivation": @(self.lastHosting),
+        @"visibilityConfigurationAttempted": @(self.visibilityAttempted),
+        @"visibilityPropagationConfigured": @(self.visibilityConfigured),
         @"visiblePixelsVerified": @NO, @"inputRoutingVerified": @NO,
         @"systemPresentationRestoredVerified": @NO};
 }

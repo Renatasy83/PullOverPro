@@ -25,3 +25,6 @@ The actual0.8.1 report shows valid visible geometry and live active/hosting stat
 
 
 0.8.2 development adds bounded read-only source layer/background-state samples across the observed Safari-to-NewTerm transition. It does not repair background hosting. Native fixtures and CI must pass before any device recommendation; actual private getter success and the transition still require the target. See [SCENE_LAYER_PROBE.md](SCENE_LAYER_PROBE.md).
+
+
+0.8.3 development tests visibility propagation through a mutable copy of PPO's own presenter context. This uses UIKit's scoped visibility-inheritance path, without changing foreign scene foreground/security settings or the shared default context. Background rendering remains unverified until an actual device transition succeeds. See [VISIBILITY_PROPAGATION_23A355.md](VISIBILITY_PROPAGATION_23A355.md).

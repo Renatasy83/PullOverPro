@@ -44,23 +44,32 @@ for pattern in (r'valueForKey:', r'object_getIvar', r'method_getImplementation',
 require('count > 32' in probe_source and 'NSThread.isMainThread' in probe_source and
         'class_copyMethodList' in probe_source, 'Layer probe bounds and dispatch guards required')
 presenter_source = (ROOT / 'PPOScenePresenter.mm').read_text()
-require(presenter_source.count('objc_msgSend') == 4, 'Unexpected presenter dispatch surface')
+require(presenter_source.count('objc_msgSend') == 6, 'Unexpected presenter dispatch surface')
 require(set(re.findall(r'PPOObject\([^\n]*?"(\w+)"', presenter_source)) ==
-        {'uiPresentationManager', 'identifier', 'presentationView'}, 'Unexpected presenter getter')
+        {'uiPresentationManager', 'identifier', 'presentationView', 'presentationContext'}, 'Unexpected presenter getter')
 require(set(re.findall(r'PPOTell\([^\n]*?"(\w+)"', presenter_source)) ==
         {'activate', 'invalidate'}, 'Unexpected presenter mutation')
 require(set(re.findall(r'PPOFlag\([^\n]*?"(\w+)"', presenter_source)) ==
-        {'isInvalidated', 'isActive', 'isHosting'}, 'Unexpected presenter state getter')
+        {'isInvalidated', 'isActive', 'isHosting', '_isVisibilityPropagationEnabled'}, 'Unexpected presenter state getter')
 trial_source = (ROOT / 'PPOFloatingTrial.mm').read_text()
 for pattern in (r'%hook\b', r'%init\b', r'valueForKey:', r'method_getImplementation',
                 r'method_invoke', r'dlopen', r'dlsym', r'performSelector',
                 r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\(',
-                r'setForeground:', r'updateSettings', r'modifyPresentationContext',
+                r'setForeground:', r'updateSettings', r'modifyDefaultPresentationContext',
                 r'createPresenterWithIdentifier:priority:', r'object_getIvar',
                 r'makeKeyWindow', r'makeKeyAndVisible', r'becomeFirstResponder',
                 r'BKSHID', r'IOHID', r'GS\w*Event'):
     require(not re.search(pattern, presenter_source + trial_source),
             f'Unexpected hosting operation: {pattern}')
+require('modifyPresentationContext' not in trial_source,
+        'Private context mutation belongs only in the owned-presenter adapter')
+require('"modifyPresentationContext:", "@?"' in presenter_source and
+        '"_setVisibilityPropagationEnabled:", @encode(bool)' in presenter_source and
+        'context == original' in presenter_source and 'callbacks != 1' in presenter_source and
+        '!accepting' in presenter_source, 'Own-context callback shape and ownership guards required')
+require('setHostedSecureApp' not in presenter_source + trial_source and
+        'setPresentedLayerTypes' not in presenter_source + trial_source,
+        'No shared scene/security or guessed layer-mask writes')
 require('objc_msgSend' not in trial_source, 'UIKit trial must not dispatch private APIs')
 require('self.content.userInteractionEnabled = NO' in trial_source,
         'Preserve the container flag used in the observed device trial')
@@ -105,7 +114,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.8.2~dev.layers1'), 'Unexpected version')
+    require(field('Version').startswith('0.8.3~dev.visibility1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
