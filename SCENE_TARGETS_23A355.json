@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "firmware": {
+    "productType": "iPhone12,5",
+    "productVersion": "26.0.1",
+    "buildVersion": "23A355"
+  },
+  "sourceIPSW": {
+    "url": "https://updates.cdn-apple.com/2025FallFCS/fullrestores/093-44804/921E3C8D-1CE1-4C74-899F-2829E5C29E9D/iPhone12,3,iPhone12,5_26.0.1_23A355_Restore.ipsw",
+    "mainOSMember": "043-93327-010.dmg.aea",
+    "mainOSPlaintextSHA384": "1c72d887772982c4243da5f5d975f604f4a28a08b0b76b94e76eabf3e9e6ffa4b6366f19c16d9f76bc15a22987046cb9"
+  },
+  "basis": "Selected facts from exact firmware staged-system Info.plist files, read without mounting the image. These are not installed-phone bundle/version checks and do not prove updated-app behavior, iPhone-specific scene admission, rendering, input, entitlements or cleanup. Prior live Safari evidence is recorded separately in DEVICE_VALIDATION.md.",
+  "runtimeCompatibilityConfirmed": false,
+  "applications": [
+    {
+      "bundleIdentifier": "com.apple.mobilesafari",
+      "declaresMultipleScenes": true,
+      "deviceFamilies": [1, 2],
+      "applicationRoleConfigurations": [
+        {
+          "UISceneClassName": "BrowserWindowScene",
+          "UISceneDelegateClassName": "BrowserSceneDelegateRouter"
+        }
+      ],
+      "infoSHA256": "4b87977fd60736987fff8a06f2f96f0753b9adffdb14edefdd08080f2d987f3d",
+      "sourceIPSWPath": "/private/var/staged_system_apps/MobileSafari.app/Info.plist"
+    },
+    {
+      "bundleIdentifier": "com.apple.reminders",
+      "declaresMultipleScenes": true,
+      "deviceFamilies": [1, 2],
+      "applicationRoleConfigurations": [
+        {
+          "UISceneConfigurationName": "RemindersMainScene",
+          "UISceneDelegateClassName": "TTRIWindowSceneController"
+        }
+      ],
+      "infoSHA256": "408cc8718011bd8354b235bb57f870088198d75fb8f14705f5526ac84cb7fb2e",
+      "sourceIPSWPath": "/private/var/staged_system_apps/Reminders.app/Info.plist"
+    },
+    {
+      "bundleIdentifier": "com.apple.MobileAddressBook",
+      "declaresMultipleScenes": true,
+      "deviceFamilies": [1, 2],
+      "applicationRoleConfigurations": [
+        {
+          "UILaunchStoryboardName": "LaunchScreen",
+          "UISceneDelegateClassName": "ContactsSceneDelegate"
+        }
+      ],
+      "infoSHA256": "8f84d4da45177766f9ad7d473cfbc8321adf9661344a5c5b6c910946533cb94c",
+      "sourceIPSWPath": "/private/var/staged_system_apps/Contacts.app/Info.plist"
+    }
+  ]
+}

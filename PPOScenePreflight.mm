@@ -1,5 +1,6 @@
 #import "PPOScenePreflight.h"
 #import "PPOBridgeProtocol.h"
+#import "PPOOwnedApplicationPolicy.h"
 #import "tools/app-launch/PPOLaunchABI.h"
 #import <objc/message.h>
 #include <mach-o/dyld.h>
@@ -205,8 +206,8 @@ NSDictionary *PPOScenePreflight(NSString *bundleIdentifier) {
     BOOL disabled = lstat("/var/mobile/.ppo_disable", &marker) == 0 || errno != ENOENT;
     if (!NSThread.isMainThread) selection = PPOSceneResult(@"wrong-thread", 0, 0, nil);
     else if (disabled) selection = PPOSceneResult(@"disabled", 0, 0, nil);
-    else if (![bundleIdentifier isEqual:@"com.apple.mobilesafari"])
-        selection = PPOSceneResult(@"safari-only", 0, 0, nil);
+    else if (!PPOOwnedApplicationAllowed(bundleIdentifier))
+        selection = PPOSceneResult(@"application-not-eligible", 0, 0, nil);
     else if (![frameworks[@"matches"] boolValue])
         selection = PPOSceneResult(@"framework-mismatch", 0, 0, nil);
     else selection = PPOReadSceneSelection(objc_lookUpClass("FBSceneManager"),

@@ -1,4 +1,5 @@
 #import "PPOOwnedSceneHost.h"
+#import "PPOOwnedApplicationPolicy.h"
 #import "tools/app-launch/PPOLaunchABI.h"
 #import <objc/message.h>
 
@@ -102,6 +103,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
 @property(nonatomic) BOOL workspaceInvalidateAttempted;
 @property(nonatomic) BOOL workspaceInvalidateReturned;
 @property(nonatomic,copy) NSString *preparationFailure;
+@property(nonatomic,copy) NSString *expectedBundleIdentifier;
 @property(nonatomic,copy) NSDictionary *componentBinding;
 - (BOOL)classesSupported;
 - (BOOL)finishCleanupIfPossible;
@@ -165,13 +167,18 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         componentScene && HostShape(componentScene, "scene", @encode(id)) &&
         HostClass(self.classes, @"UIViewController");
 }
-- (BOOL)prepareScene:(id)source {
+- (BOOL)prepareScene:(id)source forBundleIdentifier:(NSString *)identifier {
     __attribute__((objc_precise_lifetime)) PPOOwnedSceneHost *keepAlive = self;
     (void)keepAlive;
     if (!NSThread.isMainThread || self.busy || self.attempted || self.poisoned || self.closed) return NO;
     self.attempted = YES; self.busy = YES;
     BOOL success = NO, cleanFailure = NO;
     @try {
+        if (!PPOOwnedApplicationAllowed(identifier)) { self.state = @"application-not-eligible"; return NO; }
+        self.expectedBundleIdentifier = [identifier copy];
+        if (!PPOOwnedApplicationAllowed(self.expectedBundleIdentifier)) {
+            self.state = @"application-not-eligible"; return NO;
+        }
         if (![self classesSupported]) { self.state = @"unsupported-owned-host-abi"; return NO; }
         if (![source isKindOfClass:HostClass(self.classes, @"FBScene")] || !HostFlag(source, "isValid")) {
             self.state = @"unexpected-source"; return NO;
@@ -186,7 +193,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         if (![identity isKindOfClass:HostClass(self.classes, @"FBSSceneClientIdentity")] ||
             ![specification isKindOfClass:HostClass(self.classes, @"UIApplicationSceneSpecification")] ||
             !HostText(sourceIdentifier) ||
-            !HostTextEquals(HostObject(identity, "bundleIdentifier"), @"com.apple.mobilesafari") ||
+            !HostTextEquals(HostObject(identity, "bundleIdentifier"), self.expectedBundleIdentifier) ||
             !HostTextEquals(HostObject(specification, "uiSceneSessionRole"), @"UIWindowSceneSessionRoleApplication")) {
             self.state = @"unsupported-source"; return NO;
         }
@@ -263,7 +270,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         id childSpecification = HostObject(childDefinition, "specification");
         if (![childIdentity isKindOfClass:HostClass(self.classes, @"FBSSceneClientIdentity")] ||
             ![childSpecification isKindOfClass:HostClass(self.classes, @"UIApplicationSceneSpecification")] ||
-            !HostTextEquals(HostObject(childIdentity, "bundleIdentifier"), @"com.apple.mobilesafari") ||
+            !HostTextEquals(HostObject(childIdentity, "bundleIdentifier"), self.expectedBundleIdentifier) ||
             !HostTextEquals(HostObject(childSpecification, "uiSceneSessionRole"), @"UIWindowSceneSessionRoleApplication")) {
             [self poisonWithState:@"unverified-created-client"]; return NO;
         }
@@ -420,6 +427,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         @"workspaceInvalidateAttempted": @(self.workspaceInvalidateAttempted),
         @"workspaceInvalidateReturned": @(self.workspaceInvalidateReturned),
         @"componentBinding": self.componentBinding,
+        @"expectedBundleIdentifier": self.expectedBundleIdentifier ?: (id)NSNull.null,
         @"preparationFailure": self.preparationFailure ?: (id)NSNull.null,
         @"borrowedSourceMutationRequested": @NO, @"runtimeCompatibilityConfirmed": @NO};
 }

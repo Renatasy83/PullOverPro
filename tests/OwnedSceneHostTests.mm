@@ -1,4 +1,5 @@
 #import "../PPOOwnedSceneHost.h"
+#import "../PPOOwnedApplicationPolicy.h"
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
 #include <stdio.h>
@@ -19,6 +20,13 @@ static unsigned componentFault, componentReads, hostSceneReads, proxySceneReads,
 static BOOL directComponentScene;
 static PPOOwnedSceneHost *current;
 static id sourceScene;
+static id requestedApplication;
+static NSString *originalApplication, *childIdentifierOverride;
+static NSMutableString *callerIdentifierMutation;
+static unsigned workspaceConstructions, sourceProbes;
+static BOOL Prepare(id source) {
+    return [current prepareScene:source forBundleIdentifier:requestedApplication];
+}
 static void Check(BOOL condition, const char *message) {
     checks++;
     if (!condition) { fprintf(stderr, "FAIL: %s\n", message); exit(1); }
@@ -48,7 +56,7 @@ static void Check(BOOL condition, const char *message) {
 - (void)invalidate;
 @end
 @implementation OwnedFixtureScene
-- (bool)isValid { return self.valid; }
+- (bool)isValid { if (self == sourceScene) sourceProbes++; return self.valid; }
 - (bool)isActive { return self.active; }
 - (void)invalidate {
     if (self == sourceScene) sourceInvalidations++;
@@ -113,6 +121,7 @@ static OwnedFixtureWorkspace *foreignWorkspace;
 @implementation OwnedFixtureWorkspace
 @synthesize identifier = _identifier;
 - (instancetype)initWithIdentifier:(id)identifier {
+    workspaceConstructions++;
     if ((self = [super init])) {
         lastWorkspace = self;
         if (workspaceConstructorFault == 1) [NSException raise:@"fixture" format:@"workspace-init"];
@@ -186,6 +195,7 @@ static __weak OwnedFixtureController *lastController;
     constructors++;
     if ((self = [super init])) {
         lastController = self; _configuration = configuration;
+        if (callerIdentifierMutation) [callerIdentifierMutation setString:@"com.apple.MobileAddressBook"];
         if (throwControllerInit) [NSException raise:@"fixture" format:@"init"];
         if (nilControllerInit) return nil;
         if (foreignControllerInit) return (id)[NSObject new];
@@ -200,6 +210,10 @@ static __weak OwnedFixtureController *lastController;
             definition.specification = [configuration sceneSpecification];
             if (badNewClientIdentity) {
                 OwnedFixtureClient *other = [OwnedFixtureClient new]; other.bundleIdentifier = @"com.example.foreign";
+                definition.clientIdentity = other;
+            }
+            if (childIdentifierOverride) {
+                OwnedFixtureClient *other = [OwnedFixtureClient new]; other.bundleIdentifier = childIdentifierOverride;
                 definition.clientIdentity = other;
             }
             if (badNewRole) {
@@ -232,7 +246,7 @@ static __weak OwnedFixtureController *lastController;
         if (reenter) {
             reenter = NO;
             Check(![current close], "constructor reentry cannot close partial acquisition");
-            Check(![current prepareScene:sourceScene], "constructor reentry cannot acquire twice");
+            Check(!Prepare(sourceScene), "constructor reentry cannot acquire twice");
             Check([[current sampleState][@"status"] isEqual:@"busy"],
                   "constructor reentry cannot sample a partially owned scene");
         }
@@ -293,6 +307,9 @@ static void Reset(void) {
     workspaceConstructorFault = configurationConstructorFault = 0;
     componentFault = componentReads = hostSceneReads = proxySceneReads = unknownProxySceneReads = 0;
     directComponentScene = NO;
+    requestedApplication = originalApplication = @"com.apple.mobilesafari";
+    childIdentifierOverride = nil; callerIdentifierMutation = nil;
+    workspaceConstructions = sourceProbes = 0;
     OwnedFixtureClient *client = [OwnedFixtureClient new]; client.bundleIdentifier = @"com.apple.mobilesafari";
     OwnedFixtureSpecification *spec = [OwnedFixtureSpecification new]; spec.uiSceneSessionRole = @"UIWindowSceneSessionRoleApplication";
     OwnedFixtureDefinition *definition = [OwnedFixtureDefinition new]; definition.clientIdentity = client; definition.specification = spec;
@@ -303,12 +320,18 @@ static void Reset(void) {
     foreignWorkspace = nil;
     current = [[PPOOwnedSceneHost alloc] initWithClasses:Classes()];
 }
+static void ResetForApplication(NSString *application) {
+    Reset();
+    requestedApplication = originalApplication = [application copy];
+    OwnedFixtureDefinition *definition = [sourceScene definition];
+    [(OwnedFixtureClient *)definition.clientIdentity setBundleIdentifier:originalApplication];
+}
 static void SourceUnchanged(void) {
     OwnedFixtureScene *scene = sourceScene;
     OwnedFixtureDefinition *definition = scene.definition;
     Check(scene.valid && [scene.identifier isEqual:@"system.source.safari"] &&
           [scene.workspaceIdentifier isEqual:@"system.main.workspace"] && sourceInvalidations == 0 &&
-          [[definition.clientIdentity bundleIdentifier] isEqual:@"com.apple.mobilesafari"] &&
+          [[definition.clientIdentity bundleIdentifier] isEqual:originalApplication] &&
           [[definition.specification uiSceneSessionRole] isEqual:@"UIWindowSceneSessionRoleApplication"],
           "borrowed source scene is never modified or invalidated");
     Check(unsafeWorkspaceInvalidations == 0, "workspace is never invalidated while populated");
@@ -323,7 +346,7 @@ static void CompleteDeferredCleanup(void) {
 int main(void) {
     @autoreleasepool {
         Reset();
-        Check([current prepareScene:sourceScene], "creates one independently owned scene");
+        Check(Prepare(sourceScene), "creates one independently owned scene");
         Check(current.viewController != nil && current.hostedScene != sourceScene && !current.poisoned,
               "owned view and distinct scene exposed after complete validation");
         Check(componentReads == 1 && hostSceneReads == 1 && proxySceneReads == 1,
@@ -347,7 +370,7 @@ int main(void) {
         Check([[current sampleState][@"status"] isEqual:@"sampled"] &&
               [current.snapshot[@"controllerVerified"] boolValue],
               "only completely verified scene ownership is sampled");
-        Check(![current prepareScene:sourceScene] && constructors == 1, "one acquisition attempt per adapter");
+        Check(!Prepare(sourceScene) && constructors == 1, "one acquisition attempt per adapter");
         SourceUnchanged();
         Check([current close] && current.closed && controllerInvalidations == 1 && workspaceInvalidations == 1,
               "own controller invalidated then empty workspace released");
@@ -356,7 +379,7 @@ int main(void) {
         SourceUnchanged();
 
         Reset(); directComponentScene = YES;
-        Check([current prepareScene:sourceScene] && proxySceneReads == 0,
+        Check(Prepare(sourceScene) && proxySceneReads == 0,
               "direct raw owned-scene identity remains accepted without proxy access");
         binding = current.snapshot[@"componentBinding"];
         Check([binding[@"status"] isEqual:@"verified-direct"] &&
@@ -373,7 +396,7 @@ int main(void) {
         for (unsigned failure = 1; failure <= 13; failure++) {
             Reset(); componentFault = failure;
             current = [[PPOOwnedSceneHost alloc] initWithClasses:Classes()];
-            Check(![current prepareScene:sourceScene], "uncertain component binding refuses presentation");
+            Check(!Prepare(sourceScene), "uncertain component binding refuses presentation");
             binding = current.snapshot[@"componentBinding"];
             Check([binding[@"status"] isEqual:bindingFailures[failure]],
                   "captured binding metadata distinguishes missing, foreign, proxy and throwing getters");
@@ -387,7 +410,7 @@ int main(void) {
                 Check(constructors == 1 && current.poisoned && !current.closed &&
                       lastController != nil && lastWorkspace != nil && controllerDeallocations == 0,
                       "uncertain component ownership retains private allocations in quarantine");
-                Check(![current close] && ![current pollCleanup] && ![current prepareScene:sourceScene] &&
+                Check(![current close] && ![current pollCleanup] && !Prepare(sourceScene) &&
                       controllerInvalidations == 0 && workspaceInvalidations == 0 && constructors == 1,
                       "quarantine blocks automatic retries and destructive cleanup");
             }
@@ -413,7 +436,7 @@ int main(void) {
         }
 
         Reset(); delayedCleanup = YES;
-        Check([current prepareScene:sourceScene], "pending-cleanup fixture prepares");
+        Check(Prepare(sourceScene), "pending-cleanup fixture prepares");
         Check(![current close] && !current.closed && controllerInvalidations == 1 && workspaceInvalidations == 0,
               "pending scene teardown retains populated workspace");
         Check(![current pollCleanup] && controllerInvalidations == 1 && lastWorkspace != nil,
@@ -424,7 +447,7 @@ int main(void) {
         SourceUnchanged();
 
         Reset(); delayedCleanup = YES;
-        Check([current prepareScene:sourceScene] && ![current close], "timeout fixture reaches pending cleanup");
+        Check(Prepare(sourceScene) && ![current close], "timeout fixture reaches pending cleanup");
         [current quarantineCleanup];
         Check(current.poisoned && !current.closed && workspaceInvalidations == 0,
               "timed-out cleanup is quarantined without workspace invalidation");
@@ -439,7 +462,7 @@ int main(void) {
             badComponentScene = failure == 5; badControllerView = failure == 6;
             unexpectedNewActive = failure == 7;
             badNewDefinition = failure == 8; badNewClientIdentity = failure == 9; badNewRole = failure == 10;
-            Check(![current prepareScene:sourceScene], "identity/source/component/view mismatch refuses host");
+            Check(!Prepare(sourceScene), "identity/source/component/view mismatch refuses host");
             SourceUnchanged();
             if (failure == 1 || failure == 2 || failure == 3 || failure == 4 || failure == 5 || failure >= 8)
                 Check(workspaceInvalidations == 0 && controllerInvalidations == 0,
@@ -451,7 +474,7 @@ int main(void) {
         for (unsigned failure = 0; failure < 3; failure++) {
             Reset();
             throwControllerInit = failure == 0; nilControllerInit = failure == 1; foreignControllerInit = failure == 2;
-            Check(![current prepareScene:sourceScene] && current.poisoned,
+            Check(!Prepare(sourceScene) && current.poisoned,
                   "partial/nil/replaced constructor result quarantines ownership");
             Check(controllerInvalidations == 0 && workspaceInvalidations == 0,
                   "uncertain constructor does not invalidate namespace or foreign result");
@@ -463,7 +486,7 @@ int main(void) {
                 Reset();
                 if (constructor == 0) workspaceConstructorFault = failure;
                 else configurationConstructorFault = failure;
-                Check(![current prepareScene:sourceScene] && current.poisoned && constructors == 0,
+                Check(!Prepare(sourceScene) && current.poisoned && constructors == 0,
                       "workspace/configuration partial initialization quarantines before controller construction");
                 Check(workspaceInvalidations == 0 && controllerInvalidations == 0,
                       "unverified initialization keeps namespace untouched");
@@ -480,7 +503,7 @@ int main(void) {
                 [foreignWorkspace.scenes addObject:sourceScene];
                 wrongConfigWorkspace = YES;
             } else wrongConfigClientIdentity = YES;
-            Check(![current prepareScene:sourceScene] && constructors == 0,
+            Check(!Prepare(sourceScene) && constructors == 0,
                   "configuration readback mismatch refuses before controller construction");
             SourceUnchanged();
         }
@@ -488,7 +511,7 @@ int main(void) {
         NSMutableDictionary *invalidClasses = [Classes() mutableCopy];
         invalidClasses[@"FBScene"] = @1;
         current = [[PPOOwnedSceneHost alloc] initWithClasses:invalidClasses];
-        Check(![current prepareScene:sourceScene] && constructors == 0,
+        Check(!Prepare(sourceScene) && constructors == 0,
               "non-Class dependency rejected without framework construction");
         SourceUnchanged();
         for (unsigned failure = 0; failure < 2; failure++) {
@@ -496,38 +519,38 @@ int main(void) {
             NSMutableDictionary *classes = [Classes() mutableCopy];
             classes[@"FBSceneWorkspace"] = failure ? OwnedBadWorkspace.class : OwnedMissingClass.class;
             current = [[PPOOwnedSceneHost alloc] initWithClasses:classes];
-            Check(![current prepareScene:sourceScene] && constructors == 0 && resolutions == 0,
+            Check(!Prepare(sourceScene) && constructors == 0 && resolutions == 0,
                   "missing/wrong constructor ABI rejected without resolution or controller creation");
             SourceUnchanged();
         }
         Reset();
         OwnedFixtureDefinition *definition = [sourceScene definition];
         [(OwnedFixtureClient *)definition.clientIdentity setBundleIdentifier:@"com.example.unlisted"];
-        Check(![current prepareScene:sourceScene] && constructors == 0, "non-Safari source refused");
+        Check(!Prepare(sourceScene) && constructors == 0, "source identifier must match the selected expected app");
         Reset();
         definition = [sourceScene definition];
         [(OwnedFixtureSpecification *)definition.specification setUiSceneSessionRole:@"unverified-role"];
-        Check(![current prepareScene:sourceScene] && constructors == 0, "unverified scene role refused");
+        Check(!Prepare(sourceScene) && constructors == 0, "unverified scene role refused");
         Reset();
-        Check(![current prepareScene:nil] && constructors == 0 && current.closed,
+        Check(!Prepare(nil) && constructors == 0 && current.closed,
               "nil source refuses without creating framework resources");
         SourceUnchanged();
         Reset();
-        Check(![current prepareScene:@"wrong-source"] && constructors == 0 && current.closed,
+        Check(!Prepare(@"wrong-source") && constructors == 0 && current.closed,
               "unexpected source receiver refuses before private dispatch");
         SourceUnchanged();
         Reset();
         [(OwnedFixtureScene *)sourceScene setValid:false];
-        Check(![current prepareScene:sourceScene] && constructors == 0 && current.closed,
+        Check(!Prepare(sourceScene) && constructors == 0 && current.closed,
               "invalid source cannot create an owned scene");
         [(OwnedFixtureScene *)sourceScene setValid:true];
         SourceUnchanged();
 
         Reset(); reenter = YES;
-        Check([current prepareScene:sourceScene] && constructors == 1, "constructor reentry cannot disrupt outer ownership");
+        Check(Prepare(sourceScene) && constructors == 1, "constructor reentry cannot disrupt outer ownership");
         Check([current close], "reentry fixture closes"); SourceUnchanged();
         for (unsigned failure = 0; failure < 2; failure++) {
-            Reset(); Check([current prepareScene:sourceScene], "cleanup-failure fixture prepares");
+            Reset(); Check(Prepare(sourceScene), "cleanup-failure fixture prepares");
             throwControllerInvalidate = failure == 0;
             failControllerInvalidate = failure == 1;
             Check(![current close] && controllerInvalidations == 1 && workspaceInvalidations == 0,
@@ -539,7 +562,7 @@ int main(void) {
             SourceUnchanged();
         }
         for (unsigned failure = 0; failure < 2; failure++) {
-            Reset(); Check([current prepareScene:sourceScene], "workspace-cleanup failure fixture prepares");
+            Reset(); Check(Prepare(sourceScene), "workspace-cleanup failure fixture prepares");
             throwWorkspaceInvalidate = failure == 0;
             invalidWorkspaceList = failure == 1;
             Check(![current close] && current.poisoned && controllerInvalidations == 1,
@@ -553,7 +576,7 @@ int main(void) {
         __block BOOL worker = YES;
         dispatch_group_t group = dispatch_group_create();
         dispatch_group_async(group, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
-            worker = [current prepareScene:sourceScene];
+            worker = Prepare(sourceScene);
             Check(![current close] && ![current pollCleanup] &&
                   [[current sampleState][@"status"] isEqual:@"wrong-thread"],
                   "wrong-thread cleanup and sampling are rejected");
@@ -563,11 +586,58 @@ int main(void) {
               "wrong-thread fixture completes");
         Check(!worker && !current.poisoned && constructors == 0 && controllerInvalidations == 0 && workspaceInvalidations == 0,
               "worker cannot acquire or mutate framework objects");
-        Check([current prepareScene:sourceScene] && [current close], "worker rejection preserves valid main-thread attempt");
+        Check(Prepare(sourceScene) && [current close], "worker rejection preserves valid main-thread attempt");
+        SourceUnchanged();
+        NSArray<NSString *> *eligible = @[@"com.apple.mobilesafari", @"com.apple.reminders", @"com.apple.MobileAddressBook"];
+        for (NSString *application in eligible) {
+            ResetForApplication(application);
+            Check(PPOOwnedApplicationAllowed(application) && Prepare(sourceScene),
+                  "each declared target preserves verified namespace and proxy binding");
+            Check([current.snapshot[@"expectedBundleIdentifier"] isEqual:application],
+                  "ownership proof retains the exact requested application");
+            Check([current close] && current.closed && controllerInvalidations == 1 && workspaceInvalidations == 1,
+                  "each eligible target cleans only its owned scene and empty workspace");
+            SourceUnchanged();
+            for (NSString *other in eligible) {
+                if ([other isEqual:application]) continue;
+                ResetForApplication(application); requestedApplication = other;
+                Check(!Prepare(sourceScene) && workspaceConstructions == 0 && constructors == 0 && current.closed,
+                      "an allowed but different selected app cannot borrow this source identity");
+                SourceUnchanged();
+                ResetForApplication(application); childIdentifierOverride = other;
+                Check(!Prepare(sourceScene) && current.poisoned && !current.closed &&
+                      controllerInvalidations == 0 && workspaceInvalidations == 0,
+                      "an allowed but different returned child is quarantined without invalidation");
+                SourceUnchanged();
+            }
+        }
+        NSArray *ineligible = @[@"com.apple.Preferences", @"com.apple.springboard", @"com.apple.backboardd",
+            @"com.example.unlisted", @"com.apple.reminders.extension", @"COM.APPLE.REMINDERS",
+            @"com.apple.mobileaddressbook", @"", @1, NSNull.null];
+        for (id application in ineligible) {
+            Reset(); requestedApplication = application;
+            Check(!PPOOwnedApplicationAllowed(application) && !Prepare(sourceScene) && current.closed &&
+                  !current.poisoned && constructors == 0 && workspaceConstructions == 0 && sourceProbes == 0,
+                  "unsupported or malformed requests are rejected before private source access or construction");
+            SourceUnchanged();
+        }
+        Reset(); requestedApplication = nil;
+        Check(!Prepare(sourceScene) && current.closed && workspaceConstructions == 0 && sourceProbes == 0,
+              "nil requested identifier is rejected before touching a source");
+        SourceUnchanged();
+        Reset();
+        NSMutableString *mutableRequest = [@"com.apple.mobilesafari" mutableCopy];
+        requestedApplication = mutableRequest; callerIdentifierMutation = mutableRequest;
+        Check(Prepare(sourceScene) && [mutableRequest isEqual:@"com.apple.MobileAddressBook"] &&
+              [current.snapshot[@"expectedBundleIdentifier"] isEqual:@"com.apple.mobilesafari"],
+              "caller mutation during private construction cannot change the copied expected identity");
+        Check([current close], "copied identity fixture cleans its known Safari scene");
         SourceUnchanged();
         for (unsigned cycle = 0; cycle < 100; cycle++) {
             @autoreleasepool {
-                Reset(); Check([current prepareScene:sourceScene], "repeat creates distinct owned scene");
+                NSArray *targets = @[@"com.apple.mobilesafari", @"com.apple.reminders", @"com.apple.MobileAddressBook"];
+                ResetForApplication(targets[cycle % targets.count]);
+                Check(Prepare(sourceScene), "mixed targets each create a distinct owned scene");
                 Check([current close] && current.closed && controllerInvalidations == 1 && workspaceInvalidations == 1,
                       "repeat releases only owned namespace after empty confirmation");
                 SourceUnchanged();

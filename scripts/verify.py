@@ -1,6 +1,7 @@
 """Source policy and Debian payload checks; these do not prove runtime safety."""
 from pathlib import Path, PurePosixPath
 import io
+import json
 import plistlib
 import re
 import subprocess
@@ -110,8 +111,23 @@ require(set(re.findall(r'HostTell\([^\n]*?"(\w+)"', owned_source)) == {'invalida
         'Separate-scene operations must only invalidate verified own objects')
 require('objc_msgSend' not in owned_trial and 'initWithClasses:classes' in owned_trial,
         'Separate-scene UI must delegate private operations to ownership adapter')
-require('[bundleIdentifier isEqual:@"com.apple.mobilesafari"]' in owned_trial,
-        'Only firmware-manifest-verified Safari may create a separate scene')
+require('PPOOwnedApplicationAllowed(bundleIdentifier)' in owned_trial and
+        'forBundleIdentifier:self.bundleIdentifier' in owned_trial and
+        'PPOOwnedApplicationAllowed(identifier)' in owned_source and
+        owned_source.count('"bundleIdentifier"), self.expectedBundleIdentifier') == 2,
+        'Selected identity must be independently checked against both source and owned child')
+target_facts = json.loads((ROOT / 'SCENE_TARGETS_23A355.json').read_text())
+policy_source = (ROOT / 'PPOOwnedApplicationPolicy.h').read_text()
+target_ids = {app['bundleIdentifier'] for app in target_facts['applications']}
+require(target_ids == {'com.apple.mobilesafari', 'com.apple.reminders', 'com.apple.MobileAddressBook'} and
+        target_ids == set(re.findall(r'@"(com\.[^"]+)"', policy_source)),
+        'Only the three selected exact-firmware targets may be admitted')
+require(target_facts['firmware'] == {'productType': 'iPhone12,5', 'productVersion': '26.0.1', 'buildVersion': '23A355'} and
+        target_facts['runtimeCompatibilityConfirmed'] is False and all(
+            app['declaresMultipleScenes'] is True and 1 in app['deviceFamilies'] and
+            len(app['applicationRoleConfigurations']) == 1 and
+            re.fullmatch(r'[0-9a-f]{64}', app['infoSHA256']) for app in target_facts['applications']),
+        'Target facts must remain explicit iPhone multiscene declarations, not runtime claims')
 require('childView.frame =' in owned_trial and
         owned_trial.index('childView.frame =') < owned_trial.index('[root addChildViewController:child]'),
         'Provide public native child geometry before attachment/appearance')
@@ -171,7 +187,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.10.0~dev.keep1'), 'Unexpected version')
+    require(field('Version').startswith('0.11.0~dev.multiscene1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

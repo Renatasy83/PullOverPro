@@ -3,6 +3,7 @@
 #import "PPOOwnedSceneHost.h"
 #import "PPOSceneLayerProbe.h"
 #import "PPOScreenLockState.h"
+#import "PPOOwnedApplicationPolicy.h"
 #include "PPOHostGeometry.h"
 #include "PPOWindowLifetime.h"
 #import <objc/runtime.h>
@@ -114,7 +115,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @8, @"version": @"0.10.0~dev.keep1",
+    NSDictionary *report = @{@"schema": @8, @"version": @"0.11.0~dev.multiscene1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
         @"geometry": geometry,
@@ -161,11 +162,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.10.0.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.11.0.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.10.0] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.11.0] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -257,9 +258,9 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     self.reportID = NSUUID.UUID.UUIDString;
     self.frameworks = PPOSceneFrameworkIdentity();
     if (!PPOTrialAllowed()) { [self record:@"disabled"]; return @"PPO este dezactivat"; }
-    if (![bundleIdentifier isEqual:@"com.apple.mobilesafari"]) {
+    if (!PPOOwnedApplicationAllowed(bundleIdentifier)) {
         [self record:@"application-refused"];
-        return @"Scena separată este disponibilă doar pentru Safari";
+        return @"Ferestre disponibile: Safari, Reminders și Contacte";
     }
     if (![self.frameworks[@"matches"] boolValue]) {
         [self record:@"framework-refused"]; return @"Firmware diferit; probă refuzată";
@@ -312,7 +313,8 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         }
         self.session = [[PPOOwnedSceneHost alloc] initWithClasses:classes];
         [self record:@"prepare-requested"];
-        if (self.closePending || !PPOTrialAllowed() || ![self.session prepareScene:foreignScene]) return result;
+        if (self.closePending || !PPOTrialAllowed() ||
+            ![self.session prepareScene:foreignScene forBundleIdentifier:self.bundleIdentifier]) return result;
         self.sourceScene = self.session.hostedScene;
         UIViewController *child = self.session.viewController;
         if (![child isKindOfClass:UIViewController.class] || child.parentViewController ||

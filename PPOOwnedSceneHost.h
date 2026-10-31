@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 
 // Own-new-scene adapter. Caller must gate exact framework UUIDs and select a
-// unique Safari source. A source scene is read only and is never invalidated.
+// unique eligible application source. A source is read only and never invalidated.
 @interface PPOOwnedSceneHost : NSObject
 @property(nonatomic,strong,readonly) id viewController;
 @property(nonatomic,strong,readonly) id hostedScene;
@@ -9,7 +9,7 @@
 @property(nonatomic,readonly) BOOL poisoned;
 @property(nonatomic,readonly) BOOL closed;
 - (instancetype)initWithClasses:(NSDictionary<NSString *, id> *)classes;
-- (BOOL)prepareScene:(id)source;
+- (BOOL)prepareScene:(id)source forBundleIdentifier:(NSString *)identifier;
 - (BOOL)close;
 - (BOOL)pollCleanup;
 - (void)quarantineCleanup;

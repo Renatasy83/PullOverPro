@@ -1,5 +1,19 @@
 # Device validation
 
+## User-confirmed 0.10.0 — Keep, lock notification and reuse
+
+The user supplied host-0.10.0.json and answered Funcționează after the requested default-lock and Keep/manual-close/reopen sequence. Executableffe808f00174ac2bca2c3f9ffb64a7ae209e2cef is preserved as stable/verified-safari-keep-lock-reuse.
+
+The report contains five attempts, of which four displayed a window. The initial attempt safely refused selection:not-found,5 scenes inspected and0 matched, no owner/window created, replacement allowed. This is not a crash or cleanup failure. Later source selection succeeds after Safari exists; no automatic launch or source fabrication was performed.
+
+Displayed sessions:default timed mode6.119s closes by device-lock-notification; kept mode77.776s closes by that notification; kept mode39.534s closes manually; kept mode7.033s closes by that notification. Keep is explicitly requested at roughly2.045,2.578 and3.693 seconds. The long session has heartbeats near32.056/62.306s and the39.534s session near32.809s. Actual operation beyond the15-second deadline is established, while an actual default timeout is not exercised in this particular report.
+
+All four displayed sessions match all four framework UUIDs, verify the proxy target as the owned child, and finish with returned controller/workspace invalidations, closed=true, pinned=false, poisoned=false and replacementAllowed=true. The final reopening begins about1.387s after manual closure. No exception or quarantine event is present. New render layers are present while the original Safari scene remains logically backgrounded without layers.
+
+Final locked=false/data-available/active samples are cached pre-close readings. Lock samples precede closure by about0.24–0.51s; they do not contradict notification-driven closure or measure the state after locking. Accept the user's confirmation of the requested visual test; the report does not quantify zero-frame exposure during lock transitions, indefinite stability, global leak freedom, explicit keyboard routing or full Dopamine/ElleKit compatibility. The longest event list reaches16 but does not exercise ring overflow.
+
+The requested Keep/lock/manual-reuse gate is complete for these observations. The next isolated stage tests additional eligible apps under the same owned-scene proof; see DECLARED_SCENE_TARGETS.md. The raw phone report and web data are not committed.
+
 ## User-confirmed 0.9.1 follow-up — input, manual close and reuse
 
 The latest host-0.9.1.json contains five sessions total, including the exact timeout session from the prior report. It adds four trials, not five: one timeout and three manual closes. All five have matching framework UUIDs, verified-proxy binding to the owned child, returned controller/workspace invalidations, closed=true, pinned=false, poisoned=false and replacementAllowed=true. There are no preparation failures or exception events.

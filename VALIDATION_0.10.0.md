@@ -6,6 +6,8 @@ Executable source:ffe808f00174ac2bca2c3f9ffb64a7ae209e2cef on debug/kept-safari-
 
 This is an incomplete Safari-only development candidate with explicit Keep. Default sessions retain their15-second timeout; kept sessions have no timed expiry. New lifetime/lock behavior and full Dopamine/ElleKit compatibility remain unconfirmed on the device. Earlier0.9.1 user observations establish the baseline operations only.
 
+Subsequent device addendum:the user supplied host-0.10.0.json and confirmed the requested test works. Four displayed sessions cleanly close, including kept windows77.776s/39.534s, notification-driven closure at lock, manual X and reopening. One earlier safe source-not-found refusal creates no owner/window. This verifies the stated operations on the target phone, not measured zero-frame lock exposure, indefinite stability, keyboard routing or full platform compatibility. See DEVICE_VALIDATION.md. Preserved reference:stable/verified-safari-keep-lock-reuse. The not-executed list below remains a record of what was not run by CI; the original live-gate instructions are now completed for these observations.
+
 ## Executed and passed
 
 - All17 automated suites, including410 lifetime-policy checks,175 read-only lock/ABI checks and702 owned-scene checks. Applicable native suites use ASan/UBSan and controlled fixtures rather than real SpringBoard/UIKit scene objects.
