@@ -1,6 +1,6 @@
 # Autonomous port status — 2026-10-31
 
-Current isolated development:0.10.0~dev.keep1 on debug/kept-safari-window. New capability:explicit Păstrează keeps an independently owned Safari window open after the normal15-second deadline. Default sessions still time out. This remains an incomplete Safari-only development candidate; current CI is pending and the new lifetime/lock behavior is not device-confirmed.
+Current isolated development:0.10.0~dev.keep1 on debug/kept-safari-window. New capability:explicit Păstrează keeps an independently owned Safari window open after the normal15-second deadline. Default sessions still time out. Executableffe808f00174ac2bca2c3f9ffb64a7ae209e2cef passed Actions run41192308078; artifact13039207175 contains the verified DEB and complete evidence. This remains an incomplete Safari-only development candidate; the new lifetime/lock behavior is not device-confirmed.
 
 ## Preserved tested source
 
@@ -18,7 +18,7 @@ Keep is explicit and cannot revive a timed-out or failed session. A side-effect-
 
 A read-only lock adapter uses only the exact23A355 existing-manager getter and two Boolean flags. Four loaded framework UUIDs, main-thread enforcement and actual method-table ABI checks gate dispatch. The verified Foundation lock-state notification requests conservative closure; no private observer protocol or setter is used. Polling/notifications do not establish zero lock-transition frames. A kept window has no timer expiry; X and safety closures remain essential.
 
-Local lifetime policy tests410 checks with G++ ASan/UBSan, source policy and lifecycle24 checks passed. CI will run the new native lock fixtures, all existing suites, iOS Clang analysis, Theos rootless arm64/arm64e build and package/lifecycle/license checks. See KEPT_SAFARI_WINDOW.md for exact firmware evidence and limits. Linux and macOS Intel CI do not execute SpringBoard. No compatible physical Apple Silicon Mac is accessible for vphone-cli.
+Local lifetime policy tests410 checks with G++ ASan/UBSan, source policy and lifecycle24 checks passed. Final CI passed all17 suites, including lock-state175, lifetime410 and ownership702 checks, iOS Clang analysis, Theos rootless arm64/arm64e build and package/lifecycle/license checks. Downloaded ZIP/DEB hashes and local payload inspection passed. Explicit notification-driven teardown is deferred until after the poster unwinds. See VALIDATION_0.10.0.md and KEPT_SAFARI_WINDOW.md for evidence and limits. Linux and macOS Intel CI do not execute SpringBoard. No compatible physical Apple Silicon Mac is accessible for vphone-cli.
 
 ## Remaining indispensable live gate
 
