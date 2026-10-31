@@ -102,6 +102,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
 @property(nonatomic) BOOL workspaceInvalidateAttempted;
 @property(nonatomic) BOOL workspaceInvalidateReturned;
 @property(nonatomic,copy) NSString *preparationFailure;
+@property(nonatomic,copy) NSDictionary *componentBinding;
 - (BOOL)classesSupported;
 - (BOOL)finishCleanupIfPossible;
 - (void)pin;
@@ -112,6 +113,10 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
 - (instancetype)initWithClasses:(NSDictionary<NSString *, id> *)classes {
     if ((self = [super init])) {
         _classes = [classes copy]; _state = @"idle";
+        _componentBinding = @{@"status": @"not-read",
+            @"componentPresent": NSNull.null, @"expectedComponentClass": NSNull.null,
+            @"hostScenePresent": NSNull.null, @"proxyClassMatched": NSNull.null,
+            @"matchesCreatedScene": NSNull.null, @"matchesBorrowedSource": NSNull.null};
     }
     return self;
 }
@@ -133,6 +138,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
     Class specification = HostClass(self.classes, @"UIApplicationSceneSpecification");
     Class identity = HostClass(self.classes, @"FBSSceneClientIdentity");
     Class component = HostClass(self.classes, @"_UISceneHostingActivationStateHostComponent");
+    Class componentScene = HostClass(self.classes, @"FBSComponentScene");
     return HostConstructible(ws, "initWithIdentifier:") &&
         HostShape(ws, "identifier", @encode(id)) && HostShape(ws, "allScenes", @encode(id)) &&
         HostShape(ws, "invalidate", @encode(void)) &&
@@ -156,6 +162,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         specification && HostShape(specification, "uiSceneSessionRole", @encode(id)) &&
         identity && HostShape(identity, "bundleIdentifier", @encode(id)) &&
         component && HostShape(component, "hostScene", @encode(id)) &&
+        componentScene && HostShape(componentScene, "scene", @encode(id)) &&
         HostClass(self.classes, @"UIViewController");
 }
 - (BOOL)prepareScene:(id)source {
@@ -260,9 +267,47 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
             !HostTextEquals(HostObject(childSpecification, "uiSceneSessionRole"), @"UIWindowSceneSessionRoleApplication")) {
             [self poisonWithState:@"unverified-created-client"]; return NO;
         }
+        // 23A355 components store FBSComponentScene, an NSProxy that forwards
+        // class/isKindOfClass: to FBScene. hostScene returns that proxy, not
+        // necessarily the raw workspace child. Check its actual runtime class
+        // before using the explicit, ABI-checked scene getter to unwrap it.
+        NSMutableDictionary *binding = [@{@"status": @"reading-component",
+            @"componentPresent": NSNull.null, @"expectedComponentClass": NSNull.null,
+            @"hostScenePresent": NSNull.null, @"proxyClassMatched": NSNull.null,
+            @"matchesCreatedScene": NSNull.null, @"matchesBorrowedSource": NSNull.null} mutableCopy];
+        self.componentBinding = binding;
         self.component = HostObject(self.controller, "activationStateComponent");
-        if (![self.component isKindOfClass:HostClass(self.classes, @"_UISceneHostingActivationStateHostComponent")] ||
-            HostObject(self.component, "hostScene") != child) {
+        binding[@"componentPresent"] = @(self.component != nil);
+        BOOL componentClassMatches = [self.component isKindOfClass:
+            HostClass(self.classes, @"_UISceneHostingActivationStateHostComponent")];
+        binding[@"expectedComponentClass"] = @(componentClassMatches);
+        if (!self.component || !componentClassMatches) {
+            binding[@"status"] = self.component ? @"component-class-mismatch" : @"component-missing";
+            self.componentBinding = binding;
+            [self poisonWithState:@"unverified-controller-scene"]; return NO;
+        }
+        binding[@"status"] = @"reading-host-scene"; self.componentBinding = binding;
+        id componentScene = HostObject(self.component, "hostScene");
+        binding[@"hostScenePresent"] = @(componentScene != nil);
+        BOOL proxyClassMatches = componentScene &&
+            object_getClass(componentScene) == HostClass(self.classes, @"FBSComponentScene");
+        binding[@"proxyClassMatched"] = @(proxyClassMatches);
+        id boundScene = nil;
+        if (componentScene == child) boundScene = child;
+        else if (proxyClassMatches) {
+            binding[@"status"] = @"reading-proxy-scene"; self.componentBinding = binding;
+            boundScene = HostObject(componentScene, "scene");
+        } else {
+            binding[@"status"] = componentScene ? @"unknown-host-scene-class" : @"host-scene-missing";
+            self.componentBinding = binding;
+            [self poisonWithState:@"unverified-controller-scene"]; return NO;
+        }
+        binding[@"matchesCreatedScene"] = @(boundScene == child);
+        binding[@"matchesBorrowedSource"] = @(boundScene == source);
+        binding[@"status"] = boundScene == child ?
+            (proxyClassMatches ? @"verified-proxy" : @"verified-direct") : @"host-scene-foreign";
+        self.componentBinding = binding;
+        if (boundScene != child) {
             [self poisonWithState:@"unverified-controller-scene"]; return NO;
         }
         self.hostedScene = child; self.controllerVerified = YES;
@@ -374,6 +419,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         @"controllerInvalidateReturned": @(self.controllerInvalidateReturned),
         @"workspaceInvalidateAttempted": @(self.workspaceInvalidateAttempted),
         @"workspaceInvalidateReturned": @(self.workspaceInvalidateReturned),
+        @"componentBinding": self.componentBinding,
         @"preparationFailure": self.preparationFailure ?: (id)NSNull.null,
         @"borrowedSourceMutationRequested": @NO, @"runtimeCompatibilityConfirmed": @NO};
 }

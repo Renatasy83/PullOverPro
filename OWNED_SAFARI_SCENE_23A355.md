@@ -1,5 +1,7 @@
 # Independent Safari scene trial — 0.9.0
 
+Superseded binding detail:0.9.0 stopped at unverified-controller-scene on the device. Exact firmware analysis shows component.hostScene can be FBSComponentScene:NSProxy rather than the raw workspace child.0.9.1 unwraps only that exact runtime class through its ABI-checked read-only scene getter and retains exact child equality. See COMPONENT_PROXY_23A355.md. Earlier successful0.9.0 automation did not model this proxy and does not establish rendering or compatibility.
+
 This is an incomplete development candidate, not a final release or confirmed background hosting. The0.8.3 device report shows visibility propagation already enabled in two sessions and a successful disabled-to-enabled context operation in a third; source layers still disappear or remain absent while Safari is backgrounded. The borrowed-scene approach is not used by this candidate.
 
 ## Verified firmware declarations

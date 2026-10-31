@@ -76,7 +76,7 @@ static BOOL PPOTrialAllowed(void) {
         @"containerUserInteractionEnabled": @(self.content.userInteractionEnabled),
         @"closeReason": self.closeReason ?: @"none"}];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @7, @"version": @"0.9.0~dev.ownedscene1",
+    NSDictionary *report = @{@"schema": @7, @"version": @"0.9.1~dev.componentproxy1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
         @"geometry": geometry,
@@ -119,11 +119,11 @@ static BOOL PPOTrialAllowed(void) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.9.0.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.9.1.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.9.0] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.9.1] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -184,7 +184,7 @@ static BOOL PPOTrialAllowed(void) {
         for (NSString *name in @[@"FBSceneWorkspace", @"_UISceneHostingControllerAdvancedConfiguration",
                 @"_UISceneHostingController", @"FBScene", @"FBSSceneDefinition",
                 @"UIApplicationSceneSpecification", @"FBSSceneClientIdentity",
-                @"_UISceneHostingActivationStateHostComponent", @"UIViewController"]) {
+                @"_UISceneHostingActivationStateHostComponent", @"FBSComponentScene", @"UIViewController"]) {
             Class cls = objc_lookUpClass(name.UTF8String);
             if (cls) classes[name] = cls;
         }

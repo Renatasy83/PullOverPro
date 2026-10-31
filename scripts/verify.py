@@ -95,6 +95,14 @@ for pattern in (r'valueForKey:', r'object_getIvar', r'method_getImplementation',
                 r'foregroundAssertionForReason:', r'createSceneWithDefinition:'):
     require(not re.search(pattern, owned_source + owned_trial), f'Unexpected separate-scene operation: {pattern}')
 require(owned_source.count('objc_msgSend') == 4, 'Unexpected separate-scene dispatch surface')
+require('object_getClass(componentScene) == HostClass(self.classes, @"FBSComponentScene")' in owned_source and
+        'else if (proxyClassMatches)' in owned_source and
+        'boundScene = HostObject(componentScene, "scene")' in owned_source and
+        'if (boundScene != child)' in owned_source,
+        'Only the exact known component proxy may unwrap to the owned scene')
+require('@"componentBinding": self.componentBinding' in owned_source and
+        'HostObject' not in owned_source.split('- (NSDictionary *)snapshot {', 1)[1],
+        'Binding diagnostics must not invoke private getters during snapshot')
 require(set(re.findall(r'HostSet\([^\n]*?"(\w+:)"', owned_source)) ==
         {'setSceneWorkspace:', 'setSceneIdentifier:', 'setSceneSpecification:'},
         'Separate-scene setters must only configure owned constructor input')
@@ -141,7 +149,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.9.0~dev.ownedscene1'), 'Unexpected version')
+    require(field('Version').startswith('0.9.1~dev.componentproxy1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

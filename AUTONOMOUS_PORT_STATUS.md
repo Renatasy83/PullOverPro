@@ -1,6 +1,8 @@
-# Autonomous port status — 2026-10-30
+# Autonomous port status — 2026-10-31
 
-Current isolated candidate:0.9.0~dev.ownedscene1 on debug/owned-safari-scene. This is an incomplete Safari-only independent-scene trial, not a final release or confirmed Dopamine/ElleKit compatibility.
+Current isolated development source:0.9.1~dev.componentproxy1 on debug/owned-safari-scene. This is an incomplete Safari-only independent-scene trial, not a final release or confirmed Dopamine/ElleKit compatibility. The0.9.0 device report stopped before UI attachment at unverified-controller-scene; it does not validate the new scene's rendering or cleanup.
+
+Exact firmware inspection identified FBSComponentScene:NSProxy between the activation component and its raw FBScene. The old raw pointer comparison falsely rejects this supported binding.0.9.1 requires the proxy's exact actual runtime class, its declared read-only scene getter ABI and equality of its underlying target to the owned child. Unknown bindings remain quarantined. New diagnostics distinguish the guard operands, and native fixtures model the proxy's forwarded identity. See COMPONENT_PROXY_23A355.md. CI for this revision is pending; prior0.9.0 CI evidence below does not validate it.
 
 ## Preserved references
 
@@ -18,7 +20,7 @@ Verified exact firmware manifests declare Safari supports multiple application s
 
 Uncertain private constructors remain strongly pinned because their automatic destruction can invalidate scene state. Cleanup invalidates only the verified owned controller, then requires invalid own scene and empty workspace before workspace invalidation. The UI remains bounded to15 seconds, cleanup polling to2 seconds, and uncertain cleanup blocks another attempt. The old borrowed-scene UI adapter is excluded from the production Makefile. No guessed foreground/security/mask/assertion mode or manual event-deferral operation is added.
 
-See OWNED_SAFARI_SCENE_23A355.md for concrete static evidence, native test boundaries, normal destructor semantics and recovery. Report schema7:/var/mobile/Library/Logs/PullOverPro/host-0.9.0.json separates hosted-scene samples from original-scene samples.
+See OWNED_SAFARI_SCENE_23A355.md for concrete static evidence, native test boundaries, normal destructor semantics and recovery. Report schema7:/var/mobile/Library/Logs/PullOverPro/host-0.9.1.json separates hosted-scene samples from original-scene samples and adds componentBinding evidence.
 
 ## Completed automation and remaining live gate
 
@@ -26,4 +28,4 @@ Executable sourcea51c7cdfbb5515cff23f0ec29fc60dd29184f9a0 passed GitHub Actions 
 
 Local execution is Linux; Actions uses macOS Intel native mocks, not iOS SpringBoard/WindowServer. No compatible physical Apple Silicon Mac is accessible for vphone-cli; it was not used. Actual Safari scene admission/connection, pixels, input and client/process/session persistence cleanup remain untested for this candidate. All-app support, persistent windows, lock/orientation/process-death stress and full platform compatibility remain outstanding.
 
-The indispensable next gate is one separate Safari trial over NewTerm plus visual outcome and host-0.9.0.json. No repeat of the already understood visibility-only experiment is requested. Nothing was installed or resprung automatically. Recovery is X/timeout, disabling new attempts with /var/mobile/.ppo_disable, and manual respring for quarantined resources. If injection prevents startup, boot Dopamine without injection and remove only this package. Personal data and other tweaks are not modified.
+After successful CI for0.9.1, the indispensable next gate is one separate Safari trial over NewTerm plus visual outcome and host-0.9.1.json. Do not repeat the rejected0.9.0 build. Its pinned resources require manual respring before another trial. Nothing was installed or resprung automatically. Recovery is X/timeout, disabling new attempts with /var/mobile/.ppo_disable, and manual respring for quarantined resources. If injection prevents startup, boot Dopamine without injection and remove only this package. Personal data and other tweaks are not modified.

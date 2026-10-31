@@ -223,7 +223,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.9.0-ownedscene-${{ github.sha }}
+          name: PullOverPro-0.9.1-componentproxy-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

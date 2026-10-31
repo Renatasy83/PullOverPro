@@ -1,5 +1,15 @@
 # Device validation
 
+## Device report: 0.9.0~dev.ownedscene1 — preparation rejected
+
+The actual host-0.9.0.json contains one Safari session. All three expected framework UUIDs match; original selection is unique among7 inspected scenes. workspaceVerified=true and the code path reaching unverified-controller-scene establish that the isolated child namespace, pointer inequality, validity, Safari client identity and application role checks passed. The combined activation-component/hostScene guard then rejected preparation in about25ms.
+
+No hosting window was attached: geometry is empty, windowHidden=true and no live/source samples were taken. controllerVerified=false, pinned=true, poisoned=true, closed=false and replacementAllowed=false show intentional quarantine. Both controller and workspace invalidation attempt/return flags are false. This is not a report of rendering failure after successful attachment, and it does not establish a watchdog or Objective-C crash.
+
+The combined guard did not record individual operands. Exact23A355 firmware inspection independently proves that a normal hostScene result can be FBSComponentScene:NSProxy, which forwards FBScene class tests but differs from the raw workspace child. This reveals a false-rejection defect, without proving that this exact operand caused the uploaded rejection.0.9.1 adds exact-runtime-class unwrapping with an ABI-checked read-only getter, strict owned-target equality and scalar componentBinding evidence. Native proxy fixtures and CI cannot establish the phone outcome.
+
+Do not repeat0.9.0. Manual respring is needed to discard its pinned uncertain resources before a corrected trial. No device operation is performed automatically. New build's Safari rendering, input and owned-scene/private cleanup remain unverified; full Dopamine/ElleKit compatibility is not confirmed. Historical successful tests below apply only to their stated versions and operations.
+
 ## User-confirmed 0.6.1~dev.bridgefix1
 
 Target: iPhone12,5, iOS26.0.1 build23A355. Dopamine rootless is user-reported; ElleKit1.2 and OS/device identifiers were shown in earlier device screenshots. The exact Dopamine version is not recorded.
@@ -183,3 +193,4 @@ Three Safari sessions were recorded. The first two had visibilityPropagationInit
 Session2 remained not-backgrounded with2 layers through all recorded samples and closed by timeout at15.045s. It does not instrument an observed background transition. Session3 started with visibilityPropagationInitiallyEnabled=false and configuration readback succeeded; it nevertheless remained backgrounded with0 source layers through12 seconds and closed by timeout at15.041s. Thus the scoped mutable-copy operation is device-confirmed for that operation, but it did not produce background render layers in this sample. It is not evidence of delivered RBS grants or a general compatibility result. All three sessions ended with invalidateReturned=true, owned=false, poisoned=false and replacementAllowed=true.
 
 No separate visual outcome was supplied with this file. No new claim of pixels or touch routing is inferred from JSON. There is no need to repeat this same visibility test. Independent scene ownership is being implemented on debug/owned-safari-scene; the exact firmware Safari manifest declares multiple scenes supported, while Settings does not. See OWNED_SAFARI_SCENE_23A355.md for the new bounded architecture and remaining live gate.
+

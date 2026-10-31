@@ -1,5 +1,6 @@
 #import "../PPOOwnedSceneHost.h"
 #import <dispatch/dispatch.h>
+#import <objc/runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -14,6 +15,8 @@ static BOOL unexpectedNewActive;
 static BOOL badNewDefinition, badNewClientIdentity, badNewRole, wrongConfigClientIdentity;
 static BOOL throwControllerInit, nilControllerInit, foreignControllerInit;
 static unsigned workspaceConstructorFault, configurationConstructorFault;
+static unsigned componentFault, componentReads, hostSceneReads, proxySceneReads, unknownProxySceneReads;
+static BOOL directComponentScene;
 static PPOOwnedSceneHost *current;
 static id sourceScene;
 static void Check(BOOL condition, const char *message) {
@@ -53,6 +56,50 @@ static void Check(BOOL condition, const char *message) {
     self.active = false;
 }
 @end
+
+// FBSComponentScene is an NSProxy whose public class identity masquerades as
+// FBScene. Model that behavior rather than treating hostScene as the raw scene.
+@interface OwnedFixtureComponentScene : NSProxy {
+    __weak OwnedFixtureScene *_rawScene;
+}
+- (instancetype)initWithScene:(OwnedFixtureScene *)scene;
+- (id)scene;
+@end
+@implementation OwnedFixtureComponentScene
+- (instancetype)initWithScene:(OwnedFixtureScene *)scene { _rawScene = scene; return self; }
+- (Class)class { return [_rawScene class]; }
+- (BOOL)isKindOfClass:(Class)cls { return [_rawScene isKindOfClass:cls]; }
+- (id)scene {
+    proxySceneReads++;
+    if (componentFault == 9) [NSException raise:@"fixture" format:@"proxy-scene"];
+    return _rawScene;
+}
+@end
+@interface OwnedUnknownComponentScene : OwnedFixtureComponentScene @end
+@implementation OwnedUnknownComponentScene
+- (id)scene { unknownProxySceneReads++; return [super scene]; }
+@end
+@interface OwnedBadABIComponentScene : NSProxy
+- (int)scene;
+@end
+@implementation OwnedBadABIComponentScene
+- (int)scene { proxySceneReads++; abort(); }
+- (Class)class { return OwnedFixtureScene.class; }
+- (BOOL)isKindOfClass:(Class)cls { return cls == OwnedFixtureScene.class; }
+@end
+static int BadABIProxyScene(id receiver, SEL selector) {
+    (void)receiver; (void)selector; proxySceneReads++; abort();
+}
+static Class UnknownBadABIProxyClass(void) {
+    static Class cls;
+    if (!cls) {
+        cls = objc_allocateClassPair(OwnedFixtureComponentScene.class, "OwnedUnknownBadABIComponentScene", 0);
+        Check(cls && class_addMethod(cls, @selector(scene), (IMP)BadABIProxyScene, "i@:"),
+              "unknown-proxy ABI fixture is constructed");
+        objc_registerClassPair(cls);
+    }
+    return cls;
+}
 @interface OwnedFixtureWorkspace : NSObject
 @property(nonatomic,copy) NSString *identifier;
 @property(nonatomic,strong) NSMutableArray *scenes;
@@ -111,13 +158,21 @@ static __weak OwnedFixtureConfiguration *lastConfiguration;
 @interface OwnedFixtureComponent : NSObject
 @property(nonatomic,strong) id hostScene;
 @end
-@implementation OwnedFixtureComponent @end
+@implementation OwnedFixtureComponent
+@synthesize hostScene = _hostScene;
+- (id)hostScene {
+    hostSceneReads++;
+    if (componentFault == 12) [NSException raise:@"fixture" format:@"host-scene"];
+    return _hostScene;
+}
+@end
 @interface OwnedFixtureViewController : NSObject @end
 @implementation OwnedFixtureViewController @end
 @interface OwnedFixtureController : NSObject
 @property(nonatomic,strong) OwnedFixtureConfiguration *configuration;
 @property(nonatomic,strong) OwnedFixtureScene *createdScene;
-@property(nonatomic,strong) OwnedFixtureComponent *component;
+@property(nonatomic,strong) id component;
+@property(nonatomic,strong) OwnedFixtureScene *foreignScene;
 @property(nonatomic,strong) id view;
 @property(nonatomic) BOOL invalidated;
 - (instancetype)initWithAdvancedConfiguration:(id)configuration;
@@ -155,7 +210,24 @@ static __weak OwnedFixtureController *lastController;
         }
         OwnedFixtureWorkspace *workspace = [configuration sceneWorkspace];
         [workspace.scenes addObject:_createdScene];
-        _component = [OwnedFixtureComponent new]; _component.hostScene = badComponentScene ? sourceScene : _createdScene;
+        _component = [OwnedFixtureComponent new];
+        id hostScene = directComponentScene ? _createdScene :
+            [[OwnedFixtureComponentScene alloc] initWithScene:_createdScene];
+        if (badComponentScene) hostScene = sourceScene;
+        if (componentFault == 3) hostScene = nil;
+        if (componentFault == 4 || componentFault == 8) {
+            _foreignScene = [OwnedFixtureScene new];
+            hostScene = componentFault == 4 ? (id)_foreignScene :
+                [[OwnedFixtureComponentScene alloc] initWithScene:_foreignScene];
+        }
+        if (componentFault == 5) hostScene = [[OwnedUnknownComponentScene alloc] initWithScene:_createdScene];
+        if (componentFault == 6) hostScene = [[OwnedFixtureComponentScene alloc] initWithScene:nil];
+        if (componentFault == 7) hostScene = [[OwnedFixtureComponentScene alloc] initWithScene:sourceScene];
+        if (componentFault == 10) hostScene = [OwnedBadABIComponentScene alloc];
+        if (componentFault == 13) hostScene = [[UnknownBadABIProxyClass() alloc] initWithScene:_createdScene];
+        [(OwnedFixtureComponent *)_component setHostScene:hostScene];
+        if (componentFault == 1) _component = nil;
+        if (componentFault == 2) _component = [NSObject new];
         _view = badControllerView ? (id)@"bad-view" : [OwnedFixtureViewController new];
         if (reenter) {
             reenter = NO;
@@ -167,7 +239,11 @@ static __weak OwnedFixtureController *lastController;
     }
     return self;
 }
-- (id)activationStateComponent { return self.component; }
+- (id)activationStateComponent {
+    componentReads++;
+    if (componentFault == 11) [NSException raise:@"fixture" format:@"component"];
+    return self.component;
+}
 - (id)sceneViewController { return self.view; }
 - (void)invalidate {
     controllerInvalidations++;
@@ -201,6 +277,7 @@ static NSDictionary *Classes(void) {
         @"UIApplicationSceneSpecification": OwnedFixtureSpecification.class,
         @"FBSSceneClientIdentity": OwnedFixtureClient.class,
         @"_UISceneHostingActivationStateHostComponent": OwnedFixtureComponent.class,
+        @"FBSComponentScene": componentFault == 10 ? OwnedBadABIComponentScene.class : OwnedFixtureComponentScene.class,
         @"UIViewController": OwnedFixtureViewController.class};
 }
 static void Reset(void) {
@@ -214,6 +291,8 @@ static void Reset(void) {
     badNewDefinition = badNewClientIdentity = badNewRole = wrongConfigClientIdentity = NO;
     throwControllerInit = nilControllerInit = foreignControllerInit = NO;
     workspaceConstructorFault = configurationConstructorFault = 0;
+    componentFault = componentReads = hostSceneReads = proxySceneReads = unknownProxySceneReads = 0;
+    directComponentScene = NO;
     OwnedFixtureClient *client = [OwnedFixtureClient new]; client.bundleIdentifier = @"com.apple.mobilesafari";
     OwnedFixtureSpecification *spec = [OwnedFixtureSpecification new]; spec.uiSceneSessionRole = @"UIWindowSceneSessionRoleApplication";
     OwnedFixtureDefinition *definition = [OwnedFixtureDefinition new]; definition.clientIdentity = client; definition.specification = spec;
@@ -247,6 +326,24 @@ int main(void) {
         Check([current prepareScene:sourceScene], "creates one independently owned scene");
         Check(current.viewController != nil && current.hostedScene != sourceScene && !current.poisoned,
               "owned view and distinct scene exposed after complete validation");
+        Check(componentReads == 1 && hostSceneReads == 1 && proxySceneReads == 1,
+              "component binding is read once and the exact known proxy is unwrapped once");
+        id componentScene = [(OwnedFixtureComponent *)lastController.component hostScene];
+        Check(componentScene != current.hostedScene &&
+              [componentScene class] == OwnedFixtureScene.class &&
+              [componentScene isKindOfClass:OwnedFixtureScene.class] &&
+              object_getClass(componentScene) == OwnedFixtureComponentScene.class,
+              "known NSProxy masquerades as FBScene without raw pointer identity");
+        NSDictionary *binding = current.snapshot[@"componentBinding"];
+        Check([binding[@"status"] isEqual:@"verified-proxy"] &&
+              [binding[@"componentPresent"] boolValue] && [binding[@"expectedComponentClass"] boolValue] &&
+              [binding[@"hostScenePresent"] boolValue] && [binding[@"proxyClassMatched"] boolValue] &&
+              [binding[@"matchesCreatedScene"] boolValue] && ![binding[@"matchesBorrowedSource"] boolValue],
+              "binding metadata records verified proxy ownership without publishing objects");
+        unsigned bindingReads = componentReads + hostSceneReads + proxySceneReads;
+        Check([current.snapshot[@"componentBinding"] isEqual:binding] &&
+              componentReads + hostSceneReads + proxySceneReads == bindingReads,
+              "snapshot publishes captured metadata without calling private getters again");
         Check([[current sampleState][@"status"] isEqual:@"sampled"] &&
               [current.snapshot[@"controllerVerified"] boolValue],
               "only completely verified scene ownership is sampled");
@@ -257,6 +354,63 @@ int main(void) {
         Check([current close] && controllerInvalidations == 1 && workspaceInvalidations == 1,
               "confirmed cleanup is idempotent");
         SourceUnchanged();
+
+        Reset(); directComponentScene = YES;
+        Check([current prepareScene:sourceScene] && proxySceneReads == 0,
+              "direct raw owned-scene identity remains accepted without proxy access");
+        binding = current.snapshot[@"componentBinding"];
+        Check([binding[@"status"] isEqual:@"verified-direct"] &&
+              ![binding[@"proxyClassMatched"] boolValue] && [binding[@"matchesCreatedScene"] boolValue] &&
+              ![binding[@"matchesBorrowedSource"] boolValue],
+              "direct binding reports raw scene ownership independently of proxy support");
+        Check([current close], "direct identity fixture cleans only its own scene");
+        SourceUnchanged();
+
+        NSArray<NSString *> *bindingFailures = @[@"unused", @"component-missing", @"component-class-mismatch",
+            @"host-scene-missing", @"unknown-host-scene-class", @"unknown-host-scene-class",
+            @"host-scene-foreign", @"host-scene-foreign", @"host-scene-foreign", @"reading-proxy-scene",
+            @"not-read", @"reading-component", @"reading-host-scene", @"unknown-host-scene-class"];
+        for (unsigned failure = 1; failure <= 13; failure++) {
+            Reset(); componentFault = failure;
+            current = [[PPOOwnedSceneHost alloc] initWithClasses:Classes()];
+            Check(![current prepareScene:sourceScene], "uncertain component binding refuses presentation");
+            binding = current.snapshot[@"componentBinding"];
+            Check([binding[@"status"] isEqual:bindingFailures[failure]],
+                  "captured binding metadata distinguishes missing, foreign, proxy and throwing getters");
+            Check(current.viewController == nil && current.hostedScene == nil &&
+                  controllerInvalidations == 0 && workspaceInvalidations == 0,
+                  "unverified component binding exposes no view and performs no private cleanup");
+            if (failure == 10) {
+                Check(constructors == 0 && proxySceneReads == 0 && current.closed && !current.poisoned,
+                      "wrong-return ABI on exact injected proxy is rejected before framework construction");
+            } else {
+                Check(constructors == 1 && current.poisoned && !current.closed &&
+                      lastController != nil && lastWorkspace != nil && controllerDeallocations == 0,
+                      "uncertain component ownership retains private allocations in quarantine");
+                Check(![current close] && ![current pollCleanup] && ![current prepareScene:sourceScene] &&
+                      controllerInvalidations == 0 && workspaceInvalidations == 0 && constructors == 1,
+                      "quarantine blocks automatic retries and destructive cleanup");
+            }
+            if (failure == 1 || failure == 2)
+                Check(hostSceneReads == 0 && proxySceneReads == 0,
+                      "missing or wrong component is never asked for a host scene");
+            if (failure == 5 || failure == 13)
+                Check(proxySceneReads == 0 && unknownProxySceneReads == 0,
+                      "unknown masquerading proxy or subclass is rejected before its scene getter");
+            if (failure == 6 || failure == 7 || failure == 8) {
+                Check([binding[@"matchesCreatedScene"] isEqual:@NO] &&
+                      [binding[@"matchesBorrowedSource"] isEqual:@(failure == 7)],
+                      "known proxy nil, borrowed and foreign targets cannot claim created ownership");
+            }
+            if (failure == 1 || failure == 2 || failure == 3 || failure == 5 || failure >= 9)
+                Check(binding[@"matchesCreatedScene"] == NSNull.null,
+                      "unread target comparison remains unknown instead of falsely confirmed");
+            bindingReads = componentReads + hostSceneReads + proxySceneReads + unknownProxySceneReads;
+            Check([current.snapshot[@"componentBinding"] isEqual:binding] &&
+                  componentReads + hostSceneReads + proxySceneReads + unknownProxySceneReads == bindingReads,
+                  "failed binding snapshots never retry any private getter");
+            SourceUnchanged();
+        }
 
         Reset(); delayedCleanup = YES;
         Check([current prepareScene:sourceScene], "pending-cleanup fixture prepares");
