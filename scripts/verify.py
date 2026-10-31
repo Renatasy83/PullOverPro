@@ -156,7 +156,7 @@ require(target_facts['firmware'] == {'productType': 'iPhone12,5', 'productVersio
         'Target facts must remain explicit iPhone multiscene declarations, not runtime claims')
 floating_policy = (ROOT / 'PPOFloatingWindowGeometry.h').read_text()
 require('#include "PPOFloatingWindowGeometry.h"' in owned_trial and
-        'PPOFloatingInitial(' in owned_trial and 'PPOFloatingResize(' in owned_trial and 'PPOFloatingMove(' in owned_trial,
+        'PPOFloatingInitial(' in owned_trial and 'PPOFloatingResize(' in owned_trial and '_presentation.move(' in owned_trial,
         'Window placement must use the bounded public geometry policy')
 require(owned_trial.count('childView.frame =') == 1 and
         'self.sizeButton = nil; self.closeButton = nil;' in owned_trial and
@@ -169,6 +169,22 @@ require('PPOPlacementInsets(scene)' in owned_trial and
 require('std::isfinite' in floating_policy and 'PPOFloatingMargin = 8' in floating_policy and
         'PPOFloatingMinWidth = 240' in floating_policy and 'PPOFloatingMinHeight = 320' in floating_policy,
         'Public geometry must retain finite bounds, reachable controls and minimum viewport size')
+require('#include "PPOFloatingWindowPresentation.h"' in owned_trial and
+        '_presentation.minimize(' in owned_trial and '_presentation.restore(' in owned_trial and
+        '_presentation.stop();' in owned_trial and 'self.restoreButton = nil;' in owned_trial,
+        'Minimize/restore must share the bounded terminal presentation policy and clear own controls')
+require('UIAction actionWithTitle:' in owned_trial and '__weak PPOOwnedSafariTrial *weakSelf' in owned_trial and
+        'showsMenuAsPrimaryAction = YES' in owned_trial,
+        'Public action menus must use weak trial captures')
+for action in ('minimizeFromButton', 'restoreFromButton'):
+    body = re.search(r'- \(void\)' + action + r':\(UIButton \*\)sender \{(.*?)\n\}', owned_trial, re.S)
+    require(body is not None and '[self checkLifetime]' in body.group(1) and
+            '_lifetime.start' not in body.group(1) and '_lifetime.keep' not in body.group(1) and
+            'prepareScene:' not in body.group(1),
+            'Presentation changes must honor lifetime without recreating a scene or extending its deadline')
+require('if (!_presentation.minimized()) {' in owned_trial and
+        'if (minimized) return self.content.bounds.size.width > 0 && self.content.bounds.size.height > 0;' in owned_trial,
+        'Minimized geometry must preserve a positive expanded viewport without fitting a zero-height bar')
 require('childView.frame =' in owned_trial and
         owned_trial.index('childView.frame =') < owned_trial.index('[root addChildViewController:child]'),
         'Provide public native child geometry before attachment/appearance')
@@ -228,7 +244,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.13.0~dev.geometry1'), 'Unexpected version')
+    require(field('Version').startswith('0.14.0~dev.minimize1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

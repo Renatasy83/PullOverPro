@@ -7,6 +7,7 @@
 #import "PPOOwnedAdmission.h"
 #include "PPOHostGeometry.h"
 #include "PPOFloatingWindowGeometry.h"
+#include "PPOFloatingWindowPresentation.h"
 #include "PPOWindowLifetime.h"
 #import <objc/runtime.h>
 #include <sys/stat.h>
@@ -108,13 +109,17 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 @property(nonatomic,copy) NSDictionary *lastLockSample;
 @property(nonatomic) BOOL protectedDataAvailable;
 @property(nonatomic) BOOL protectedDataSampled;
-@property(nonatomic,strong) UIButton *keepButton;
+@property(nonatomic,strong) UIButton *actionsButton;
 @property(nonatomic,strong) UIButton *sizeButton;
 @property(nonatomic,strong) UIButton *closeButton;
+@property(nonatomic,strong) UIButton *restoreButton;
 @property(nonatomic,strong) UILabel *titleLabel;
 @property(nonatomic) UIEdgeInsets placementInsets;
 @property(nonatomic) NSUInteger completedMoves;
 @property(nonatomic) NSUInteger completedResizes;
+@property(nonatomic) NSUInteger completedMinimizes;
+@property(nonatomic) NSUInteger completedRestores;
+@property(nonatomic) BOOL minimizedAtClose;
 @property(nonatomic,copy) NSString *displayName;
 @property(nonatomic,strong) dispatch_source_t timer;
 @property(nonatomic,strong) NSMutableArray *events;
@@ -147,10 +152,14 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 - (void)keepFromButton:(UIButton *)sender;
 - (void)resizeFromButton:(UIButton *)sender;
 - (BOOL)applyWindowFrame:(PPOHostRect)frame;
+- (void)updateActionsMenu;
+- (void)minimizeFromButton:(UIButton *)sender;
+- (void)restoreFromButton:(UIButton *)sender;
 @end
 @implementation PPOOwnedSafariTrial {
     PPOWindowLifetime _lifetime;
     PPOFloatingSize _sizePreset;
+    PPOFloatingWindowPresentation _presentation;
 }
 - (void)record:(NSString *)event {
     if (!NSThread.isMainThread) return;
@@ -171,7 +180,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @9, @"version": @"0.13.0~dev.geometry1",
+    NSDictionary *report = @{@"schema": @10, @"version": @"0.14.0~dev.minimize1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
         @"geometry": geometry,
@@ -218,11 +227,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.13.0.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.14.0.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.13.0] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.14.0] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -297,8 +306,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         PPOWindowConditions conditions = [self lifetimeConditions];
         if (!self.running || self.closed || self.closing || self.closePending) return;
         if (!_lifetime.keep(conditions)) { [self checkLifetime]; return; }
-        [self.keepButton setTitle:@"Păstrată" forState:UIControlStateNormal];
-        self.keepButton.enabled = NO;
+        [self updateActionsMenu];
         self.titleLabel.text = self.displayName;
         self.nextHeartbeat = NSProcessInfo.processInfo.systemUptime + 30;
         [self record:@"kept-by-user"];
@@ -306,11 +314,24 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         (void)exception; [self closeBecause:@"keep-exception"];
     }
 }
+- (void)updateActionsMenu {
+    __weak PPOOwnedSafariTrial *weakSelf = self;
+    UIAction *keep = [UIAction actionWithTitle:_lifetime.kept() ? @"Păstrată" : @"Păstrează"
+        image:nil identifier:nil handler:^(__kindof UIAction *action) {
+            (void)action; dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf keepFromButton:nil]; });
+        }];
+    if (_lifetime.kept()) { keep.attributes = UIMenuElementAttributesDisabled; keep.state = UIMenuElementStateOn; }
+    UIAction *minimize = [UIAction actionWithTitle:@"Minimizează" image:nil identifier:nil
+        handler:^(__kindof UIAction *action) { (void)action; dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf minimizeFromButton:nil]; }); }];
+    self.actionsButton.menu = [UIMenu menuWithTitle:@"" children:@[keep, minimize]];
+    self.actionsButton.showsMenuAsPrimaryAction = YES;
+}
 - (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier
               displayName:(NSString *)displayName capability:(NSDictionary *)capability {
     if (!NSThread.isMainThread || self.attempted) return @"Probă deja solicitată";
     self.attempted = YES;
     _sizePreset = PPOFloatingSize::Standard;
+    if (!_presentation.start()) return @"Starea ferestrei nu poate fi inițializată";
     self.bundleIdentifier = [bundleIdentifier copy];
     self.reportID = NSUUID.UUID.UUIDString;
     self.frameworks = PPOSceneFrameworkIdentity();
@@ -397,7 +418,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         self.rootController = root;
         self.window.rootViewController = root;
         root.view.frame = CGRectMake(0, 0, width, height);
-        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, width - 192, 44)];
+        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, width - 156, 44)];
         NSString *name = [displayName isKindOfClass:NSString.class] && displayName.length > 0 && displayName.length <= 128
             ? displayName : @"PPO";
         title.text = [NSString stringWithFormat:@"%@ · 15 s", name];
@@ -407,12 +428,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         title.accessibilityHint = @"Trage pentru a muta fereastra";
         [title addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)]];
         [root.view addSubview:title];
-        UIButton *keep = [UIButton buttonWithType:UIButtonTypeSystem];
-        keep.frame = CGRectMake(width - 168, 0, 80, 44);
-        keep.titleLabel.font = [UIFont systemFontOfSize:12];
-        [keep setTitle:@"Păstrează" forState:UIControlStateNormal];
-        [keep addTarget:self action:@selector(keepFromButton:) forControlEvents:UIControlEventTouchUpInside];
-        self.keepButton = keep; [root.view addSubview:keep];
+        UIButton *actions = [UIButton buttonWithType:UIButtonTypeSystem];
+        actions.frame = CGRectMake(width - 132, 0, 44, 44);
+        [actions setTitle:@"•••" forState:UIControlStateNormal];
+        actions.accessibilityLabel = @"Acțiuni fereastră";
+        self.actionsButton = actions; [self updateActionsMenu]; [root.view addSubview:actions];
         UIButton *size = [UIButton buttonWithType:UIButtonTypeSystem];
         size.frame = CGRectMake(width - 88, 0, 44, 44);
         [size setTitle:@"↗" forState:UIControlStateNormal];
@@ -420,6 +440,12 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         size.accessibilityValue = @"Medie";
         [size addTarget:self action:@selector(resizeFromButton:) forControlEvents:UIControlEventTouchUpInside];
         self.sizeButton = size; [root.view addSubview:size];
+        UIButton *restore = [UIButton buttonWithType:UIButtonTypeSystem];
+        restore.frame = CGRectMake(width - 88, 0, 44, 44);
+        [restore setTitle:@"▢" forState:UIControlStateNormal];
+        restore.accessibilityLabel = @"Restabilește fereastra"; restore.hidden = YES;
+        [restore addTarget:self action:@selector(restoreFromButton:) forControlEvents:UIControlEventTouchUpInside];
+        self.restoreButton = restore; [root.view addSubview:restore];
         UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
         close.frame = CGRectMake(width - 44, 0, 44, 44);
         [close setTitle:@"✕" forState:UIControlStateNormal];
@@ -513,14 +539,21 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     CGRect screen = self.windowScene.coordinateSpace.bounds;
     if (!CGSizeEqualToSize(screen.size, self.fallbackNativeFrame.size)) return NO;
     PPOHostRect frame{};
-    if (!PPOFloatingMove(requested, PPOFloatingRect(screen), PPOFloatingSafeInsets(self.placementInsets),
+    if (!_presentation.move(requested, PPOFloatingRect(screen), PPOFloatingSafeInsets(self.placementInsets),
         0, 0, &frame)) return NO;
     self.window.frame = CGRectMake(frame.x, frame.y, frame.width, frame.height);
     self.rootController.view.frame = CGRectMake(0, 0, frame.width, frame.height);
-    self.titleLabel.frame = CGRectMake(12, 0, frame.width - 192, 44);
-    self.keepButton.frame = CGRectMake(frame.width - 168, 0, 80, 44);
+    BOOL minimized = _presentation.minimized();
+    self.titleLabel.frame = CGRectMake(12, 0, frame.width - (minimized ? 112 : 156), 44);
+    self.actionsButton.frame = CGRectMake(frame.width - 132, 0, 44, 44);
     self.sizeButton.frame = CGRectMake(frame.width - 88, 0, 44, 44);
+    self.restoreButton.frame = CGRectMake(frame.width - 88, 0, 44, 44);
     self.closeButton.frame = CGRectMake(frame.width - 44, 0, 44, 44);
+    self.actionsButton.hidden = minimized; self.sizeButton.hidden = minimized;
+    self.restoreButton.hidden = !minimized;
+    // The minimized window clips below its 44-point bar. Keep the positive
+    // expanded viewport, wrapper, native view and containment exactly in place.
+    if (minimized) return self.content.bounds.size.width > 0 && self.content.bounds.size.height > 0;
     self.content.frame = CGRectMake(0, 44, frame.width, frame.height - 44);
     self.sizeButton.accessibilityValue = _sizePreset == PPOFloatingSize::Large ? @"Mare"
         : (_sizePreset == PPOFloatingSize::Compact ? @"Mică" : @"Medie");
@@ -530,7 +563,8 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 }
 - (void)resizeFromButton:(UIButton *)sender {
     (void)sender;
-    if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing || self.closePending) return;
+    if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
+        self.closePending || _presentation.minimized()) return;
     @try {
         if (![self checkLifetime]) return;
         PPOFloatingSize next = PPOFloatingNextSize(_sizePreset);
@@ -544,6 +578,42 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         [self captureLayout:@"window-resized"];
     } @catch (NSException *exception) {
         (void)exception; [self closeBecause:@"resize-exception"];
+    }
+}
+- (void)minimizeFromButton:(UIButton *)sender {
+    (void)sender;
+    if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
+        self.closePending || _presentation.minimized()) return;
+    @try {
+        if (![self checkLifetime] || !_lifetime.observedActive()) return;
+        PPOHostRect frame{};
+        if (!_presentation.minimize(PPOFloatingRect(self.window.frame),
+            PPOFloatingRect(self.windowScene.coordinateSpace.bounds), PPOFloatingSafeInsets(self.placementInsets),
+            &frame) || ![self applyWindowFrame:frame]) {
+            [self closeBecause:@"minimize-refused"]; return;
+        }
+        self.completedMinimizes = MIN(self.completedMinimizes + 1, (NSUInteger)1000000);
+        [self captureLayout:@"window-minimized"];
+    } @catch (NSException *exception) {
+        (void)exception; [self closeBecause:@"minimize-exception"];
+    }
+}
+- (void)restoreFromButton:(UIButton *)sender {
+    (void)sender;
+    if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
+        self.closePending || !_presentation.minimized()) return;
+    @try {
+        if (![self checkLifetime]) return;
+        PPOHostRect frame{};
+        if (!_presentation.restore(PPOFloatingRect(self.window.frame),
+            PPOFloatingRect(self.windowScene.coordinateSpace.bounds), PPOFloatingSafeInsets(self.placementInsets),
+            &frame) || ![self applyWindowFrame:frame]) {
+            [self closeBecause:@"restore-refused"]; return;
+        }
+        self.completedRestores = MIN(self.completedRestores + 1, (NSUInteger)1000000);
+        [self captureLayout:@"window-restored"];
+    } @catch (NSException *exception) {
+        (void)exception; [self closeBecause:@"restore-exception"];
     }
 }
 - (BOOL)fitPresentation {
@@ -593,6 +663,12 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         }
     }
     return @{@"chain": chain, @"descendants": descendants,
+        @"presentationMode": self.closed ? @"closed" : (_presentation.minimized() ? @"minimized" : @"expanded"),
+        @"minimizedAtClose": @(self.minimizedAtClose),
+        @"completedMinimizes": @(self.completedMinimizes), @"completedRestores": @(self.completedRestores),
+        @"savedExpandedFrame": NSStringFromCGRect(CGRectMake(_presentation.expandedFrame().x,
+            _presentation.expandedFrame().y, _presentation.expandedFrame().width, _presentation.expandedFrame().height)),
+        @"viewportFrame": self.content ? NSStringFromCGRect(self.content.frame) : @"none",
         @"sizePreset": PPOFloatingSizeName(_sizePreset),
         @"completedMoves": @(self.completedMoves), @"completedResizes": @(self.completedResizes),
         @"placementInsets": NSStringFromUIEdgeInsets(self.placementInsets), @"wrapperOnlyResize": @YES,
@@ -608,10 +684,12 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     if (!NSThread.isMainThread || self.closed || self.closing || self.closePending || !self.running) return;
     if (!PPOTrialAllowed()) { [self closeBecause:@"disabled"]; return; }
     @try {
-        [self.window.rootViewController.view layoutIfNeeded];
-        [(UIView *)[self hostView] layoutIfNeeded];
-        if (self.closed || self.closing || self.closePending) return;
-        if (![self fitPresentation]) { [self closeBecause:@"geometry-refused"]; return; }
+        if (!_presentation.minimized()) {
+            [self.window.rootViewController.view layoutIfNeeded];
+            [(UIView *)[self hostView] layoutIfNeeded];
+            if (self.closed || self.closing || self.closePending) return;
+            if (![self fitPresentation]) { [self closeBecause:@"geometry-refused"]; return; }
+        }
         [self sampleObservations];
         [self record:event];
     } @catch (NSException *exception) {
@@ -687,7 +765,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         // Window-axis translation is a vector; placement is clamped in scene coordinates.
         CGPoint delta = [pan translationInView:self.window];
         PPOHostRect frame{};
-        if (!PPOFloatingMove(PPOFloatingRect(self.window.frame),
+        if (!_presentation.move(PPOFloatingRect(self.window.frame),
             PPOFloatingRect(self.windowScene.coordinateSpace.bounds), PPOFloatingSafeInsets(self.placementInsets),
             delta.x, delta.y, &frame) || ![self applyWindowFrame:frame]) {
             [self closeBecause:@"move-refused"]; return;
@@ -705,6 +783,8 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     if (!NSThread.isMainThread || self.closed) return;
     if (!self.closeReason) self.closeReason = @"external";
     if (self.opening) { self.closePending = YES; return; }
+    self.minimizedAtClose = _presentation.minimized();
+    _presentation.stop();
     self.closed = YES;
     self.closing = YES;
     self.running = NO;
@@ -745,8 +825,8 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     if (uiClean) {
         self.window = nil; self.content = nil; self.scalingWrapper = nil;
         self.childController = nil; self.rootController = nil;
-        self.keepButton = nil; self.titleLabel = nil;
-        self.sizeButton = nil; self.closeButton = nil;
+        self.actionsButton = nil; self.titleLabel = nil;
+        self.sizeButton = nil; self.closeButton = nil; self.restoreButton = nil;
     }
     self.uiCleanupConfirmed = uiClean;
     if (ownerClosed) {

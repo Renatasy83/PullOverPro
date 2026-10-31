@@ -156,6 +156,9 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
             tests/FloatingWindowGeometryTests.cpp -o "$RUNNER_TEMP/ppo-floating-geometry-tests"
           "$RUNNER_TEMP/ppo-floating-geometry-tests" | tee diagnostics/floating-geometry-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/FloatingWindowPresentationTests.cpp -o "$RUNNER_TEMP/ppo-floating-presentation-tests"
+          "$RUNNER_TEMP/ppo-floating-presentation-tests" | tee diagnostics/floating-presentation-tests.log
       - name: Analyze and test owned scene presenter
         shell: bash
         run: |
@@ -252,7 +255,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.13.0-geometry-${{ github.sha }}
+          name: PullOverPro-0.14.0-minimize-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

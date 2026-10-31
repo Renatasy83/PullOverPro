@@ -1,5 +1,17 @@
 # Device validation
 
+## User-confirmed 0.13.0 — Safari window sizes, dragging, Keep and reuse
+
+The supplied schema9 host-0.13.0.json contains two Safari sessions and the user confirms the requested controls work. Executablec86083b77575af887973c195e73b0beff28ccfef is preserved as stable/verified-safari-window-geometry. Both admissions use fresh installed-info metadata, select a unique original among6 scenes, match all four framework UUIDs, and bind the activation proxy to the owned child rather than the original.
+
+The first session has9 completed resizes and3 completed moves; it runs in kept mode and closes manually after37.014s. The bounded16-event history retains the first two ownership events and most recent14 events, so the original Keep/window-shown events are no longer present; kept-heartbeat is retained. A second session begins2.908s after closure, performs2 resizes and2 moves, and closes manually after9.378s in timed mode. Thus the report covers11 resizes and5 completed moves, not an actual default timeout or lock test for this version.
+
+All three presets appear with300x480,380x680 and260x420 frames. Captured scene insets are{44,0,34,0}; completed edge moves clamp x to8/106 or8/146 and bottom to854, consistent with the8-point margin. Recorded private presentation native frames remain414x896 across available layout samples; resizing uses the wrapper rather than a PPO native-frame write. Source layers remain available while the original is backgrounded without layers. The user's confirmation supplies the visual/interaction outcome; telemetry is not an input trace or keyboard proof.
+
+Both controller/workspace invalidations return, both sessions end closed/unpinned/unpoisoned and replacement is allowed. No exception or quarantine is recorded. Final hosted samples are historical, about2.942s/1.330s before closure. Full cleanup/leak freedom, every system overlay, rotation, long-term behavior, explicit floating keyboard and full Dopamine/ElleKit compatibility remain unconfirmed. Raw report/page contents are not published.
+
+This completes the requested0.13.0 size/drag/manual/reuse gate for the observed Safari operations. Do not repeat ordinary window sizing merely to acknowledge the result. The next stage adds public minimize/restore of the same owned scene; see MINIMIZED_OWNED_WINDOW.md.
+
 ## User-confirmed 0.12.0 — Contacts installed metadata and owned window
 
 The supplied host-0.12.0.json contains two com.apple.MobileAddressBook sessions and the user confirms the requested test works. Executable6d176ad4bec086cad6a99c72e360d136efa79cff is preserved as stable/verified-contacts-installed-metadata. Both admissions have basis=installed-info with fresh eligible installed-basic-multiscene-v1 descriptors, observed about0.137s/0.106s before preparation. This exercises the new helper inspection rather than firmware-baseline fallback. It does not independently identify which postinst launchctl branch was used.
