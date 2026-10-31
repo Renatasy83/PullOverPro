@@ -175,7 +175,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation -framework CoreFoundation \
             tests/OwnedSceneHostTests.mm PPOOwnedSceneHost.mm PPOOwnedAdmission.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-owned-scene-tests"
           "$RUNNER_TEMP/ppo-owned-scene-tests" | tee diagnostics/owned-scene-tests.log
       - name: Test screen lock guard and window lifetime

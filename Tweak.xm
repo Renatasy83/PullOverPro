@@ -166,11 +166,11 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
                 self.hostInspectionPending = NO; [self updateLaunchButton];
                 if (epoch != self.saveEpoch || ![identifier isEqual:self.selectedIdentifier] || !PPOOverlayAllowed()) return;
                 if (![response[@"status"] isEqual:@"inspected"]) {
-                    // Preserve the existing explicit baseline only when the
-                    // inspection service is unavailable. Explicit rejection,
-                    // stale replies and hard-negative metadata are never bypassed.
+                    // A missing response can also mean a malformed or wrong-nonce
+                    // reply. Preserve the baseline only for an explicit, validated
+                    // unsupported response; never infer permission from timeout.
                     if (PPOOwnedApplicationAllowed(identifier) &&
-                        (!response || [response[@"status"] isEqual:@"unsupported"])) {
+                        [response[@"status"] isEqual:@"unsupported"]) {
                         [self openPreparedApplication:chosen capability:nil]; return;
                     }
                     ppoStatus.text = response ? PPOBridgeFailureMessage(response) : @"Verificarea ferestrei nu este disponibilă";

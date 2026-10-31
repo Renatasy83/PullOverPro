@@ -146,6 +146,8 @@ require('PPOBridgeSend(@"inspect-scene", identifier' in (ROOT / 'Tweak.xm').read
         'epoch != self.saveEpoch' in (ROOT / 'Tweak.xm').read_text() and
         'kickstart -k system/com.renatasy83.ppo.bridge' in (ROOT / 'layout/DEBIAN/postinst').read_text(),
         'Selected inspection must remain asynchronous and upgrades restart only the own service')
+require('(!response ||' not in (ROOT / 'Tweak.xm').read_text(),
+        'Missing, malformed and wrong-nonce responses must not open baseline windows through timeout')
 require(target_facts['firmware'] == {'productType': 'iPhone12,5', 'productVersion': '26.0.1', 'buildVersion': '23A355'} and
         target_facts['runtimeCompatibilityConfirmed'] is False and all(
             app['declaresMultipleScenes'] is True and 1 in app['deviceFamilies'] and
