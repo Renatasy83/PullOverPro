@@ -1,6 +1,6 @@
 # Autonomous port status — 2026-10-31
 
-Current isolated work:0.14.0~dev.minimize1 on debug/minimize-owned-window. Public ••• actions add explicit same-window minimize/restore while retaining the positive expanded viewport and original owner/native frame/lifetime. New mode geometry has403376 local sanitizer/assertion checks. Current-source CI/build/artifact inspection is pending. See MINIMIZED_OWNED_WINDOW.md.
+Current isolated work:0.14.0~dev.minimize1 on debug/minimize-owned-window. Public ••• actions add explicit same-window minimize/restore while retaining the positive expanded viewport and original owner/native frame/lifetime. New mode geometry has403376 local sanitizer/assertion checks. Executable020017780f099a4b1a6335797a0d54ded91449c0 passed all22 suites, iOS Clang analysis, Theos rootless arm64/arm64e build and downloaded ZIP/DEB inspection. Delivered candidate:Actions41251070344/artifact13061840118. See VALIDATION_0.14.0.md for hashes, executed tests and actual-phone limits. See MINIMIZED_OWNED_WINDOW.md.
 
 ## Preserved actual device evidence
 
@@ -18,6 +18,6 @@ All prior native suites plus the new presentation suite, applicable sanitizers, 
 
 ## Next indispensable live gate
 
-After successful automation, only the changed public menu/minimize/restore behavior needs testing. Use one already working app, explicit Keep then minimize, move the bar and wait beyond15seconds; confirm the app underneath responds outside it. Restore/check content, minimize and X. Reopen default mode, minimize without Keep and confirm original timed expiry. Provide host-0.14.0.json. Ordinary app discovery and already confirmed size/navigation tests do not need repeating.
+Automation has passed; only the changed public menu/minimize/restore behavior needs testing. Use one already working app, explicit Keep then minimize, move the bar and wait beyond15seconds; confirm the app underneath responds outside it. Restore/check content, minimize and X. Reopen default mode, minimize without Keep and confirm original timed expiry. Provide host-0.14.0.json. Ordinary app discovery and already confirmed size/navigation tests do not need repeating.
 
 Recovery:X/default15-second expiry; /var/mobile/.ppo_disable; manual respring for quarantine. Kept mode has no timer expiry. If injection prevents startup, start Dopamine without injection and remove only this package. No phone installation/respring, personal data deletion or other-tweak modification is performed automatically. Complete original functionality and full Dopamine/ElleKit compatibility remain unconfirmed.
