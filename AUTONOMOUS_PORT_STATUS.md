@@ -1,6 +1,6 @@
 # Autonomous port status — 2026-10-31
 
-Current isolated development:0.11.0~dev.multiscene1 on debug/declared-multiscene-apps. The existing owned-scene path now admits exactly Safari, Reminders and Contacts, whose exact23A355 staged manifests declare multiple application scenes. The copied selected identifier must match both source and created child independently. No additional private method, dynamic bundle scan or service change is introduced. Current CI is pending; runtime behavior of the additional app clients is unconfirmed. See DECLARED_SCENE_TARGETS.md.
+Current isolated development:0.11.0~dev.multiscene1 on debug/declared-multiscene-apps. The existing owned-scene path now admits exactly Safari, Reminders and Contacts, whose exact23A355 staged manifests declare multiple application scenes. The copied selected identifier must match both source and created child independently. No additional private method, dynamic bundle scan or service change is introduced. Executable0bb57241e7aeb54a35b434e59f7b24bf844cc7c5 passed Actions run41214886266; artifact13047815553 contains the verified DEB and full evidence. Runtime behavior of the additional app clients is unconfirmed. See DECLARED_SCENE_TARGETS.md and VALIDATION_0.11.0.md.
 
 ## Preserved tested source
 
@@ -22,7 +22,7 @@ Keep is explicit and cannot revive a timed-out or failed session. A side-effect-
 
 A read-only lock adapter uses only the exact23A355 existing-manager getter and two Boolean flags. Four loaded framework UUIDs, main-thread enforcement and actual method-table ABI checks gate dispatch. The verified Foundation lock-state notification requests conservative closure; no private observer protocol or setter is used. Polling/notifications do not establish zero lock-transition frames. A kept window has no timer expiry; X and safety closures remain essential.
 
-The0.10.0 baseline passed all17 suites, including lock-state175, lifetime410 and ownership702 checks, iOS Clang analysis, Theos rootless arm64/arm64e build and package/lifecycle/license checks. Its downloaded ZIP/DEB hashes and local payload inspection passed. Current0.11.0 adds ownership fixtures for cross-app source/child mismatches, invalid target requests, mutable caller arguments and100 mixed-target cycles; its source policy checks identifiers against the selected manifest facts. CI must pass before any new install recommendation. Linux and macOS Intel CI do not execute app clients or SpringBoard. No compatible physical Apple Silicon Mac is accessible for vphone-cli.
+The0.10.0 baseline passed all17 suites, including lock-state175, lifetime410 and ownership702 checks, iOS Clang analysis, Theos rootless arm64/arm64e build and package/lifecycle/license checks. Current0.11.0 passed the same17 suites, with790 ownership checks covering cross-app source/child mismatches, invalid target requests, mutable caller arguments and100 mixed-target cycles. Clang analysis, Theos arm64/arm64e packaging and payload/lifecycle/license checks passed. ZIP/DEB digests and local inspection passed for the downloaded artifact. Its source policy matches identifiers to selected manifest facts. Linux and macOS Intel CI do not execute app clients or SpringBoard. No compatible physical Apple Silicon Mac is accessible for vphone-cli.
 
 ## Remaining indispensable live gate
 

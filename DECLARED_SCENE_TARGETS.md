@@ -20,7 +20,7 @@ The active inventory/mobile service and package lifecycle scripts are unchanged 
 
 ## Automation and limits
 
-Native fixtures preserve the earlier ownership/ABI/failure suite and add selected/source mismatches, wrong eligible child identities, unsupported requests before private access, caller mutation and100 mixed-application cleanup cycles. Source policy checks the exact policy against the selected JSON facts. CI runs all existing native suites, iOS Clang analysis, Theos rootless arm64/arm64e compilation and package/lifecycle/license inspection. CI for this revision is pending.
+Native fixtures preserve the earlier ownership/ABI/failure suite and add selected/source mismatches, wrong eligible child identities, unsupported requests before private access, caller mutation and100 mixed-application cleanup cycles. Source policy checks the exact policy against the selected JSON facts. Executable0bb57241e7aeb54a35b434e59f7b24bf844cc7c5 passed Actions run41214886266 with all17 suites, including790 ownership checks, plus iOS Clang analysis, Theos rootless arm64/arm64e compilation and package/lifecycle/license inspection. Artifact13047815553 contains one DEB; downloaded ZIP/DEB hashes and local payload inspection passed. See VALIDATION_0.11.0.md. None of these checks executes the actual additional app clients.
 
 Native fixtures do not execute Reminders or Contacts. Real client admission, visible rendering, input, Keep, process/session cleanup and long-term behavior for each new app remain unconfirmed. Full Dopamine/ElleKit compatibility and final all-app functionality are not claimed. Safari's0.10.0 kept/lock/reuse baseline remains preserved; no phone operation or other-tweak change is made automatically.
 
