@@ -79,6 +79,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 @property(nonatomic) NSTimeInterval nextHeartbeat;
 - (void)closeFromButton:(UIButton *)sender;
 - (void)closeBecause:(NSString *)reason;
+- (void)closeAfterNotification:(NSString *)reason;
 - (BOOL)fitPresentation;
 - (void)captureLayout:(NSString *)event;
 - (void)captureState:(NSString *)event;
@@ -285,10 +286,10 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         self.windowScene = scene;
         __weak PPOOwnedSafariTrial *weakSelf = self;
         void (^inactive)(NSNotification *) = ^(NSNotification *note) {
-            (void)note; [weakSelf closeBecause:@"host-inactive"];
+            (void)note; [weakSelf closeAfterNotification:@"host-inactive"];
         };
         void (^protectedStop)(NSNotification *) = ^(NSNotification *note) {
-            (void)note; [weakSelf closeBecause:@"protected-data-unavailable"];
+            (void)note; [weakSelf closeAfterNotification:@"protected-data-unavailable"];
         };
         self.observer = [NSNotificationCenter.defaultCenter addObserverForName:UISceneWillDeactivateNotification
             object:scene queue:NSOperationQueue.mainQueue usingBlock:inactive];
@@ -299,7 +300,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         self.deviceLockObserver = [NSNotificationCenter.defaultCenter
             addObserverForName:@"SBDeviceLockStateChangedNotification" object:nil
             queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
-                (void)note; [weakSelf closeBecause:@"device-lock-notification"];
+                (void)note; [weakSelf closeAfterNotification:@"device-lock-notification"];
             }];
         NSMutableDictionary *classes = [NSMutableDictionary dictionary];
         for (NSString *name in @[@"FBSceneWorkspace", @"_UISceneHostingControllerAdvancedConfiguration",
@@ -547,6 +548,19 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // Preserve the first reason even if notifications reenter during cleanup.
     if (!self.closeReason) self.closeReason = [reason copy];
     [self close];
+}
+- (void)closeAfterNotification:(NSString *)reason {
+    if (!NSThread.isMainThread || self.closed) return;
+    BOOL wasPending = self.closePending;
+    if (!self.closeReason) self.closeReason = [reason copy];
+    self.closePending = YES;
+    // Hide our public UI now, but do not call FrontBoard teardown inside a
+    // SpringBoard/UIKit notification poster's transition stack.
+    @try { self.content.userInteractionEnabled = NO; self.window.hidden = YES; }
+    @catch (NSException *exception) { (void)exception; }
+    if (wasPending) return; // Still attempt hiding on every notification.
+    __weak PPOOwnedSafariTrial *weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf closeBecause:reason]; });
 }
 - (void)pan:(UIPanGestureRecognizer *)pan {
     if (!self.window || self.closed) return;

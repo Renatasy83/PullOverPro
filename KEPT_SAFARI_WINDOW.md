@@ -24,7 +24,7 @@ SBLockScreenManager +sharedInstanceIfExists at0x21d5429ec passes createIfNeeded=
 
 The Foundation notification literal SBDeviceLockStateChangedNotification was verified from the exact firmware: _sendUILockStateChangedNotification0x21d5a8644 posts through NSNotificationCenter at0x21d5a87bc. Its name resolves through SpringBoard GOT0x2780349f0, SpringBoardUI exported storage0x2786178e0, CFString0x282dfa7e8 and string0x21cf68640, length36. A public Foundation main-queue observer conservatively closes on any such transition without interpreting userInfo or registering private observer protocols. It is removed during cleanup.
 
-Protected-data availability is an additional public data guard, not proof of an unlocked screen. Polling has scheduling latency, and notification delivery cannot guarantee zero lock-transition frames. Real lock-screen behavior is unconfirmed. The UI is hidden before private teardown, and uncertain owned cleanup still quarantines resources and blocks another opening.
+Protected-data availability is an additional public data guard, not proof of an unlocked screen. Polling has scheduling latency, and notification delivery cannot guarantee zero lock-transition frames. Real lock-screen behavior is unconfirmed. Notification callbacks latch closure and hide the owned public window immediately; private teardown is dispatched to the next main-queue turn so it does not run inside the SpringBoard/UIKit poster's transition stack. Opening-time failure also waits for construction to return before cleanup. Uncertain owned cleanup still quarantines resources and blocks another opening.
 
 ## Automation and remaining device gate
 

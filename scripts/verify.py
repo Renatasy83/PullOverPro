@@ -135,6 +135,11 @@ require('8676BE2A-9484-3492-888E-7DE10333250F' in (ROOT / 'PPOScenePreflight.mm'
         'UIApplication.sharedApplication.protectedDataAvailable' in owned_trial and
         'self.events removeObjectAtIndex:2' in owned_trial,
         'Exact lock image, data guard and bounded terminal-event retention required')
+notification_close = owned_trial.split('- (void)closeAfterNotification:(NSString *)reason {', 1)[1].split('- (void)pan:', 1)[0]
+require('self.closePending = YES' in notification_close and 'self.window.hidden = YES' in notification_close and
+        'dispatch_async(dispatch_get_main_queue()' in notification_close and
+        'self.session close' not in notification_close,
+        'Notification closure must defer private teardown until the poster unwinds')
 production_sources = (ROOT / 'Makefile').read_text()
 require('PPOOwnedSceneHost.mm PPOOwnedSafariTrial.mm' in production_sources and
         'PPOFloatingTrial.mm' not in production_sources,
