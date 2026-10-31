@@ -4,7 +4,7 @@ THEOS_PACKAGE_SCHEME := rootless
 include $(THEOS)/makefiles/common.mk
 
 TOOL_NAME := ppo-bridge
-ppo-bridge_FILES := main.mm PPOWorkspace.mm PPOBridgeService.mm $(abspath ../../PPOAppData.mm) $(abspath ../../PPOBridgeProtocol.mm) $(abspath ../../PPOBridgeIO.cpp)
+ppo-bridge_FILES := main.mm PPOWorkspace.mm PPOBridgeService.mm PPOBundleSceneReader.mm $(abspath ../../PPOSceneCapability.mm) $(abspath ../../PPOAppData.mm) $(abspath ../../PPOBridgeProtocol.mm) $(abspath ../../PPOBridgeIO.cpp)
 ppo-bridge_CFLAGS := -Wall -Wextra -Werror
 ppo-bridge_CCFLAGS := -std=c++17
 ppo-bridge_OBJCFLAGS := -fobjc-arc

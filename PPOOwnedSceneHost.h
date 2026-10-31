@@ -9,7 +9,8 @@
 @property(nonatomic,readonly) BOOL poisoned;
 @property(nonatomic,readonly) BOOL closed;
 - (instancetype)initWithClasses:(NSDictionary<NSString *, id> *)classes;
-- (BOOL)prepareScene:(id)source forBundleIdentifier:(NSString *)identifier;
+- (BOOL)prepareScene:(id)source forBundleIdentifier:(NSString *)identifier
+         capability:(NSDictionary *)capability;
 - (BOOL)close;
 - (BOOL)pollCleanup;
 - (void)quarantineCleanup;

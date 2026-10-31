@@ -5,6 +5,10 @@
 // An inventory entry is not a guarantee that the app can launch or be hosted.
 NSDictionary *PPOWorkspaceRefresh(void);
 
+// Inspect one exact installed app, without a launch or full inventory/plist scan.
+// Returns normalized advisory metadata, not an entitlement/hosting guarantee.
+NSDictionary *PPOWorkspaceSceneCapability(NSString *identifier);
+
 // The caller MUST verify exact identifier membership in a freshly validated
 // inventory before calling. No scene hosting, entitlement changes or subprocesses.
 // YES means LaunchServices accepted the request, not that a window appeared.

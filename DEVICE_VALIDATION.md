@@ -1,5 +1,15 @@
 # Device validation
 
+## User-confirmed 0.11.0 — Reminders window and reuse
+
+The supplied host-0.11.0.json contains two com.apple.reminders sessions. The user answers “Funcționează” to the requested additional-app display/scroll/X/reopen gate. Executable0bb57241e7aeb54a35b434e59f7b24bf844cc7c5 is preserved as stable/verified-reminders-window-reuse. Contacts remains untested.
+
+The first session closes manually at about10.227s. Reopening starts about5.401s later and closes by the default timeout at about15.030s. Both select a unique original among6 scenes, match all four framework UUIDs, require Reminders independently as original and created-child identity, and verify the activation proxy points to that child rather than the borrowed source. New render layers arrive by about0.13s/0.8s and remain present while the original is backgrounded without layers.
+
+Both sessions finish closed, unpinned and unpoisoned, with controller/workspace invalidations returned and replacementAllowed=true. No exception or quarantine is recorded. Final live samples are historical readings about0.201s/3.004s before closure, not post-close resource measurements. JSON does not itself record pixels or touch events; the user supplies the functional outcome. Keep, lock, explicit keyboard routing, Contacts, prolonged client/session cleanup and full Dopamine/ElleKit compatibility are not established by this report. The raw report and reminder contents are not published.
+
+This completes the requested 0.11.0 Reminders gate. No repeat of that ordinary test is required merely to acknowledge the result. Selected-app installed metadata is a separate next-stage change described in SELECTED_APP_CAPABILITIES.md.
+
 ## User-confirmed 0.10.0 — Keep, lock notification and reuse
 
 The user supplied host-0.10.0.json and answered Funcționează after the requested default-lock and Keep/manual-close/reopen sequence. Executableffe808f00174ac2bca2c3f9ffb64a7ae209e2cef is preserved as stable/verified-safari-keep-lock-reuse.

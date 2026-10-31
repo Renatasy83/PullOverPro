@@ -111,9 +111,10 @@ require(set(re.findall(r'HostTell\([^\n]*?"(\w+)"', owned_source)) == {'invalida
         'Separate-scene operations must only invalidate verified own objects')
 require('objc_msgSend' not in owned_trial and 'initWithClasses:classes' in owned_trial,
         'Separate-scene UI must delegate private operations to ownership adapter')
-require('PPOOwnedApplicationAllowed(bundleIdentifier)' in owned_trial and
+require('PPOOwnedAdmissionSnapshot(self.bundleIdentifier, capability' in owned_trial and
         'forBundleIdentifier:self.bundleIdentifier' in owned_trial and
-        'PPOOwnedApplicationAllowed(identifier)' in owned_source and
+        'capability:self.sceneCapability' in owned_trial and
+        'PPOOwnedAdmissionSnapshot(identifier, capability' in owned_source and
         owned_source.count('"bundleIdentifier"), self.expectedBundleIdentifier') == 2,
         'Selected identity must be independently checked against both source and owned child')
 target_facts = json.loads((ROOT / 'SCENE_TARGETS_23A355.json').read_text())
@@ -121,7 +122,30 @@ policy_source = (ROOT / 'PPOOwnedApplicationPolicy.h').read_text()
 target_ids = {app['bundleIdentifier'] for app in target_facts['applications']}
 require(target_ids == {'com.apple.mobilesafari', 'com.apple.reminders', 'com.apple.MobileAddressBook'} and
         target_ids == set(re.findall(r'@"(com\.[^"]+)"', policy_source)),
-        'Only the three selected exact-firmware targets may be admitted')
+        'Only the three selected exact-firmware targets may bypass selected-app inspection')
+admission_source = (ROOT / 'PPOOwnedAdmission.mm').read_text()
+capability_source = (ROOT / 'PPOSceneCapability.mm').read_text()
+bundle_reader = (ROOT / 'tools/bridge/PPOBundleSceneReader.mm').read_text()
+require('PPOSceneCapabilityNormalize(capability)' in admission_source and
+        'PPOSceneCapabilityFresh(observed, now)' in admission_source and
+        '[observed[@"bundleIdentifier"] isEqual:selected]' in admission_source,
+        'Dynamic admission must be copied, fresh and bound to the selected identifier')
+require('object_getClass(specification)' in owned_source and 'object_getClass(childSpecification)' in owned_source,
+        'Dynamic source and child specifications must reject unreviewed subclasses')
+require('CFBooleanGetTypeID()' in capability_source and 'installed-basic-multiscene-v1' in capability_source and
+        'observed + 5.0' in capability_source,
+        'Capability policy must use explicit booleans and short-lived normalized metadata')
+require(bundle_reader.count('objc_msgSend') == 1 and 'GetterOwner(object_getClass(proxy)' in bundle_reader and
+        '0FFF723A-7DE6-3705-B327-ADD82FAEF345' in bundle_reader and
+        'O_NOFOLLOW' in bundle_reader and 'openat(' in bundle_reader and '256 * 1024' in bundle_reader,
+        'Only the verified cached bundleURL getter and bounded selected Info.plist may be read')
+require('PPOBundleSceneReader.mm' not in (ROOT / 'Makefile').read_text() and
+        'PPOBundleSceneReader.mm' in (ROOT / 'tools/bridge/Makefile').read_text(),
+        'Bundle metadata file access must remain in the mobile helper')
+require('PPOBridgeSend(@"inspect-scene", identifier' in (ROOT / 'Tweak.xm').read_text() and
+        'epoch != self.saveEpoch' in (ROOT / 'Tweak.xm').read_text() and
+        'kickstart -k system/com.renatasy83.ppo.bridge' in (ROOT / 'layout/DEBIAN/postinst').read_text(),
+        'Selected inspection must remain asynchronous and upgrades restart only the own service')
 require(target_facts['firmware'] == {'productType': 'iPhone12,5', 'productVersion': '26.0.1', 'buildVersion': '23A355'} and
         target_facts['runtimeCompatibilityConfirmed'] is False and all(
             app['declaresMultipleScenes'] is True and 1 in app['deviceFamilies'] and
@@ -187,7 +211,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.11.0~dev.multiscene1'), 'Unexpected version')
+    require(field('Version').startswith('0.12.0~dev.selectedcap1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

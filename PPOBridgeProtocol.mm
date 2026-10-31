@@ -1,4 +1,5 @@
 #import "PPOBridgeProtocol.h"
+#import "PPOSceneCapability.h"
 #import <CoreFoundation/CoreFoundation.h>
 #include <cmath>
 
@@ -78,20 +79,26 @@ static BOOL PPOBridgeRequestShape(NSDictionary *value) {
         [value[@"createdUptime"] doubleValue] < 0) return NO;
     NSString *operation = value[@"operation"];
     if ([@"launch" isEqual:operation]) return PPOBridgeValidIdentifier(value[@"bundleIdentifier"]);
+    if ([@"inspect-scene" isEqual:operation])
+        return PPOSceneApplicationIdentifierAllowed(value[@"bundleIdentifier"]);
     return ([@"ping" isEqual:operation] || [@"refresh" isEqual:operation]) &&
         value[@"bundleIdentifier"] == nil;
 }
 
 static BOOL PPOBridgeResponseShape(NSDictionary *value) {
     if (!PPOBridgeKeys(value, @[@"schema", @"nonce", @"status", @"uptime"],
-                        @[@"detail", @"appsCount"]) ||
+                        @[@"detail", @"appsCount", @"sceneCapability"]) ||
         !PPOBridgeSchema(value) || !PPOBridgeNonce(value[@"nonce"]) ||
         !PPOBridgeNumber(value[@"uptime"]) || [value[@"uptime"] doubleValue] < 0) return NO;
     NSArray *statuses = @[@"ready", @"refreshed", @"accepted", @"rejected", @"unsupported",
-                           @"error", @"busy", @"stale"];
-    return [statuses containsObject:value[@"status"]] &&
+                           @"error", @"busy", @"stale", @"inspected"];
+    BOOL valid = [statuses containsObject:value[@"status"]] &&
         (!value[@"detail"] || PPOBridgeCode(value[@"detail"], 128)) &&
         (!value[@"appsCount"] || PPOBridgeCount(value[@"appsCount"]));
+    if (!valid) return NO;
+    if ([value[@"status"] isEqual:@"inspected"])
+        return value[@"appsCount"] == nil && PPOSceneCapabilityNormalize(value[@"sceneCapability"]) != nil;
+    return value[@"sceneCapability"] == nil;
 }
 
 static NSDictionary *PPOBridgeJSON(NSData *data, NSError **error) {
@@ -139,9 +146,24 @@ NSData *PPOBridgeResponseData(NSString *nonce, NSString *status, NSString *detai
     return PPOBridgeEncode(value, error);
 }
 
+NSData *PPOBridgeCapabilityResponseData(NSString *nonce, NSDictionary *capability,
+    NSTimeInterval uptime, NSError **error) {
+    NSDictionary *normalized = PPOSceneCapabilityNormalize(capability);
+    if (!nonce || !normalized || !std::isfinite(uptime)) return PPOBridgeError(error, 1);
+    NSDictionary *value = @{@"schema": @1, @"nonce": nonce, @"status": @"inspected",
+        @"detail": normalized[@"reason"], @"uptime": @(uptime), @"sceneCapability": normalized};
+    if (!PPOBridgeResponseShape(value)) return PPOBridgeError(error, 1);
+    return PPOBridgeEncode(value, error);
+}
+
 NSDictionary *PPOBridgeResponseFromData(NSData *data, NSString *expectedNonce, NSError **error) {
     NSDictionary *value = PPOBridgeJSON(data, error);
     if (!value || !PPOBridgeNonce(expectedNonce) || !PPOBridgeResponseShape(value) ||
         ![value[@"nonce"] isEqual:expectedNonce]) return PPOBridgeError(error, 1);
-    return value;
+    if ([value[@"status"] isEqual:@"inspected"]) {
+        NSMutableDictionary *copy = [value mutableCopy];
+        copy[@"sceneCapability"] = PPOSceneCapabilityNormalize(value[@"sceneCapability"]);
+        return [copy copy];
+    }
+    return [value copy];
 }

@@ -1,5 +1,6 @@
 #import "PPOOwnedSceneHost.h"
 #import "PPOOwnedApplicationPolicy.h"
+#import "PPOOwnedAdmission.h"
 #import "tools/app-launch/PPOLaunchABI.h"
 #import <objc/message.h>
 
@@ -104,6 +105,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
 @property(nonatomic) BOOL workspaceInvalidateReturned;
 @property(nonatomic,copy) NSString *preparationFailure;
 @property(nonatomic,copy) NSString *expectedBundleIdentifier;
+@property(nonatomic,copy) NSDictionary *admission;
 @property(nonatomic,copy) NSDictionary *componentBinding;
 - (BOOL)classesSupported;
 - (BOOL)finishCleanupIfPossible;
@@ -167,18 +169,19 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         componentScene && HostShape(componentScene, "scene", @encode(id)) &&
         HostClass(self.classes, @"UIViewController");
 }
-- (BOOL)prepareScene:(id)source forBundleIdentifier:(NSString *)identifier {
+- (BOOL)prepareScene:(id)source forBundleIdentifier:(NSString *)identifier
+         capability:(NSDictionary *)capability {
     __attribute__((objc_precise_lifetime)) PPOOwnedSceneHost *keepAlive = self;
     (void)keepAlive;
     if (!NSThread.isMainThread || self.busy || self.attempted || self.poisoned || self.closed) return NO;
     self.attempted = YES; self.busy = YES;
     BOOL success = NO, cleanFailure = NO;
     @try {
-        if (!PPOOwnedApplicationAllowed(identifier)) { self.state = @"application-not-eligible"; return NO; }
-        self.expectedBundleIdentifier = [identifier copy];
-        if (!PPOOwnedApplicationAllowed(self.expectedBundleIdentifier)) {
-            self.state = @"application-not-eligible"; return NO;
-        }
+        self.admission = PPOOwnedAdmissionSnapshot(identifier, capability,
+            NSProcessInfo.processInfo.systemUptime);
+        if (!self.admission) { self.state = @"application-not-eligible"; return NO; }
+        self.expectedBundleIdentifier = self.admission[@"bundleIdentifier"];
+        BOOL strictSpecification = !PPOOwnedApplicationAllowed(self.expectedBundleIdentifier);
         if (![self classesSupported]) { self.state = @"unsupported-owned-host-abi"; return NO; }
         if (![source isKindOfClass:HostClass(self.classes, @"FBScene")] || !HostFlag(source, "isValid")) {
             self.state = @"unexpected-source"; return NO;
@@ -190,6 +193,10 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         id identity = HostObject(definition, "clientIdentity");
         id specification = HostObject(definition, "specification");
         id sourceIdentifier = HostObject(source, "identifier");
+        if (strictSpecification && object_getClass(specification) !=
+            HostClass(self.classes, @"UIApplicationSceneSpecification")) {
+            self.state = @"unsupported-source-specification"; return NO;
+        }
         if (![identity isKindOfClass:HostClass(self.classes, @"FBSSceneClientIdentity")] ||
             ![specification isKindOfClass:HostClass(self.classes, @"UIApplicationSceneSpecification")] ||
             !HostText(sourceIdentifier) ||
@@ -268,6 +275,10 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         }
         id childIdentity = HostObject(childDefinition, "clientIdentity");
         id childSpecification = HostObject(childDefinition, "specification");
+        if (strictSpecification && object_getClass(childSpecification) !=
+            HostClass(self.classes, @"UIApplicationSceneSpecification")) {
+            [self poisonWithState:@"unverified-created-specification"]; return NO;
+        }
         if (![childIdentity isKindOfClass:HostClass(self.classes, @"FBSSceneClientIdentity")] ||
             ![childSpecification isKindOfClass:HostClass(self.classes, @"UIApplicationSceneSpecification")] ||
             !HostTextEquals(HostObject(childIdentity, "bundleIdentifier"), self.expectedBundleIdentifier) ||
@@ -428,6 +439,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         @"workspaceInvalidateReturned": @(self.workspaceInvalidateReturned),
         @"componentBinding": self.componentBinding,
         @"expectedBundleIdentifier": self.expectedBundleIdentifier ?: (id)NSNull.null,
+        @"admission": self.admission ?: (id)NSNull.null,
         @"preparationFailure": self.preparationFailure ?: (id)NSNull.null,
         @"borrowedSourceMutationRequested": @NO, @"runtimeCompatibilityConfirmed": @NO};
 }

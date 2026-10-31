@@ -1,5 +1,7 @@
 #import "PPOWorkspace.h"
+#import "PPOBundleSceneReader.h"
 #import "../../PPOBridgeProtocol.h"
+#import "../../PPOSceneCapability.h"
 #import "../app-launch/PPOLaunchABI.h"
 #import <objc/message.h>
 #include <dlfcn.h>
@@ -70,6 +72,35 @@ NSDictionary *PPOWorkspaceRefresh(void) {
     } @catch (NSException *exception) {
         (void)exception;
         return nil;
+    }
+}
+
+NSDictionary *PPOWorkspaceSceneCapability(NSString *identifier) {
+    NSTimeInterval now = NSProcessInfo.processInfo.systemUptime;
+    if (!PPOSceneApplicationIdentifierAllowed(identifier)) return nil;
+    if (!NSThread.isMainThread)
+        return PPOSceneCapabilityUnknown(identifier, @"unsupported-abi", now);
+    @try {
+        id raw = PPOObjectAccessor(PPOWorkspace(), "allInstalledApplications");
+        Class applicationClass = objc_lookUpClass("LSApplicationProxy");
+        Class bundleClass = objc_lookUpClass("LSBundleProxy");
+        if (![raw isKindOfClass:NSArray.class] || [(NSArray *)raw count] > 4096 ||
+            !applicationClass || !bundleClass)
+            return PPOSceneCapabilityUnknown(identifier, @"app-unavailable", now);
+        id selected = nil;
+        for (id proxy in (NSArray *)raw) {
+            if (![proxy isKindOfClass:applicationClass]) continue;
+            id actualIdentifier = PPOObjectAccessor(proxy, "applicationIdentifier");
+            if (![actualIdentifier isKindOfClass:NSString.class] || ![actualIdentifier isEqual:identifier]) continue;
+            if (selected) return PPOSceneCapabilityUnknown(identifier, @"ambiguous-app", now);
+            selected = proxy;
+        }
+        if (!selected) return PPOSceneCapabilityUnknown(identifier, @"app-unavailable", now);
+        return PPOCapabilityFromApplicationProxy(selected, applicationClass, bundleClass,
+            PPOBundleCapabilityFrameworkMatches(), identifier, NSProcessInfo.processInfo.systemUptime);
+    } @catch (NSException *exception) {
+        (void)exception;
+        return PPOSceneCapabilityUnknown(identifier, @"unsupported-abi", NSProcessInfo.processInfo.systemUptime);
     }
 }
 

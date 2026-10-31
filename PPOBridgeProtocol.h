@@ -16,4 +16,8 @@ NSData *PPOBridgeRequestData(NSString *nonce, NSString *operation,
 NSDictionary *PPOBridgeRequestFromData(NSData *data, NSTimeInterval now, NSError **error);
 NSData *PPOBridgeResponseData(NSString *nonce, NSString *status, NSString *detail,
     NSNumber *appsCount, NSTimeInterval uptime, NSError **error);
+// A selected-app inspection has a bounded, normalized payload. No inventory,
+// file URL, raw plist or configuration names cross this response boundary.
+NSData *PPOBridgeCapabilityResponseData(NSString *nonce, NSDictionary *capability,
+    NSTimeInterval uptime, NSError **error);
 NSDictionary *PPOBridgeResponseFromData(NSData *data, NSString *expectedNonce, NSError **error);

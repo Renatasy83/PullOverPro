@@ -2,6 +2,7 @@
 #import "PPOWorkspace.h"
 #import "../../PPOAppData.h"
 #import "../../PPOBridgeProtocol.h"
+#import "../../PPOSceneCapability.h"
 #include <sys/stat.h>
 #include <errno.h>
 
@@ -35,6 +36,25 @@ NSData *PPOBridgeServiceResponseWithDisablePath(NSData *requestData,
             detail = controlFailure;
         } else if ([operation isEqual:@"ping"]) {
             status = @"ready"; detail = @"service-ready";
+        } else if ([operation isEqual:@"inspect-scene"]) {
+            // The selected app is inspected directly. Ordinary launch/refresh
+            // inventory paths remain unchanged and do not scan bundle plists.
+            NSString *identifier = request[@"bundleIdentifier"];
+            NSDictionary *capability = PPOSceneCapabilityNormalize(PPOWorkspaceSceneCapability(identifier));
+            controlFailure = PPOServiceControlFailure(disablePath);
+            if (controlFailure) {
+                status = [controlFailure isEqual:@"feature-disabled"] ? @"rejected" : @"error";
+                detail = controlFailure;
+            } else if (!PPOBridgeRequestFromData(requestData, NSProcessInfo.processInfo.systemUptime, NULL)) {
+                status = @"stale"; detail = @"request-expired";
+            } else if (!capability || ![capability[@"bundleIdentifier"] isEqual:identifier]) {
+                detail = @"capability-unavailable";
+            } else if (!PPOSceneCapabilityFresh(capability, NSProcessInfo.processInfo.systemUptime)) {
+                status = @"stale"; detail = @"capability-expired";
+            } else {
+                return PPOBridgeCapabilityResponseData(request[@"nonce"], capability,
+                    NSProcessInfo.processInfo.systemUptime, NULL);
+            }
         } else {
             NSDictionary *report = PPOWorkspaceRefresh();
             NSData *json = report ? [NSJSONSerialization dataWithJSONObject:report options:0 error:NULL] : nil;

@@ -4,6 +4,7 @@
 #import "PPOSceneLayerProbe.h"
 #import "PPOScreenLockState.h"
 #import "PPOOwnedApplicationPolicy.h"
+#import "PPOOwnedAdmission.h"
 #include "PPOHostGeometry.h"
 #include "PPOWindowLifetime.h"
 #import <objc/runtime.h>
@@ -76,6 +77,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 @property(nonatomic) BOOL closing;
 @property(nonatomic) BOOL cleanupConfirmed;
 @property(nonatomic,copy) NSString *bundleIdentifier;
+@property(nonatomic,copy) NSDictionary *sceneCapability;
 @property(nonatomic,copy) NSString *reportID;
 @property(nonatomic) NSTimeInterval nextHeartbeat;
 - (void)closeFromButton:(UIButton *)sender;
@@ -115,7 +117,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @8, @"version": @"0.11.0~dev.multiscene1",
+    NSDictionary *report = @{@"schema": @8, @"version": @"0.12.0~dev.selectedcap1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
         @"geometry": geometry,
@@ -162,11 +164,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.11.0.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.12.0.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.11.0] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.12.0] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -251,17 +253,20 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     }
 }
 - (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier
-              displayName:(NSString *)displayName {
+              displayName:(NSString *)displayName capability:(NSDictionary *)capability {
     if (!NSThread.isMainThread || self.attempted) return @"Probă deja solicitată";
     self.attempted = YES;
     self.bundleIdentifier = [bundleIdentifier copy];
     self.reportID = NSUUID.UUID.UUIDString;
     self.frameworks = PPOSceneFrameworkIdentity();
     if (!PPOTrialAllowed()) { [self record:@"disabled"]; return @"PPO este dezactivat"; }
-    if (!PPOOwnedApplicationAllowed(bundleIdentifier)) {
+    NSDictionary *admission = PPOOwnedAdmissionSnapshot(self.bundleIdentifier, capability,
+        NSProcessInfo.processInfo.systemUptime);
+    if (!admission) {
         [self record:@"application-refused"];
-        return @"Ferestre disponibile: Safari, Reminders și Contacte";
+        return @"Aplicația nu poate fi deschisă în fereastră";
     }
+    self.sceneCapability = admission[@"sceneCapability"] == NSNull.null ? nil : admission[@"sceneCapability"];
     if (![self.frameworks[@"matches"] boolValue]) {
         [self record:@"framework-refused"]; return @"Firmware diferit; probă refuzată";
     }
@@ -314,7 +319,8 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         self.session = [[PPOOwnedSceneHost alloc] initWithClasses:classes];
         [self record:@"prepare-requested"];
         if (self.closePending || !PPOTrialAllowed() ||
-            ![self.session prepareScene:foreignScene forBundleIdentifier:self.bundleIdentifier]) return result;
+            ![self.session prepareScene:foreignScene forBundleIdentifier:self.bundleIdentifier
+                capability:self.sceneCapability]) return result;
         self.sourceScene = self.session.hostedScene;
         UIViewController *child = self.session.viewController;
         if (![child isKindOfClass:UIViewController.class] || child.parentViewController ||

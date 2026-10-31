@@ -2,17 +2,37 @@
 #import "../tools/bridge/PPOWorkspace.h"
 #import "../PPOBridgeProtocol.h"
 #import "../PPOAppData.h"
+#import "../PPOSceneCapability.h"
 #import <dispatch/dispatch.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
-static NSUInteger refreshCalls, launchCalls;
+static NSUInteger refreshCalls, launchCalls, inspectCalls;
 static BOOL failInventory, throwRefresh, throwLaunch, acceptLaunch, disableDuringRefresh;
 static NSString *disablePath;
 static NSTimeInterval refreshDelay;
 static NSString *launchedIdentifier;
+static BOOL disableDuringInspect, throwInspect, mismatchedInspect, unknownInspect, ineligibleInspect;
+static NSTimeInterval inspectDelay, capabilityAge;
+
+NSDictionary *PPOWorkspaceSceneCapability(NSString *identifier) {
+    inspectCalls++;
+    if (disableDuringInspect && ![[NSData data] writeToFile:disablePath options:0 error:NULL])
+        [NSException raise:@"FixtureMarkerWrite" format:@"Cannot create own marker"];
+    if (inspectDelay > 0) [NSThread sleepForTimeInterval:inspectDelay];
+    if (throwInspect) [NSException raise:@"FakeInspectionException" format:@"fixture"];
+    NSString *observedIdentifier = mismatchedInspect ? @"com.example.other" : identifier;
+    NSTimeInterval observed = NSProcessInfo.processInfo.systemUptime - capabilityAge;
+    if (unknownInspect) return PPOSceneCapabilityUnknown(observedIdentifier, @"app-unavailable", observed);
+    NSDictionary *info = @{@"CFBundleIdentifier": observedIdentifier, @"CFBundlePackageType": @"APPL",
+        @"UIDeviceFamily": @[@1], @"UIApplicationSceneManifest": @{
+            @"UIApplicationSupportsMultipleScenes": (ineligibleInspect ? @NO : @YES),
+            @"UISceneConfigurations": @{@"UIWindowSceneSessionRoleApplication": @[
+                @{@"UISceneConfigurationName": @"Default"}]}}};
+    return PPOSceneCapabilityFromInfo(info, observedIdentifier, observed);
+}
 
 NSDictionary *PPOWorkspaceRefresh(void) {
     refreshCalls++;
@@ -43,9 +63,11 @@ static void Check(BOOL condition, const char *name) {
 }
 
 static void Reset(void) {
-    refreshCalls = 0; launchCalls = 0;
+    refreshCalls = 0; launchCalls = 0; inspectCalls = 0;
     failInventory = NO; throwRefresh = NO; throwLaunch = NO;
     acceptLaunch = YES; refreshDelay = 0; launchedIdentifier = nil; disableDuringRefresh = NO;
+    disableDuringInspect = throwInspect = mismatchedInspect = unknownInspect = ineligibleInspect = NO;
+    inspectDelay = capabilityAge = 0;
 }
 
 static NSDictionary *Run(NSString *operation, NSString *identifier, NSTimeInterval age,
@@ -73,11 +95,12 @@ int main(void) {
             "ping performs no workspace call");
 
         Check([[NSData data] writeToFile:disablePath options:0 error:NULL], "create own disable marker");
-        for (NSString *operation in @[@"ping", @"refresh", @"launch"]) {
+        for (NSString *operation in @[@"ping", @"refresh", @"launch", @"inspect-scene"]) {
             Reset();
-            reply = Run(operation, [operation isEqual:@"launch"] ? @"com.apple.mobilesafari" : nil, 0, reportPath);
+            BOOL requiresIdentifier = [operation isEqual:@"launch"] || [operation isEqual:@"inspect-scene"];
+            reply = Run(operation, requiresIdentifier ? @"com.apple.mobilesafari" : nil, 0, reportPath);
             Check([reply[@"status"] isEqual:@"rejected"] &&
-                [reply[@"detail"] isEqual:@"feature-disabled"] && refreshCalls == 0 && launchCalls == 0,
+                [reply[@"detail"] isEqual:@"feature-disabled"] && refreshCalls == 0 && launchCalls == 0 && inspectCalls == 0,
                 "disable marker rejects operation before any workspace call");
         }
         Check(![NSFileManager.defaultManager fileExistsAtPath:reportPath], "disabled refresh does not create inventory");
@@ -150,6 +173,54 @@ int main(void) {
             ![NSFileManager.defaultManager fileExistsAtPath:blockedReportPath],
             "marker created during refresh prevents inventory persistence");
         Check(unlink(disablePath.fileSystemRepresentation) == 0, "remove own blocked-refresh marker");
+
+        Reset();
+        reply = Run(@"inspect-scene", @"com.example.selected", 0, reportPath);
+        Check([reply[@"status"] isEqual:@"inspected"] &&
+              [reply[@"sceneCapability"][@"bundleIdentifier"] isEqual:@"com.example.selected"] &&
+              [reply[@"sceneCapability"][@"eligible"] isEqual:@YES] &&
+              inspectCalls == 1 && refreshCalls == 0 && launchCalls == 0,
+              "selected inspection returns a bound capability without inventory refresh or launch");
+        Reset(); unknownInspect = YES;
+        reply = Run(@"inspect-scene", @"com.example.selected", 0, reportPath);
+        Check([reply[@"status"] isEqual:@"inspected"] &&
+              [reply[@"sceneCapability"][@"status"] isEqual:@"unknown"] &&
+              [reply[@"sceneCapability"][@"eligible"] isEqual:@NO] &&
+              inspectCalls == 1 && refreshCalls == 0 && launchCalls == 0,
+              "unknown selected metadata stays advisory and cannot become a positive");
+        Reset(); ineligibleInspect = YES;
+        reply = Run(@"inspect-scene", @"com.example.selected", 0, reportPath);
+        Check([reply[@"status"] isEqual:@"inspected"] &&
+              [reply[@"sceneCapability"][@"status"] isEqual:@"ineligible"] &&
+              [reply[@"sceneCapability"][@"eligible"] isEqual:@NO],
+              "explicit negative metadata is carried without claiming eligible admission");
+        Reset(); mismatchedInspect = YES;
+        reply = Run(@"inspect-scene", @"com.example.selected", 0, reportPath);
+        Check([reply[@"status"] isEqual:@"error"] &&
+              [reply[@"detail"] isEqual:@"capability-unavailable"] && !reply[@"sceneCapability"] &&
+              inspectCalls == 1 && refreshCalls == 0 && launchCalls == 0,
+              "capability for a different app cannot be rebound to the current request nonce");
+        Reset(); capabilityAge = 6;
+        reply = Run(@"inspect-scene", @"com.example.selected", 0, reportPath);
+        Check([reply[@"status"] isEqual:@"stale"] && !reply[@"sceneCapability"] &&
+              inspectCalls == 1 && refreshCalls == 0 && launchCalls == 0,
+              "expired capability cannot be published as a fresh inspection");
+        Reset(); inspectDelay = 0.25;
+        reply = Run(@"inspect-scene", @"com.example.selected", 4.9, reportPath);
+        Check([reply[@"status"] isEqual:@"stale"] && [reply[@"detail"] isEqual:@"request-expired"] &&
+              !reply[@"sceneCapability"] && inspectCalls == 1 && refreshCalls == 0 && launchCalls == 0,
+              "request expiring during selected inspection emits no capability");
+        Reset(); disableDuringInspect = YES;
+        reply = Run(@"inspect-scene", @"com.example.selected", 0, reportPath);
+        Check([reply[@"status"] isEqual:@"rejected"] && [reply[@"detail"] isEqual:@"feature-disabled"] &&
+              !reply[@"sceneCapability"] && inspectCalls == 1 && refreshCalls == 0 && launchCalls == 0,
+              "marker created during selected inspection suppresses its positive result");
+        Check(unlink(disablePath.fileSystemRepresentation) == 0, "remove only own mid-inspection marker");
+        Reset(); throwInspect = YES;
+        reply = Run(@"inspect-scene", @"com.example.selected", 0, reportPath);
+        Check([reply[@"status"] isEqual:@"error"] && [reply[@"detail"] isEqual:@"service-exception"] &&
+              !reply[@"sceneCapability"] && inspectCalls == 1 && refreshCalls == 0 && launchCalls == 0,
+              "selected inspection exception is contained without inventory work or launch");
 
         Reset();
         reply = Run(@"launch", @"com.apple.mobilesafari", 0, reportPath);

@@ -4,6 +4,7 @@
 #import "../PPOBridgeProtocol.h"
 #import "../PPOBridgeIO.h"
 #import "../PPOAppData.h"
+#import "../PPOSceneCapability.h"
 #import "../tools/bridge/PPOWorkspace.h"
 #include <errno.h>
 #include <stdio.h>
@@ -37,12 +38,38 @@ static NSInteger Counter(void) {
     return [[NSString stringWithContentsOfFile:CounterPath()
         encoding:NSUTF8StringEncoding error:NULL] integerValue];
 }
+static NSString *PolicyCounterPath(NSString *kind) {
+    return [PPOBridgeMailboxPath().stringByDeletingLastPathComponent
+        stringByAppendingPathComponent:[NSString stringWithFormat:@"fixture-%@-count.txt", kind]];
+}
+static NSInteger PolicyCounter(NSString *kind) {
+    return [[NSString stringWithContentsOfFile:PolicyCounterPath(kind)
+        encoding:NSUTF8StringEncoding error:NULL] integerValue];
+}
+static void CountPolicyCall(NSString *kind) {
+    NSString *value = [NSString stringWithFormat:@"%ld", (long)PolicyCounter(kind) + 1];
+    if (![value writeToFile:PolicyCounterPath(kind) atomically:YES encoding:NSUTF8StringEncoding error:NULL])
+        [NSException raise:@"FixtureCounterWrite" format:@"Cannot persist isolated counter"];
+}
 
 // Workspace fixture is linked instead of PPOWorkspace.mm. No private APIs.
 NSDictionary *PPOWorkspaceRefresh(void) {
+    CountPolicyCall(@"refresh");
     NSArray *apps = @[@{@"bundleIdentifier": @"com.apple.mobilesafari", @"name": @"Safari"}];
     return @{@"schema": @1, @"source": @"LSApplicationWorkspace.allInstalledApplications",
         @"count": @1, @"apps": apps};
+}
+NSDictionary *PPOWorkspaceSceneCapability(NSString *identifier) {
+    CountPolicyCall(@"inspect");
+    NSTimeInterval observed = Now();
+    if (![identifier isEqual:@"com.example.window"])
+        return PPOSceneCapabilityUnknown(identifier, @"app-unavailable", observed);
+    NSDictionary *info = @{@"CFBundleIdentifier": identifier, @"CFBundlePackageType": @"APPL",
+        @"UIDeviceFamily": @[@1], @"UIApplicationSceneManifest": @{
+            @"UIApplicationSupportsMultipleScenes": @YES,
+            @"UISceneConfigurations": @{@"UIWindowSceneSessionRoleApplication": @[
+                @{@"UISceneDelegateClassName": @"FixtureSceneDelegate"}]}}};
+    return PPOSceneCapabilityFromInfo(info, identifier, observed);
 }
 BOOL PPOWorkspaceLaunch(NSString *identifier, NSString **failureCode) {
     if (![identifier isEqual:@"com.apple.mobilesafari"]) {
@@ -139,6 +166,20 @@ int main(int argc, char *argv[]) {
         NSArray *apps = PPOAppsFromData([NSData dataWithContentsOfFile:
             [root stringByAppendingPathComponent:@"apps-0.5.7.json"]], NULL);
         Check(apps.count == 1, "service inventory persisted outside SpringBoard");
+        NSInteger refreshBeforeInspection = PolicyCounter(@"refresh");
+        NSDictionary *inspection = Send(@"inspect-scene", @"com.example.window");
+        Check([inspection[@"status"] isEqual:@"inspected"] &&
+              [inspection[@"sceneCapability"][@"bundleIdentifier"] isEqual:@"com.example.window"] &&
+              [inspection[@"sceneCapability"][@"status"] isEqual:@"eligible"] &&
+              [inspection[@"sceneCapability"][@"eligible"] isEqual:@YES],
+              "actual mailbox returns normalized eligibility for the selected app");
+        Check(PolicyCounter(@"inspect") == 1 && PolicyCounter(@"refresh") == refreshBeforeInspection && Counter() == 0,
+              "selected inspection neither refreshes all app plists nor launches anything");
+        inspection = Send(@"inspect-scene", @"com.example.absent");
+        Check([inspection[@"status"] isEqual:@"inspected"] &&
+              [inspection[@"sceneCapability"][@"bundleIdentifier"] isEqual:@"com.example.absent"] &&
+              [inspection[@"sceneCapability"][@"status"] isEqual:@"unknown"] && Counter() == 0,
+              "missing selected app remains unknown without launch fallback");
         NSString *disablePath = [root stringByAppendingPathComponent:@".ppo_disable"];
         Check([[NSData data] writeToFile:disablePath options:0 error:NULL],
             "create own subprocess disable marker");
@@ -146,6 +187,13 @@ int main(int argc, char *argv[]) {
         Check([disabled[@"status"] isEqual:@"rejected"] &&
             [disabled[@"detail"] isEqual:@"feature-disabled"] && Counter() == 0,
             "actual service rejects launch while disabled");
+        NSInteger inspectionsBeforeDisable = PolicyCounter(@"inspect");
+        NSDictionary *disabledInspection = Send(@"inspect-scene", @"com.example.window");
+        Check([disabledInspection[@"status"] isEqual:@"rejected"] &&
+              [disabledInspection[@"detail"] isEqual:@"feature-disabled"] &&
+              disabledInspection[@"sceneCapability"] == nil &&
+              PolicyCounter(@"inspect") == inspectionsBeforeDisable && Counter() == 0,
+              "disabled subprocess refuses inspection before the selected workspace call");
         Check(unlink(disablePath.fileSystemRepresentation) == 0,
             "remove only subprocess fixture marker");
         Check([Send(@"launch", @"com.apple.mobilesafari")[@"status"] isEqual:@"accepted"] &&
@@ -156,6 +204,26 @@ int main(int argc, char *argv[]) {
         while (duplicate.running && Now() < deadline) Pause();
         Check(!duplicate.running && duplicate.terminationStatus == 4,
             "second service refuses directory flock takeover");
+
+        NSInteger inspectedBeforeReplay = PolicyCounter(@"inspect");
+        NSString *inspectionNonce = NSUUID.UUID.UUIDString;
+        NSData *inspectionRequest = PPOBridgeRequestData(inspectionNonce,
+            @"inspect-scene", @"com.example.window", Now(), NULL);
+        Write(directory, "request.json", inspectionRequest);
+        Check([WaitResponse(directory, inspectionNonce)[@"status"] isEqual:@"inspected"] &&
+              PolicyCounter(@"inspect") == inspectedBeforeReplay + 1 && Counter() == 1,
+              "raw selected inspection executes once without launch");
+        NSString *betweenInspectionNonce = NSUUID.UUID.UUIDString;
+        Write(directory, "request.json", PPOBridgeRequestData(betweenInspectionNonce, @"ping", nil, Now(), NULL));
+        Check([WaitResponse(directory, betweenInspectionNonce)[@"status"] isEqual:@"ready"],
+              "intervening request does not reset inspection replay history");
+        Write(directory, "request.json", inspectionRequest);
+        NSDictionary *inspectionReplay = WaitResponse(directory, inspectionNonce);
+        Check(([inspectionReplay[@"status"] isEqual:@"rejected"] ||
+               [inspectionReplay[@"status"] isEqual:@"stale"]) &&
+              inspectionReplay[@"sceneCapability"] == nil &&
+              PolicyCounter(@"inspect") == inspectedBeforeReplay + 1 && Counter() == 1,
+              "inspection replay cannot return a positive descriptor or reenter the workspace");
 
         NSString *nonceA = NSUUID.UUID.UUIDString;
         NSData *requestA = PPOBridgeRequestData(nonceA, @"launch", @"com.apple.mobilesafari", Now(), NULL);

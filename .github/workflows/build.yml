@@ -96,7 +96,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for source in PPOBridgeClient.mm PPOBridgeProtocol.mm tools/bridge/PPOWorkspace.mm tools/bridge/PPOBridgeService.mm tools/bridge/main.mm; do
+          for source in PPOBridgeClient.mm PPOBridgeProtocol.mm PPOSceneCapability.mm tools/bridge/PPOBundleSceneReader.mm tools/bridge/PPOWorkspace.mm tools/bridge/PPOBridgeService.mm tools/bridge/main.mm; do
             xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
               -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -I . \
               -Xanalyzer -analyzer-output=text "$source"
@@ -105,10 +105,10 @@ jobs:
             tests/BridgeIOTests.cpp PPOBridgeIO.cpp -o "$RUNNER_TEMP/ppo-bridge-io-tests"
           "$RUNNER_TEMP/ppo-bridge-io-tests" | tee diagnostics/bridge-io-tests.log
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -framework Foundation -framework CoreFoundation \
-            tests/BridgeProtocolTests.mm PPOBridgeProtocol.mm -o "$RUNNER_TEMP/ppo-bridge-protocol-tests"
+            tests/BridgeProtocolTests.mm PPOBridgeProtocol.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-bridge-protocol-tests"
           "$RUNNER_TEMP/ppo-bridge-protocol-tests" | tee diagnostics/bridge-protocol-tests.log
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -framework Foundation -framework CoreFoundation \
-            tests/BridgeServiceTests.mm tools/bridge/PPOBridgeService.mm PPOBridgeProtocol.mm PPOAppData.mm \
+            tests/BridgeServiceTests.mm tools/bridge/PPOBridgeService.mm PPOBridgeProtocol.mm PPOSceneCapability.mm PPOAppData.mm \
             -o "$RUNNER_TEMP/ppo-bridge-service-tests"
           "$RUNNER_TEMP/ppo-bridge-service-tests" | tee diagnostics/bridge-service-tests.log
       - name: Test actual service subprocess and mailbox
@@ -122,7 +122,7 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -DPPO_BRIDGE_TESTING \
             -framework Foundation -framework CoreFoundation tests/BridgeIntegrationTests.mm \
             "$RUNNER_TEMP/ppo-bridge-server-main.o" "$RUNNER_TEMP/ppo-bridge-io.o" \
-            PPOBridgeClient.mm PPOBridgeProtocol.mm PPOAppData.mm tools/bridge/PPOBridgeService.mm \
+            PPOBridgeClient.mm PPOBridgeProtocol.mm PPOSceneCapability.mm PPOAppData.mm tools/bridge/PPOBridgeService.mm \
             -o "$RUNNER_TEMP/ppo-bridge-integration-tests"
           "$RUNNER_TEMP/ppo-bridge-integration-tests" | tee diagnostics/bridge-integration-tests.log
       - name: Analyze and test read-only scene preflight
@@ -133,7 +133,7 @@ jobs:
             -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
             -Xanalyzer -analyzer-output=text PPOScenePreflight.mm 2>&1 | tee diagnostics/scene-analysis.log
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -framework Foundation -framework CoreFoundation \
-            tests/ScenePreflightTests.mm PPOScenePreflight.mm PPOBridgeProtocol.mm \
+            tests/ScenePreflightTests.mm PPOScenePreflight.mm PPOBridgeProtocol.mm PPOSceneCapability.mm \
             -o "$RUNNER_TEMP/ppo-scene-preflight-tests"
           "$RUNNER_TEMP/ppo-scene-preflight-tests" | tee diagnostics/scene-tests.log
       - name: Analyze and test read-only scene layer probe
@@ -157,7 +157,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for source in PPOScenePresenter.mm PPOFloatingTrial.mm PPOOwnedSafariTrial.mm PPOOwnedSceneHost.mm PPOHostSessionSlot.mm PPOScreenLockState.mm; do
+          for source in PPOScenePresenter.mm PPOFloatingTrial.mm PPOOwnedSafariTrial.mm PPOOwnedSceneHost.mm PPOHostSessionSlot.mm PPOScreenLockState.mm PPOOwnedAdmission.mm; do
             xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
               -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
               -Xanalyzer -analyzer-output=text "$source"
@@ -176,7 +176,7 @@ jobs:
         run: |
           set -euo pipefail
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
-            tests/OwnedSceneHostTests.mm PPOOwnedSceneHost.mm -o "$RUNNER_TEMP/ppo-owned-scene-tests"
+            tests/OwnedSceneHostTests.mm PPOOwnedSceneHost.mm PPOOwnedAdmission.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-owned-scene-tests"
           "$RUNNER_TEMP/ppo-owned-scene-tests" | tee diagnostics/owned-scene-tests.log
       - name: Test screen lock guard and window lifetime
         shell: bash
@@ -188,6 +188,22 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
             tests/WindowLifetimeTests.cpp -o "$RUNNER_TEMP/ppo-window-lifetime-tests"
           "$RUNNER_TEMP/ppo-window-lifetime-tests" | tee diagnostics/window-lifetime-tests.log
+      - name: Test selected-app capabilities and admission
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation -framework CoreFoundation tests/SceneCapabilityTests.mm PPOSceneCapability.mm \
+            -o "$RUNNER_TEMP/ppo-scene-capability-tests"
+          "$RUNNER_TEMP/ppo-scene-capability-tests" | tee diagnostics/scene-capability-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation -framework CoreFoundation tests/BundleSceneReaderTests.mm \
+            tools/bridge/PPOBundleSceneReader.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-bundle-reader-tests"
+          "$RUNNER_TEMP/ppo-bundle-reader-tests" | tee diagnostics/bundle-reader-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation -framework CoreFoundation tests/OwnedAdmissionTests.mm \
+            PPOOwnedAdmission.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-owned-admission-tests"
+          "$RUNNER_TEMP/ppo-owned-admission-tests" | tee diagnostics/owned-admission-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -233,7 +249,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.11.0-multiscene-${{ github.sha }}
+          name: PullOverPro-0.12.0-selectedcap-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

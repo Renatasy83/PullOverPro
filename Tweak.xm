@@ -8,6 +8,8 @@
 #import "PPOScenePreflight.h"
 #import "PPOOwnedSafariTrial.h"
 #import "PPOOwnedApplicationPolicy.h"
+#import "PPOOwnedAdmission.h"
+#import "PPOSceneCapability.h"
 #include <errno.h>
 
 // Public UIKit overlay. Read-only scene inspection requires an explicit diagnostic tap.
@@ -22,6 +24,7 @@ static UILabel *ppoStatus;
 static const CGFloat PPOClosedWidth = 78;
 static const CGFloat PPOOpenWidth = 218;
 static const CGFloat PPOPanelHeight = 390;
+static BOOL PPOOverlayAllowed(void);
 
 
 // Metadata only: never send messages to these private classes or instantiate them.
@@ -80,6 +83,22 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
     return @"Serviciul PPO nu a acceptat cererea";
 }
 
+// Worker queue only. A bounded selected-app diagnostic, never bundle paths or
+// plist/user contents. The bridge response has already passed nonce validation.
+static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *response, NSError *error) {
+    NSDictionary *capability = PPOSceneCapabilityNormalize(response[@"sceneCapability"]);
+    NSDictionary *report = @{@"schema": @1, @"version": @"0.12.0~dev.selectedcap1",
+        @"bundleIdentifier": identifier, @"responseStatus": response[@"status"] ?: @"unavailable",
+        @"sceneCapability": capability ?: (id)NSNull.null, @"errorCode": @(error.code),
+        @"observedUptime": @(NSProcessInfo.processInfo.systemUptime), @"runtimeCompatibilityConfirmed": @NO};
+    NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
+    NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
+    if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
+        withIntermediateDirectories:YES attributes:nil error:NULL])
+        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-0.12.0.json"]
+            options:NSDataWritingAtomic error:NULL];
+}
+
 @interface PPOHandleTarget : NSObject
 - (void)tapped:(id)sender;
 - (void)panned:(UIPanGestureRecognizer *)recognizer;
@@ -87,6 +106,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 - (void)resetPosition:(id)sender;
 @property(nonatomic,strong) PPOHostSessionSlot *hostSessions;
 - (void)openFloatingApp:(UIButton *)sender;
+- (void)openPreparedApplication:(NSDictionary *)selected capability:(NSDictionary *)capability;
 @property(nonatomic,copy) NSArray<NSDictionary *> *apps;
 @property(nonatomic,copy) NSString *selectedIdentifier;
 @property(nonatomic) NSUInteger page;
@@ -95,6 +115,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 @property(nonatomic) BOOL selectionSaving;
 @property(nonatomic) BOOL launchInProgress;
 @property(nonatomic) BOOL launchStopped;
+@property(nonatomic) BOOL hostInspectionPending;
 @property(nonatomic,strong) UIButton *launchButton;
 @property(nonatomic,strong) UIView *listView;
 @property(nonatomic,strong) UIScrollView *listScroll;
@@ -114,15 +135,66 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 @implementation PPOHandleTarget
 - (void)openFloatingApp:(UIButton *)sender {
     (void)sender;
-    if (self.launchInProgress || self.selectionSaving) return;
-    if (!PPOOwnedApplicationAllowed(self.selectedIdentifier)) {
-        ppoStatus.text = @"Ferestre: Safari, Reminders și Contacte"; return;
-    }
+    if (self.launchInProgress || self.selectionSaving || self.hostInspectionPending) return;
     NSDictionary *selected = nil;
     for (NSDictionary *app in self.apps) {
         if ([app[@"bundleIdentifier"] isEqual:self.selectedIdentifier]) { selected = app; break; }
     }
     if (!selected) { ppoStatus.text = @"Selectează aplicația din listă"; return; }
+    if (!PPOSceneApplicationIdentifierAllowed(self.selectedIdentifier)) {
+        ppoStatus.text = @"Aplicația nu poate fi deschisă în fereastră"; return;
+    }
+    if (self.hostSessions.session && !self.hostSessions.session.finished) {
+        ppoStatus.text = @"Închide întâi fereastra activă"; return;
+    }
+    NSString *identifier = [self.selectedIdentifier copy];
+    NSUInteger epoch = self.saveEpoch;
+    NSDictionary *chosen = [selected copy];
+    self.hostInspectionPending = YES; [self updateLaunchButton];
+    ppoStatus.text = @"Se verifică suportul pentru fereastră…";
+    dispatch_async(PPOFileQueue(), ^{
+        @autoreleasepool {
+            NSError *error = nil;
+            NSDictionary *response = nil;
+            @try {
+                response = PPOBridgeSend(@"inspect-scene", identifier, &error);
+                PPOWriteCapabilityObservation(identifier, response, error);
+            } @catch (NSException *exception) {
+                (void)exception; response = nil;
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.hostInspectionPending = NO; [self updateLaunchButton];
+                if (epoch != self.saveEpoch || ![identifier isEqual:self.selectedIdentifier] || !PPOOverlayAllowed()) return;
+                if (![response[@"status"] isEqual:@"inspected"]) {
+                    // Preserve the existing explicit baseline only when the
+                    // inspection service is unavailable. Explicit rejection,
+                    // stale replies and hard-negative metadata are never bypassed.
+                    if (PPOOwnedApplicationAllowed(identifier) &&
+                        (!response || [response[@"status"] isEqual:@"unsupported"])) {
+                        [self openPreparedApplication:chosen capability:nil]; return;
+                    }
+                    ppoStatus.text = response ? PPOBridgeFailureMessage(response) : @"Verificarea ferestrei nu este disponibilă";
+                    return;
+                }
+                NSDictionary *capability = response[@"sceneCapability"];
+                if (!PPOOwnedAdmissionSnapshot(identifier, capability, NSProcessInfo.processInfo.systemUptime)) {
+                    ppoStatus.text = [capability[@"status"] isEqual:@"ineligible"]
+                        ? @"Aplicația nu declară suportul necesar pentru ferestre"
+                        : @"Suportul pentru fereastră nu poate fi verificat";
+                    return;
+                }
+                [self openPreparedApplication:chosen capability:capability];
+            });
+        }
+    });
+}
+- (void)openPreparedApplication:(NSDictionary *)selected capability:(NSDictionary *)capability {
+    if (!PPOOverlayAllowed() || self.launchInProgress || self.selectionSaving) return;
+    NSString *identifier = [selected[@"bundleIdentifier"] copy];
+    if (![identifier isEqual:self.selectedIdentifier]) return;
+    if (!PPOOwnedAdmissionSnapshot(identifier, capability, NSProcessInfo.processInfo.systemUptime)) {
+        ppoStatus.text = @"Datele ferestrei nu pot fi validate"; return;
+    }
     if (!self.hostSessions) self.hostSessions = [PPOHostSessionSlot new];
     PPOOwnedSafariTrial *candidate = [PPOOwnedSafariTrial new];
     NSError *error = nil;
@@ -132,11 +204,11 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
         return;
     }
     ppoStatus.text = [candidate openInScene:ppoWindow.windowScene
-        bundleIdentifier:[self.selectedIdentifier copy] displayName:selected[@"name"]];
+        bundleIdentifier:identifier displayName:selected[@"name"] capability:capability];
 }
 
 - (void)updateLaunchButton {
-    self.launchButton.enabled = !self.selectionSaving && !self.launchInProgress &&
+    self.launchButton.enabled = !self.selectionSaving && !self.launchInProgress && !self.hostInspectionPending &&
         !self.launchStopped && PPOBridgeValidIdentifier(self.selectedIdentifier) &&
         ![self.selectedIdentifier isEqual:@"com.apple.springboard"] &&
         ![self.selectedIdentifier isEqual:@"com.apple.backboardd"];
@@ -193,9 +265,9 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 0.11.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 0.12.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.11.0] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 0.12.0] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport scenă salvat (Filza)" : @"Raport API: eroare";
@@ -218,7 +290,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
     self.listView.hidden = YES;
     ppoPanel.hidden = !ppoExpanded;
     ppoStatus.text = @"Selectează o aplicație";
-    NSLog(@"[PPO 0.11.0] panel %@", ppoExpanded ? @"open" : @"closed");
+    NSLog(@"[PPO 0.12.0] panel %@", ppoExpanded ? @"open" : @"closed");
 }
 - (void)panned:(UIPanGestureRecognizer *)recognizer {
     if (!ppoWindow) return;
@@ -267,7 +339,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
                     if (!found) selected = nil;
                 }
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.11.0] app-file-exception=%@", exception.name);
+                NSLog(@"[PPO 0.12.0] app-file-exception=%@", exception.name);
                 apps = nil;
             }
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -289,7 +361,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
                     self.listView = nil;
                     ppoPanel.hidden = NO;
                     ppoStatus.text = @"Lista nu poate fi afișată";
-                    NSLog(@"[PPO 0.11.0] app-ui-exception=%@", exception.name);
+                    NSLog(@"[PPO 0.12.0] app-ui-exception=%@", exception.name);
                 }
             });
         }
@@ -382,7 +454,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
     @catch (NSException *exception) {
         [self closeApps:nil];
         ppoStatus.text = @"Pagina nu poate fi afișată";
-        NSLog(@"[PPO 0.11.0] page-exception=%@", exception.name);
+        NSLog(@"[PPO 0.12.0] page-exception=%@", exception.name);
     }
 }
 - (void)selectApp:(UIButton *)sender {
@@ -405,7 +477,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
                     saved = [data writeToFile:PPOSelectionPath options:NSDataWritingAtomic error:NULL];
                 }
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.11.0] selection-exception=%@", exception.name);
+                NSLog(@"[PPO 0.12.0] selection-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (epoch != self.saveEpoch) return;
@@ -452,7 +524,7 @@ static void PPOCommitOverlay(UIWindow *window, UIViewController *controller,
 }
 
 static void PPOBuildOverlay(UIWindowScene *scene) {
-    NSLog(@"[PPO 0.11.0] ui-build-begin");
+    NSLog(@"[PPO 0.12.0] ui-build-begin");
     UIWindow *ppoWindow = [[UIWindow alloc] initWithWindowScene:scene];
     ppoWindow.frame = CGRectMake(0, 170, PPOClosedWidth, 44);
     ppoWindow.windowLevel = UIWindowLevelStatusBar + 1;
@@ -467,7 +539,7 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
     ppoPanel.layer.cornerRadius = 12;
     ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.11.0-dev", 8)];
+    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.12.0-dev", 8)];
     [ppoPanel addSubview:PPOLabel(@"Aplicații", 43)];
     UIButton *apps = [UIButton buttonWithType:UIButtonTypeSystem];
     apps.frame = CGRectMake(10, 72, PPOOpenWidth - 20, 32);
@@ -528,10 +600,10 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [ppoHandle addGestureRecognizer:pan];
     [ppoController.view addSubview:ppoHandle];
 
-    NSLog(@"[PPO 0.11.0] ui-built; showing");
+    NSLog(@"[PPO 0.12.0] ui-built; showing");
     ppoWindow.hidden = NO;
     PPOCommitOverlay(ppoWindow, ppoController, ppoTarget, ppoPanel, ppoStatus, ppoHandle);
-    NSLog(@"[PPO 0.11.0] ui-visible");
+    NSLog(@"[PPO 0.12.0] ui-visible");
 }
 
 static BOOL ppoScheduled;
@@ -570,12 +642,12 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 0.11.0] no-active-scene; stopped");
+                NSLog(@"[PPO 0.12.0] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 0.11.0] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 0.12.0] ui-exception=%@; stopped", exception.name);
             ppoStopped = YES;
         }
         if (ppoStopped && ppoSceneObserver) {
@@ -587,10 +659,10 @@ static void PPOScheduleOverlay(void) {
 
 %ctor {
     @autoreleasepool {
-        NSLog(@"[PPO 0.11.0] loaded; os=%@",
+        NSLog(@"[PPO 0.12.0] loaded; os=%@",
               NSProcessInfo.processInfo.operatingSystemVersionString);
         if (!PPOOverlayAllowed()) {
-            NSLog(@"[PPO 0.11.0] overlay-disabled; no hooks installed");
+            NSLog(@"[PPO 0.12.0] overlay-disabled; no hooks installed");
             return;
         }
         // No UIKit objects or private SpringBoard methods touched in the ctor.
@@ -600,7 +672,7 @@ static void PPOScheduleOverlay(void) {
                 queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                     PPOScheduleOverlay();
                 }];
-            NSLog(@"[PPO 0.11.0] overlay-armed");
+            NSLog(@"[PPO 0.12.0] overlay-armed");
             PPOScheduleOverlay();
         });
     }

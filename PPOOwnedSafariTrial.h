@@ -6,6 +6,6 @@
 // Replacement requires confirmed own-scene and own-workspace cleanup.
 @interface PPOOwnedSafariTrial : NSObject <PPOHostedSession>
 - (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier
-              displayName:(NSString *)displayName;
+              displayName:(NSString *)displayName capability:(NSDictionary *)capability;
 - (void)close;
 @end

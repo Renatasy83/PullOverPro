@@ -1,5 +1,6 @@
 #import "../PPOOwnedSceneHost.h"
 #import "../PPOOwnedApplicationPolicy.h"
+#import "../PPOSceneCapability.h"
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
 #include <stdio.h>
@@ -23,9 +24,13 @@ static id sourceScene;
 static id requestedApplication;
 static NSString *originalApplication, *childIdentifierOverride;
 static NSMutableString *callerIdentifierMutation;
+static NSDictionary *requestedCapability;
+static NSMutableDictionary *callerCapabilityMutation;
+static BOOL childSpecificationSubclass;
+static unsigned customSpecificationReads;
 static unsigned workspaceConstructions, sourceProbes;
 static BOOL Prepare(id source) {
-    return [current prepareScene:source forBundleIdentifier:requestedApplication];
+    return [current prepareScene:source forBundleIdentifier:requestedApplication capability:requestedCapability];
 }
 static void Check(BOOL condition, const char *message) {
     checks++;
@@ -40,6 +45,10 @@ static void Check(BOOL condition, const char *message) {
 @property(nonatomic,copy) NSString *uiSceneSessionRole;
 @end
 @implementation OwnedFixtureSpecification @end
+@interface OwnedFixtureSpecificationSubclass : OwnedFixtureSpecification @end
+@implementation OwnedFixtureSpecificationSubclass
+- (NSString *)uiSceneSessionRole { customSpecificationReads++; return [super uiSceneSessionRole]; }
+@end
 @interface OwnedFixtureDefinition : NSObject
 @property(nonatomic,strong) id clientIdentity;
 @property(nonatomic,strong) id specification;
@@ -196,6 +205,14 @@ static __weak OwnedFixtureController *lastController;
     if ((self = [super init])) {
         lastController = self; _configuration = configuration;
         if (callerIdentifierMutation) [callerIdentifierMutation setString:@"com.apple.MobileAddressBook"];
+        if (callerCapabilityMutation) {
+            id identity = callerCapabilityMutation[@"bundleIdentifier"];
+            if ([identity isKindOfClass:NSMutableString.class]) [identity setString:@"com.example.other"];
+            id status = callerCapabilityMutation[@"status"];
+            if ([status isKindOfClass:NSMutableString.class]) [status setString:@"ineligible"];
+            callerCapabilityMutation[@"eligible"] = @NO;
+            callerCapabilityMutation[@"observedUptime"] = @0;
+        }
         if (throwControllerInit) [NSException raise:@"fixture" format:@"init"];
         if (nilControllerInit) return nil;
         if (foreignControllerInit) return (id)[NSObject new];
@@ -208,6 +225,11 @@ static __weak OwnedFixtureController *lastController;
             OwnedFixtureDefinition *definition = [OwnedFixtureDefinition new];
             definition.clientIdentity = [configuration clientIdentity];
             definition.specification = [configuration sceneSpecification];
+            if (childSpecificationSubclass) {
+                OwnedFixtureSpecification *other = [OwnedFixtureSpecificationSubclass new];
+                other.uiSceneSessionRole = @"UIWindowSceneSessionRoleApplication";
+                definition.specification = other;
+            }
             if (badNewClientIdentity) {
                 OwnedFixtureClient *other = [OwnedFixtureClient new]; other.bundleIdentifier = @"com.example.foreign";
                 definition.clientIdentity = other;
@@ -309,6 +331,8 @@ static void Reset(void) {
     directComponentScene = NO;
     requestedApplication = originalApplication = @"com.apple.mobilesafari";
     childIdentifierOverride = nil; callerIdentifierMutation = nil;
+    requestedCapability = nil; callerCapabilityMutation = nil; childSpecificationSubclass = NO;
+    customSpecificationReads = 0;
     workspaceConstructions = sourceProbes = 0;
     OwnedFixtureClient *client = [OwnedFixtureClient new]; client.bundleIdentifier = @"com.apple.mobilesafari";
     OwnedFixtureSpecification *spec = [OwnedFixtureSpecification new]; spec.uiSceneSessionRole = @"UIWindowSceneSessionRoleApplication";
@@ -325,6 +349,18 @@ static void ResetForApplication(NSString *application) {
     requestedApplication = originalApplication = [application copy];
     OwnedFixtureDefinition *definition = [sourceScene definition];
     [(OwnedFixtureClient *)definition.clientIdentity setBundleIdentifier:originalApplication];
+}
+static NSDictionary *DynamicCapability(NSString *application, NSString *status = @"eligible") {
+    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v1",
+        @"bundleIdentifier": application, @"status": status,
+        @"eligible": [status isEqual:@"eligible"] ? @YES : @NO,
+        @"reason": [status isEqual:@"eligible"] ? @"declared-single-application-scene" :
+            ([status isEqual:@"ineligible"] ? @"multiple-scenes-disabled" : @"manifest-unknown"),
+        @"observedUptime": @(NSProcessInfo.processInfo.systemUptime)};
+}
+static void ResetDynamic(void) {
+    ResetForApplication(@"com.example.sceneapp");
+    requestedCapability = DynamicCapability(originalApplication);
 }
 static void SourceUnchanged(void) {
     OwnedFixtureScene *scene = sourceScene;
@@ -633,10 +669,73 @@ int main(void) {
               "caller mutation during private construction cannot change the copied expected identity");
         Check([current close], "copied identity fixture cleans its known Safari scene");
         SourceUnchanged();
+        ResetDynamic();
+        Check(Prepare(sourceScene) && [current.snapshot[@"admission"][@"basis"] isEqual:@"installed-info"] &&
+              [current.snapshot[@"expectedBundleIdentifier"] isEqual:originalApplication],
+              "a fresh bound capability admits a dynamic app under the same ownership proof");
+        Check([current close] && current.closed && controllerInvalidations == 1 && workspaceInvalidations == 1,
+              "dynamic scene releases only its verified controller and empty workspace");
+        SourceUnchanged();
+        for (unsigned failure = 0; failure < 5; failure++) {
+            ResetDynamic();
+            if (failure == 0) requestedCapability = nil;
+            else if (failure == 1) requestedCapability = DynamicCapability(@"com.example.other");
+            else if (failure == 2) requestedCapability = DynamicCapability(originalApplication, @"ineligible");
+            else if (failure == 3) requestedCapability = DynamicCapability(originalApplication, @"unknown");
+            else {
+                NSMutableDictionary *stale = [requestedCapability mutableCopy];
+                stale[@"observedUptime"] = @(NSProcessInfo.processInfo.systemUptime - 10);
+                requestedCapability = stale;
+            }
+            Check(!Prepare(sourceScene) && current.closed && !current.poisoned && constructors == 0 &&
+                  workspaceConstructions == 0 && sourceProbes == 0,
+                  "missing, cross-app, negative, unknown and stale metadata refuse before private work");
+            SourceUnchanged();
+        }
+        ResetForApplication(@"com.apple.reminders");
+        requestedCapability = DynamicCapability(originalApplication, @"ineligible");
+        Check(!Prepare(sourceScene) && current.closed && workspaceConstructions == 0 && sourceProbes == 0,
+              "fresh explicit negative metadata overrides baseline admission before touching source");
+        SourceUnchanged();
+        ResetDynamic();
+        OwnedFixtureDefinition *dynamicDefinition = [sourceScene definition];
+        OwnedFixtureSpecification *custom = [OwnedFixtureSpecificationSubclass new];
+        custom.uiSceneSessionRole = @"UIWindowSceneSessionRoleApplication";
+        dynamicDefinition.specification = custom;
+        Check(!Prepare(sourceScene) && current.closed && !current.poisoned && workspaceConstructions == 0 &&
+              customSpecificationReads == 0,
+              "dynamic source specification subclasses are rejected before their getters or construction");
+        SourceUnchanged();
+        ResetDynamic(); childSpecificationSubclass = YES;
+        Check(!Prepare(sourceScene) && current.poisoned && !current.closed &&
+              controllerInvalidations == 0 && workspaceInvalidations == 0 && current.viewController == nil &&
+              customSpecificationReads == 0,
+              "dynamic child specification subclass is quarantined before getters or unverified cleanup");
+        SourceUnchanged();
+        ResetForApplication(@"com.apple.reminders");
+        dynamicDefinition = [sourceScene definition];
+        custom = [OwnedFixtureSpecificationSubclass new];
+        custom.uiSceneSessionRole = @"UIWindowSceneSessionRoleApplication";
+        dynamicDefinition.specification = custom;
+        Check(Prepare(sourceScene) && [current close],
+              "existing baseline retains its previously validated kind-of-class specification behavior");
+        SourceUnchanged();
+        ResetDynamic();
+        callerCapabilityMutation = [requestedCapability mutableCopy];
+        callerCapabilityMutation[@"bundleIdentifier"] = [originalApplication mutableCopy];
+        callerCapabilityMutation[@"status"] = [@"eligible" mutableCopy];
+        requestedCapability = callerCapabilityMutation;
+        Check(Prepare(sourceScene) && [callerCapabilityMutation[@"bundleIdentifier"] isEqual:@"com.example.other"] &&
+              [current.snapshot[@"admission"][@"sceneCapability"][@"bundleIdentifier"] isEqual:originalApplication] &&
+              [current.snapshot[@"admission"][@"sceneCapability"][@"status"] isEqual:@"eligible"],
+              "caller mutation during construction cannot redirect or revoke the frozen admission descriptor");
+        Check([current close], "frozen dynamic descriptor cleans its known owned scene");
+        SourceUnchanged();
         for (unsigned cycle = 0; cycle < 100; cycle++) {
             @autoreleasepool {
                 NSArray *targets = @[@"com.apple.mobilesafari", @"com.apple.reminders", @"com.apple.MobileAddressBook"];
-                ResetForApplication(targets[cycle % targets.count]);
+                if (cycle % 4 == 3) ResetDynamic();
+                else ResetForApplication(targets[cycle % targets.count]);
                 Check(Prepare(sourceScene), "mixed targets each create a distinct owned scene");
                 Check([current close] && current.closed && controllerInvalidations == 1 && workspaceInvalidations == 1,
                       "repeat releases only owned namespace after empty confirmation");

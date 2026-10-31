@@ -13,7 +13,10 @@ done
         exit 127
     fi
     if "$ppo_launchctl" print system/com.renatasy83.ppo.bridge >/dev/null 2>&1; then
-        exit 0
+        # A respring does not reload this persistent service's executable.
+        # Restart only our already-loaded job so upgrades use the new helper.
+        "$ppo_launchctl" kickstart -k system/com.renatasy83.ppo.bridge
+    else
+        "$ppo_launchctl" bootstrap system /var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist
     fi
-    "$ppo_launchctl" bootstrap system /var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist
 fi
