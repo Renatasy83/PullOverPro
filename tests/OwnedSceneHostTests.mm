@@ -211,7 +211,7 @@ static __weak OwnedFixtureController *lastController;
         OwnedFixtureWorkspace *workspace = [configuration sceneWorkspace];
         [workspace.scenes addObject:_createdScene];
         _component = [OwnedFixtureComponent new];
-        id hostScene = directComponentScene ? _createdScene :
+        id hostScene = directComponentScene ? (id)_createdScene :
             [[OwnedFixtureComponentScene alloc] initWithScene:_createdScene];
         if (badComponentScene) hostScene = sourceScene;
         if (componentFault == 3) hostScene = nil;
