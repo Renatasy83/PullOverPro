@@ -1,0 +1,22 @@
+# Original feature coverage
+
+Reference:GPL-3.0 c1d3rdev/PullOver-Pro main, especially PullOverViewController.m, POHandle.m, QuickSwitchTableView and the preferences controllers. This is a feature map, not a declaration of complete compatibility. Existing attribution/license files remain in the package.
+
+| Original capability | Current port evidence / limit |
+| --- | --- |
+| Persistent app choice / quick switching | Public paged picker, persisted selected identifier and isolated inventory exist. User-confirmed picker baseline0.5.8. Original favorites selector, long-press quick-switch table and drag/drop are not yet ported. |
+| Open application | Mobile launch service uses guarded LaunchServices and membership/freshness checks. Safari launch from PPO is user-confirmed on0.6.1. This is distinct from owned scene creation. |
+| Application content over another app | Separately owned scene/controller/workspace with identity/proxy/namespace and explicit cleanup. Safari0.9.1 cross-app rendering/navigation, Reminders0.11.0 and Contacts0.12.0 requested window/reuse operations are observed. These do not prove every app/client. |
+| Application eligibility | Installed selected-app manifest inspection on the helper. Contacts0.12.0 uses fresh installed-info evidence. Complex/single-scene clients and nonbaseline newly eligible apps remain unverified/unsupported as described by policy; being launchable is insufficient. |
+| Scaled app view | Existing public wrapper aspect fit keeps native client geometry.0.13.0 adds three bounded public viewport presets; its actual compositor/input outcome requires the changed-feature phone gate. This does not add logical app reflow or assume original private setters. |
+| Positioning / reachable controls | Public title drag exists;0.13.0 adds pure bounded placement, best-available captured public insets and minimum44-point controls. Native geometry fixtures cannot verify every system overlay. |
+| Drawer, edge handle and automatic nub | The public PPO launcher panel/handle exists. Original open/close drawer transition, app-tab minimize/restore and autoNubAfterDelay are not equivalent to the present close-and-recreate flow and remain to be ported. |
+| Long-running pinned app | Explicit Keep removes only the15-second deadline; existing lock/data/scene guards remain. Safari0.10.0 Keep/lock/reuse is observed. Per-client prolonged resource/session behavior is not established. |
+| Keyboard/focus adaptation | No guessed private focus/input API. Remote navigation has observed operations, but dedicated floating-window keyboard routing/adaptation remains unverified. Original keyboardWillShow/Hide behavior is not fully ported. |
+| Preferences / appearance | Basic panel theme and reset-position controls exist. The original PreferenceLoader bundle, favorites/scaling/timing configuration, all appearance options and persistence are not complete. |
+| Multiple/simultaneous windows | One owned session at a time; replacement requires confirmed cleanup. Multiple simultaneously hosted clients are not enabled. |
+| Recovery / process safety | Rootless scripts, own-service-only lifecycle and bounded request diagnostics are automated. Runtime source is preserved by operation-specific stable branches. Historical watchdog IPS causes remain unconfirmed; no blanket Dopamine/ElleKit compatibility claim. |
+
+The next changes should favor public UI improvements that do not expand private behavior:tested viewport controls, explicit minimize/restore lifecycle, usable favorites/quick selection and settings. Every private expansion still requires exact-firmware semantics, identity/ownership/lifecycle proof, native negative fixtures and an isolated real-device gate. Do not reactivate the original KVC foreground writes, guessed flags or unverified client focus calls merely to claim feature parity.
+
+CI/build artifacts are development candidates. The versioned validation report records what actually executed and what could not execute. No compatible physical Apple Silicon Mac is accessible for vphone-cli; Linux/macOS Intel CI are not iOS runtime substitutes.

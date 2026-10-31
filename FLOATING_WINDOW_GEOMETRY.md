@@ -14,7 +14,7 @@ The pure C++ policy rejects nonfinite/out-of-range rectangles, deltas, insets an
 
 ## Evidence and limits
 
-The new side-effect-free suite covers preset bounds, offset/fractional scenes, invalid values,10000 mixed moves/resizes, aspect-fit with the unchanged native414x896 frame, and interleaving geometry with timed/kept lifetime decisions. Local C++17 ASan/UBSan and libstdc++ assertions passed108812 checks. Applicable native macOS tests, iOS Clang analysis, Theos rootless arm64/arm64e build and downloaded package inspection are required before delivery; see the versioned validation report for actual CI outcomes.
+The new side-effect-free suite covers preset bounds, offset/fractional scenes, invalid values,10000 mixed moves/resizes, aspect-fit with the unchanged native414x896 frame, and interleaving geometry with timed/kept lifetime decisions. Local C++17 ASan/UBSan and libstdc++ assertions passed108812 checks. Executablec86083b77575af887973c195e73b0beff28ccfef passed all21 suites, including108812 geometry checks, iOS Clang analysis, Theos rootless arm64/arm64e build and downloaded package/hash inspection in Actions41246925116. Artifact13060155969 contains the candidate/evidence; see VALIDATION_0.13.0.md for exact checksums and unexecuted device tests.
 
 Host report schema9 adds sizePreset, completedMoves/completedResizes, captured placementInsets and wrapperOnlyResize alongside actual ancestor/descendant frames and existing lifecycle/ownership evidence. Only completed controls append events; continuous pan frames do not add unbounded logs. The16-event/eight-session history limits remain. Full runtime compatibility remains false in reports.
 

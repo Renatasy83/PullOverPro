@@ -1,6 +1,6 @@
 # Autonomous port status — 2026-10-31
 
-Current isolated development:0.13.0~dev.geometry1 on debug/floating-window-geometry. It adds bounded title dragging and three public viewport size presets; no new private dispatch or scene/native-frame/lifetime change. See FLOATING_WINDOW_GEOMETRY.md. Current-source CI is pending.
+Current isolated development:0.13.0~dev.geometry1 on debug/floating-window-geometry. It adds bounded title dragging and three public viewport size presets; no new private dispatch or scene/native-frame/lifetime change. See FLOATING_WINDOW_GEOMETRY.md. Executablec86083b77575af887973c195e73b0beff28ccfef passed all21 suites, iOS analysis, pinned Theos rootless arm64/arm64e build and downloaded ZIP/DEB inspection. Delivered candidate:Actions41246925116/artifact13060155969. See VALIDATION_0.13.0.md for evidence and actual runtime limits.
 
 Previous selected metadata stage:0.12.0~dev.selectedcap1 on debug/selected-app-capabilities. It adds conservative per-selected-app installed metadata inspection through PPO's existing mobile service. No bulk manifest collection or SpringBoard bundle IO is introduced. Eligible new clients use the existing owned-scene architecture with additional exact specification-class guards. Metadata is advisory, not an entitlement or compatibility claim. See SELECTED_APP_CAPABILITIES.md. Executable6d176ad4bec086cad6a99c72e360d136efa79cff passed all20 suites, iOS Clang analysis, Theos rootless arm64/arm64e packaging and downloaded ZIP/DEB inspection. Actions41241693750/artifact13057987055 is the delivered package. See VALIDATION_0.12.0.md for evidence, hashes and unexecuted device tests.
 
@@ -22,6 +22,6 @@ Target evidence:iPhone12,5 iOS26.0.1 build23A355, user-reported Dopamine rootles
 
 ## Next indispensable live gate
 
-The0.12.0 selected metadata/Contacts gate is complete and preserved as stable/verified-contacts-installed-metadata at6d176ad4bec086cad6a99c72e360d136efa79cff. After successful0.13.0 automation, only the changed public-window behavior needs a live gate:use one already working app, cycle the size button, drag near edges, check reachable X/content/scrolling and close/reopen once. Keep remains off by default and no app metadata policy is broadened. Provide host-0.13.0.json.
+The0.12.0 selected metadata/Contacts gate is complete and preserved as stable/verified-contacts-installed-metadata at6d176ad4bec086cad6a99c72e360d136efa79cff. 0.13.0 automation has passed; only the changed public-window behavior needs a live gate:use one already working app, cycle the size button, drag near edges, check reachable X/content/scrolling and close/reopen once. Keep remains off by default and no app metadata policy is broadened. Provide host-0.13.0.json.
 
 Recovery:X/default15-second timeout; /var/mobile/.ppo_disable; manual respring for quarantine. Keep deliberately has no timer expiry. If injection prevents startup, start Dopamine without injection and remove only this package. No phone installation/respring, personal data deletion or other-tweak modification is performed automatically. Complete original functionality and full Dopamine/ElleKit compatibility remain unconfirmed.
