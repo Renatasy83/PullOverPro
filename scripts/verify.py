@@ -154,6 +154,21 @@ require(target_facts['firmware'] == {'productType': 'iPhone12,5', 'productVersio
             len(app['applicationRoleConfigurations']) == 1 and
             re.fullmatch(r'[0-9a-f]{64}', app['infoSHA256']) for app in target_facts['applications']),
         'Target facts must remain explicit iPhone multiscene declarations, not runtime claims')
+floating_policy = (ROOT / 'PPOFloatingWindowGeometry.h').read_text()
+require('#include "PPOFloatingWindowGeometry.h"' in owned_trial and
+        'PPOFloatingInitial(' in owned_trial and 'PPOFloatingResize(' in owned_trial and 'PPOFloatingMove(' in owned_trial,
+        'Window placement must use the bounded public geometry policy')
+require(owned_trial.count('childView.frame =') == 1 and
+        'self.sizeButton = nil; self.closeButton = nil;' in owned_trial and
+        '@"wrapperOnlyResize": @YES' in owned_trial,
+        'Resize must preserve the single pre-containment native frame and clear own controls on cleanup')
+require('PPOPlacementInsets(scene)' in owned_trial and
+        'candidate.safeAreaInsets' in owned_trial and 'self.window.safeAreaInsets' not in owned_trial and
+        'windows.count <= 128' in owned_trial,
+        'Screen insets must be bounded and captured without moving-window feedback')
+require('std::isfinite' in floating_policy and 'PPOFloatingMargin = 8' in floating_policy and
+        'PPOFloatingMinWidth = 240' in floating_policy and 'PPOFloatingMinHeight = 320' in floating_policy,
+        'Public geometry must retain finite bounds, reachable controls and minimum viewport size')
 require('childView.frame =' in owned_trial and
         owned_trial.index('childView.frame =') < owned_trial.index('[root addChildViewController:child]'),
         'Provide public native child geometry before attachment/appearance')
@@ -213,7 +228,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.12.0~dev.selectedcap1'), 'Unexpected version')
+    require(field('Version').startswith('0.13.0~dev.geometry1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

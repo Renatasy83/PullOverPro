@@ -7,6 +7,7 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'floating-geometry-tests.log': 'Floating window geometry tests passed:',
     'scene-capability-tests.log': 'Scene capability tests passed:',
     'bundle-reader-tests.log': 'Bundle scene reader tests passed:',
     'owned-admission-tests.log': 'Owned admission tests passed:',
@@ -39,7 +40,7 @@ not_run = [
     'Application scene rendering, touch/keyboard routing and teardown',
     'Lock/unlock, orientation, process death and watchdog integration',
     'Keep mode beyond fifteen seconds and lock-transition frame exposure',
-    'Selected-app metadata availability and actual own-service upgrade restart on iOS',
+    'Public window resizing, bounded title dragging and remote input after wrapper scaling on iOS',
     'Dopamine and ElleKit runtime compatibility',
     'vphone-cli: no compatible physical Apple Silicon Mac is accessible',
 ]
@@ -51,8 +52,8 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'Owned scenes with baseline targets and fresh nonce-bound per-selected-app manifest eligibility; actual new-app admission/rendering remains unverified.',
-    'prior_device_baseline': '0.11.0 Reminders manual/timeout/reuse and user-confirmed interaction;0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
+    'floating_application_hosting_implemented': 'Owned scenes and selected-app manifest eligibility; public wrapper-only size presets and bounded dragging. New-version UIKit rendering/input remains unverified.',
+    'prior_device_baseline': '0.12.0 Contacts installed-info admission/window/manual/timeout/reuse;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -61,7 +62,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Not a final candidate. Dynamic candidate apps require fresh selected-app manifest inspection through the mobile service. Metadata is eligibility evidence, not authenticated permission or runtime compatibility. Baseline Safari/Reminders observations remain version-specific. No original source scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
+    '**Not a final candidate. Dynamic candidate apps require fresh selected-app manifest inspection through the mobile service. Metadata is eligibility evidence, not authenticated permission or runtime compatibility. Baseline Safari/Reminders/Contacts observations remain version-specific. Current public-window resize/drag behavior requires actual device validation. No original source scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)

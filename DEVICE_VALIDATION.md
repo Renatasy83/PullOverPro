@@ -1,5 +1,15 @@
 # Device validation
 
+## User-confirmed 0.12.0 — Contacts installed metadata and owned window
+
+The supplied host-0.12.0.json contains two com.apple.MobileAddressBook sessions and the user confirms the requested test works. Executable6d176ad4bec086cad6a99c72e360d136efa79cff is preserved as stable/verified-contacts-installed-metadata. Both admissions have basis=installed-info with fresh eligible installed-basic-multiscene-v1 descriptors, observed about0.137s/0.106s before preparation. This exercises the new helper inspection rather than firmware-baseline fallback. It does not independently identify which postinst launchctl branch was used.
+
+Both original selections are unique among6 inspected scenes and all four hosting framework UUIDs match. The activation component's verified proxy targets the newly created child and differs from the original. A first render layer is sampled around0.152s/0.136s after preparation, then two by0.817s/0.794s; they remain present while the original is backgrounded without layers. Visible content and the requested interaction outcome come from the user, not the telemetry alone.
+
+Session1 closes manually at about9.431s. Reopening starts about11.574s later, and session2 closes by timeout at about15.064s. Both return both controller/workspace invalidations, finish closed/unpinned/unpoisoned and allow replacement. No exception or quarantine is recorded. Last layer/live samples are historical, about1.365s/3.008s before closure, not post-close resource measurements. No contact names, records, input events or raw report are committed.
+
+This completes the requested selected-app metadata/Contacts window/manual-close/reuse gate for0.12.0. Contacts Keep/lock, explicit keyboard routing, nonbaseline dynamic apps, long-term cleanup and full Dopamine/ElleKit compatibility remain unconfirmed. No repeat of the ordinary Contacts test is required merely to record this result. The next public-window geometry stage preserves the private owner/admission/lifetime implementations.
+
 ## User-confirmed 0.11.0 — Reminders window and reuse
 
 The supplied host-0.11.0.json contains two com.apple.reminders sessions. The user answers “Funcționează” to the requested additional-app display/scroll/X/reopen gate. Executable0bb57241e7aeb54a35b434e59f7b24bf844cc7c5 is preserved as stable/verified-reminders-window-reuse. Contacts remains untested.
