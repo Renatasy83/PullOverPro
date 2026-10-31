@@ -157,7 +157,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for source in PPOScenePresenter.mm PPOFloatingTrial.mm PPOOwnedSafariTrial.mm PPOOwnedSceneHost.mm PPOHostSessionSlot.mm; do
+          for source in PPOScenePresenter.mm PPOFloatingTrial.mm PPOOwnedSafariTrial.mm PPOOwnedSceneHost.mm PPOHostSessionSlot.mm PPOScreenLockState.mm; do
             xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
               -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
               -Xanalyzer -analyzer-output=text "$source"
@@ -178,6 +178,16 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
             tests/OwnedSceneHostTests.mm PPOOwnedSceneHost.mm -o "$RUNNER_TEMP/ppo-owned-scene-tests"
           "$RUNNER_TEMP/ppo-owned-scene-tests" | tee diagnostics/owned-scene-tests.log
+      - name: Test screen lock guard and window lifetime
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
+            tests/ScreenLockStateTests.mm PPOScreenLockState.mm -o "$RUNNER_TEMP/ppo-lock-state-tests"
+          "$RUNNER_TEMP/ppo-lock-state-tests" | tee diagnostics/lock-state-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/WindowLifetimeTests.cpp -o "$RUNNER_TEMP/ppo-window-lifetime-tests"
+          "$RUNNER_TEMP/ppo-window-lifetime-tests" | tee diagnostics/window-lifetime-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -223,7 +233,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.9.1-componentproxy-${{ github.sha }}
+          name: PullOverPro-0.10.0-keep-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

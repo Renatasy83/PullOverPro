@@ -10,7 +10,7 @@ This is an incomplete Safari-only independent-scene development build. It is not
 
 After this CI report was prepared, the user supplied host-0.9.1.json and confirmed visible content and automatic closure. The new scene retained2 layers while the original Safari scene remained backgrounded with0 layers. Timeout closed after about15.044 seconds visible; owned controller and workspace cleanup returned, quarantine was cleared and replacement was allowed. This validates one independent rendering/timeout/owned-cleanup operation, not full compatibility. See DEVICE_VALIDATION.md. Source025cf5d835d4454c60c771fea19e17e60c126add is preserved as stable/verified-safari-ownscene-timeout.
 
-The artifact's original CI report remains a record of automation only. Its not-executed list below describes what was not run in CI. Touch/keyboard, manual X, live reopening and wider lifecycle stress remain unconfirmed by the subsequent phone trial.
+The artifact's original CI report remains a record of automation only. Its not-executed list below describes what was not run in CI. A further user report now has five total sessions, including the previous one:two timeouts and three manual closes, all cleaned without quarantine. The user confirms X/reopening, input/web navigation and rendering over another foreground app. Source025cf5d835d4454c60c771fea19e17e60c126add is also preserved as stable/verified-safari-ownscene-input-reuse. Keyboard routing and wider lifecycle stress remain unconfirmed; see DEVICE_VALIDATION.md.
 
 ## Executed
 
@@ -43,6 +43,6 @@ DEB SHA256:181c597c751c5bf2818d82c5eaf4c5e3d456162666bc866fb649244760672e2d
 
 Artifact ZIP SHA256:fac0600ebbe70301df2304bbceda056d0344ef2ba203e8a7ad901e40ba8ac4e3
 
-The original rendering/timeout device gate has now completed. The next gate uses0.9.1 already installed, with no reinstall or respring: keep NewTerm underneath, open the Safari trial, try one visible Safari button or short scroll, close with X and reopen once. Record the visual result and updated /var/mobile/Library/Logs/PullOverPro/host-0.9.1.json. Do not repeat0.9.0 or begin with all-app/keyboard stress.
+The original rendering/timeout and same-build input/manual-close/reuse device gates have now completed. Do not repeat them or reinstall0.9.0. Further development is isolated in debug/kept-safari-window; its new lifetime/lock behavior has separate gates in KEPT_SAFARI_WINDOW.md. The0.9.1 artifact remains a tested fallback for its stated operations.
 
 Recovery: X/timeout, /var/mobile/.ppo_disable to block new attempts, manual respring for quarantine; if injection prevents normal startup, use Dopamine without injection and remove only this package. The raw uploaded phone JSON is not committed.

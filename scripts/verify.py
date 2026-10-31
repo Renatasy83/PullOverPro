@@ -116,8 +116,25 @@ require('childView.frame =' in owned_trial and
         owned_trial.index('childView.frame =') < owned_trial.index('[root addChildViewController:child]'),
         'Provide public native child geometry before attachment/appearance')
 require('self.cleanupPolls >= 8' in owned_trial and 'NSEC_PER_SEC / 4' in owned_trial and
-        'self.deadline = NSProcessInfo.processInfo.systemUptime + 15' in owned_trial,
-        'Bounded trial and asynchronous cleanup required')
+        '_lifetime.evaluate(conditions)' in owned_trial and
+        '_lifetime.keep(conditions)' in owned_trial,
+        'Guarded explicit Keep policy and bounded asynchronous cleanup required')
+lifetime = (ROOT / 'PPOWindowLifetime.h').read_text()
+require('TimedSeconds = 15.0' in lifetime and 'ActivationGraceSeconds = 2.0' in lifetime and
+        'if (!kept_ && elapsed >= TimedSeconds)' in lifetime,
+        'Timed default and bounded initial activation grace must remain')
+lock_source = (ROOT / 'PPOScreenLockState.mm').read_text()
+require(lock_source.count('objc_msgSend') == 1 and 'sharedInstanceIfExists' in lock_source and
+        '"sharedInstance"' not in lock_source and 'NSNull.null' in lock_source and
+        'NSThread.isMainThread' in lock_source and 'if (!firmwareMatches)' in lock_source,
+        'Lock guard must be main-only, version-gated and nonconstructing')
+for forbidden in ('valueForKey:', 'object_getIvar', 'method_getImplementation', 'performSelector', 'setUILocked:'):
+    require(forbidden not in lock_source, 'Unexpected lock guard operation: ' + forbidden)
+require('8676BE2A-9484-3492-888E-7DE10333250F' in (ROOT / 'PPOScenePreflight.mm').read_text() and
+        'SBDeviceLockStateChangedNotification' in owned_trial and
+        'UIApplication.sharedApplication.protectedDataAvailable' in owned_trial and
+        'self.events removeObjectAtIndex:2' in owned_trial,
+        'Exact lock image, data guard and bounded terminal-event retention required')
 production_sources = (ROOT / 'Makefile').read_text()
 require('PPOOwnedSceneHost.mm PPOOwnedSafariTrial.mm' in production_sources and
         'PPOFloatingTrial.mm' not in production_sources,
@@ -149,7 +166,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.9.1~dev.componentproxy1'), 'Unexpected version')
+    require(field('Version').startswith('0.10.0~dev.keep1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])

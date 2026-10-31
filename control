@@ -1,6 +1,6 @@
 Package: com.renatasy83.pulloverpro.diagnostic
 Name: PullOver Pro Development
-Version: 0.9.1~dev.componentproxy1
+Version: 0.10.0~dev.keep1
 Architecture: iphoneos-arm64
 Description: App picker and isolated mobile launch service. Safari-only separate owned-scene trial with bounded lifecycle diagnostics. Rendering and client admission remain device-unverified.
 Maintainer: Renatasy83

@@ -1,5 +1,15 @@
 # Device validation
 
+## User-confirmed 0.9.1 follow-up — input, manual close and reuse
+
+The latest host-0.9.1.json contains five sessions total, including the exact timeout session from the prior report. It adds four trials, not five: one timeout and three manual closes. All five have matching framework UUIDs, verified-proxy binding to the owned child, returned controller/workspace invalidations, closed=true, pinned=false, poisoned=false and replacementAllowed=true. There are no preparation failures or exception events.
+
+Visible durations are approximately15.044,15.030,11.680,1.991 and3.365 seconds, respectively. Session intervals do not overlap. The smallest close-to-next-prepare gap is about1.999 seconds, providing actual live reuse evidence beyond the native fixtures. The original remains uniquely selected and logically backgrounded with zero layers in every paired sample. Newly hosted layers vary across sessions; a type3 layer does not prove keyboard use. Inspected scene counts7/8/8/8/9 do not by themselves establish a leak.
+
+The user explicitly confirms manual X, reopening, rendering over another foreground application, actual interaction and web navigation. This completes the requested same-build input/manual-close/reuse gate. It does not independently identify the other app, confirm explicit keyboard routing, lock/unlock, rotation, prolonged lifetime, other hosted applications or full Dopamine/ElleKit compatibility. JSON is not an input event trace; accept the user's direct observation alongside it. Historical final samples remain pre-close observations.
+
+Preserved executable reference:stable/verified-safari-ownscene-input-reuse points to025cf5d835d4454c60c771fea19e17e60c126add. The earlier ownscene-timeout baseline remains unchanged. The next isolated stage is explicit Keep, described in KEPT_SAFARI_WINDOW.md, with its own automation and necessary lifetime/lock device gates. No repeat of ordinary0.9.1 input/navigation testing is required. The raw report, URLs and page contents are not committed.
+
 ## User-confirmed 0.9.1~dev.componentproxy1 — independent Safari rendering and timeout
 
 Executable source025cf5d835d4454c60c771fea19e17e60c126add passed Actions run41165469987 and was installed manually by the user. The user then supplied host-0.9.1.json and confirmed visible content and automatic closure. Preserved source reference:stable/verified-safari-ownscene-timeout. This reference describes this specific verified operation, not full compatibility or all-application support.
@@ -16,7 +26,7 @@ The final live/layer sample values are historical readings taken around12.062s, 
 
 This confirms one independent Safari rendering/timeout/owned-cleanup operation on the stated device. It does not confirm touch, scrolling, keyboard/focus, manual X, reopening, lock, rotation, process death, repeated stress, other applications or full Dopamine/ElleKit compatibility. The report's conservative runtimeCompatibilityConfirmed=false remains appropriate.
 
-The next indispensable gate requires no new package: on the existing0.9.1, keep NewTerm underneath, open the Safari trial, try one visible Safari button such as Tabs or a short scroll, close with X, and reopen once. This probes actual remote input and manual cleanup/reuse. UIView interaction flags do not establish remote-event blocking, so no speculative flag/private input change is justified before this observation. Timeout remains15 seconds. No phone operation is performed automatically; the raw phone report is not committed.
+The then-requested same-build input/manual-close/reuse gate is now complete, as recorded in the follow-up above. UIView interaction flags do not establish remote-event blocking; the user's direct observation establishes actual interaction for the tested0.9.1 operations. No speculative input flag/private focus change was made. No phone operation is performed automatically; the raw phone report is not committed.
 
 ## Device report: 0.9.0~dev.ownedscene1 — preparation rejected
 

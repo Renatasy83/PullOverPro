@@ -158,13 +158,17 @@ NSDictionary *PPOSceneFrameworkIdentity(void) {
     NSDictionary *expected = @{
         @"FrontBoard": @"ED43ADA7-7107-3242-928F-09708F2FD9F3",
         @"UIKitCore": @"C98EAB32-B273-3430-B0C5-46522C904CBB",
-        @"FrontBoardServices": @"CB9A7EAD-B91A-3F19-86F1-461027284416"};
+        @"FrontBoardServices": @"CB9A7EAD-B91A-3F19-86F1-461027284416",
+        @"SpringBoard": @"8676BE2A-9484-3492-888E-7DE10333250F"};
     NSString *front = PPOUUIDForLoadedImage("/FrontBoard.framework/FrontBoard");
     NSString *ui = PPOUUIDForLoadedImage("/UIKitCore.framework/UIKitCore");
     NSString *services = PPOUUIDForLoadedImage("/FrontBoardServices.framework/FrontBoardServices");
+    NSString *springboard = PPOUUIDForLoadedImage("/SpringBoard.framework/SpringBoard");
     return @{@"expected": expected,
-        @"observed": @{@"FrontBoard": front ?: @"missing", @"UIKitCore": ui ?: @"missing", @"FrontBoardServices": services ?: @"missing"},
-        @"matches": @([front isEqual:expected[@"FrontBoard"]] && [ui isEqual:expected[@"UIKitCore"]] && [services isEqual:expected[@"FrontBoardServices"]])};
+        @"observed": @{@"FrontBoard": front ?: @"missing", @"UIKitCore": ui ?: @"missing",
+            @"FrontBoardServices": services ?: @"missing", @"SpringBoard": springboard ?: @"missing"},
+        @"matches": @([front isEqual:expected[@"FrontBoard"]] && [ui isEqual:expected[@"UIKitCore"]] &&
+            [services isEqual:expected[@"FrontBoardServices"]] && [springboard isEqual:expected[@"SpringBoard"]])};
 }
 
 static NSArray *PPOSceneABIMetadata(void) {

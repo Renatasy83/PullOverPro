@@ -2,7 +2,9 @@
 #import "PPOScenePreflight.h"
 #import "PPOOwnedSceneHost.h"
 #import "PPOSceneLayerProbe.h"
+#import "PPOScreenLockState.h"
 #include "PPOHostGeometry.h"
+#include "PPOWindowLifetime.h"
 #import <objc/runtime.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -11,6 +13,23 @@
 static BOOL PPOTrialAllowed(void) {
     struct stat marker = {};
     return lstat("/var/mobile/.ppo_disable", &marker) != 0 && errno == ENOENT;
+}
+static NSString *PPOWindowStopName(PPOWindowStop reason) {
+    switch (reason) {
+        case PPOWindowStop::Disabled: return @"disabled";
+        case PPOWindowStop::ProtectedDataUnavailable: return @"protected-data-unavailable";
+        case PPOWindowStop::HostInactive: return @"host-inactive";
+        case PPOWindowStop::LockUnknown: return @"lock-state-unavailable";
+        case PPOWindowStop::Locked: return @"device-locked";
+        case PPOWindowStop::SceneUnknown: return @"scene-state-unavailable";
+        case PPOWindowStop::SceneInvalid: return @"scene-invalid";
+        case PPOWindowStop::SceneInactive: return @"scene-inactive";
+        case PPOWindowStop::ActivationTimeout: return @"scene-activation-timeout";
+        case PPOWindowStop::ClockInvalid: return @"clock-invalid";
+        case PPOWindowStop::Timeout: return @"timeout";
+        case PPOWindowStop::None: return @"none";
+    }
+    return @"lifecycle-error";
 }
 @interface PPOOwnedSafariTrial ()
 @property(nonatomic,strong) PPOOwnedSceneHost *session;
@@ -37,6 +56,13 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic,strong) id observer;
 @property(nonatomic,strong) id backgroundObserver;
 @property(nonatomic,strong) id protectedObserver;
+@property(nonatomic,strong) id deviceLockObserver;
+@property(nonatomic,copy) NSDictionary *lastLockSample;
+@property(nonatomic) BOOL protectedDataAvailable;
+@property(nonatomic) BOOL protectedDataSampled;
+@property(nonatomic,strong) UIButton *keepButton;
+@property(nonatomic,strong) UILabel *titleLabel;
+@property(nonatomic,copy) NSString *displayName;
 @property(nonatomic,strong) dispatch_source_t timer;
 @property(nonatomic,strong) NSMutableArray *events;
 @property(nonatomic,strong) NSDictionary *selection;
@@ -50,7 +76,7 @@ static BOOL PPOTrialAllowed(void) {
 @property(nonatomic) BOOL cleanupConfirmed;
 @property(nonatomic,copy) NSString *bundleIdentifier;
 @property(nonatomic,copy) NSString *reportID;
-@property(nonatomic) NSTimeInterval deadline;
+@property(nonatomic) NSTimeInterval nextHeartbeat;
 - (void)closeFromButton:(UIButton *)sender;
 - (void)closeBecause:(NSString *)reason;
 - (BOOL)fitPresentation;
@@ -60,23 +86,34 @@ static BOOL PPOTrialAllowed(void) {
 - (UIView *)hostView;
 - (void)pollCleanup;
 - (NSDictionary *)geometrySnapshot;
+- (BOOL)accessAllowed;
+- (PPOWindowConditions)lifetimeConditions;
+- (BOOL)checkLifetime;
+- (void)keepFromButton:(UIButton *)sender;
 @end
-@implementation PPOOwnedSafariTrial
+@implementation PPOOwnedSafariTrial {
+    PPOWindowLifetime _lifetime;
+}
 - (void)record:(NSString *)event {
     if (!NSThread.isMainThread) return;
     if (!self.events) self.events = [NSMutableArray array];
     NSDictionary *geometry = [self geometrySnapshot];
-    if (self.events.count < 16) [self.events addObject:@{@"event": event,
+    [self.events addObject:@{@"event": event,
         @"uptime": @(NSProcessInfo.processInfo.systemUptime),
         @"sceneHost": self.session.snapshot ?: @{},
         @"geometry": geometry,
         @"lastLiveSample": self.lastLiveSample ?: @{},
         @"lastHostedSourceSample": self.lastSourceSample ?: @{},
         @"lastOriginalSourceSample": self.lastOriginalSample ?: @{},
+        @"lastLockSample": self.lastLockSample ?: @{},
+        @"lifetimeMode": _lifetime.kept() ? @"kept" : @"timed",
         @"containerUserInteractionEnabled": @(self.content.userInteractionEnabled),
         @"closeReason": self.closeReason ?: @"none"}];
+    // Keep initial ownership evidence and the latest fourteen events, including
+    // terminal cleanup, even after a long kept session. No unbounded history.
+    if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @7, @"version": @"0.9.1~dev.componentproxy1",
+    NSDictionary *report = @{@"schema": @8, @"version": @"0.10.0~dev.keep1",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed),
         @"geometry": geometry,
@@ -84,6 +121,10 @@ static BOOL PPOTrialAllowed(void) {
         @"lastHostedSourceSample": self.lastSourceSample ?: @{},
         @"lastOriginalSourceSample": self.lastOriginalSample ?: @{},
         @"sceneHost": self.session.snapshot ?: @{},
+        @"lastLockSample": self.lastLockSample ?: @{},
+        @"protectedDataAvailable": self.protectedDataSampled ? @(self.protectedDataAvailable) : (id)NSNull.null,
+        @"lifetimeMode": _lifetime.kept() ? @"kept" : @"timed",
+        @"heartbeatIntervalSeconds": @30,
         @"hostingViewUserInteractionEnabled": @(presentation.userInteractionEnabled),
         @"hostWindowIsKey": @(self.window.isKeyWindow),
         @"frameworks": self.frameworks ?: @{}, @"selection": self.selection ?: @{},
@@ -119,11 +160,11 @@ static BOOL PPOTrialAllowed(void) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.9.1.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-0.10.0.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 0.9.1] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 0.10.0] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -133,7 +174,79 @@ static BOOL PPOTrialAllowed(void) {
     if (self.closed) return self.cleanupConfirmed;
     // Refusal before resource acquisition is also safe to replace.
     return !self.session && !self.window && !self.observer && !self.backgroundObserver &&
-        !self.protectedObserver && !self.timer;
+        !self.protectedObserver && !self.deviceLockObserver && !self.timer;
+}
+- (BOOL)accessAllowed {
+    if (!PPOTrialAllowed()) return NO;
+    self.protectedDataAvailable = UIApplication.sharedApplication.protectedDataAvailable;
+    self.protectedDataSampled = YES;
+    if (!self.protectedDataAvailable) return NO;
+    NSMutableDictionary *lock = [PPOReadScreenLockState(objc_lookUpClass("SBLockScreenManager"),
+        [self.frameworks[@"matches"] boolValue]) mutableCopy];
+    lock[@"sampleUptime"] = @(NSProcessInfo.processInfo.systemUptime);
+    self.lastLockSample = lock;
+    return [lock[@"status"] isEqual:@"sampled"] && ![lock[@"locked"] boolValue] &&
+        ![lock[@"waitingToLock"] boolValue];
+}
+- (PPOWindowConditions)lifetimeConditions {
+    PPOWindowConditions conditions;
+    conditions.now = NSProcessInfo.processInfo.systemUptime;
+    conditions.allowed = PPOTrialAllowed();
+    if (!conditions.allowed) return conditions;
+    self.protectedDataAvailable = UIApplication.sharedApplication.protectedDataAvailable;
+    self.protectedDataSampled = YES;
+    conditions.protectedDataAvailable = self.protectedDataAvailable;
+    conditions.hostActive = self.windowScene &&
+        self.windowScene.activationState == UISceneActivationStateForegroundActive;
+    if (!conditions.protectedDataAvailable || !conditions.hostActive) return conditions;
+    NSMutableDictionary *lock = [PPOReadScreenLockState(objc_lookUpClass("SBLockScreenManager"),
+        [self.frameworks[@"matches"] boolValue]) mutableCopy];
+    lock[@"sampleUptime"] = @(conditions.now); self.lastLockSample = lock;
+    conditions.lockKnown = [lock[@"status"] isEqual:@"sampled"];
+    if (!conditions.lockKnown) return conditions;
+    conditions.locked = [lock[@"locked"] boolValue];
+    conditions.waitingToLock = [lock[@"waitingToLock"] boolValue];
+    if (conditions.locked || conditions.waitingToLock) return conditions;
+    NSMutableDictionary *live = [[self.session sampleState] mutableCopy];
+    live[@"sampleUptime"] = @(conditions.now); self.lastLiveSample = [live copy];
+    conditions.sceneKnown = [live[@"status"] isEqual:@"sampled"];
+    if (conditions.sceneKnown) {
+        conditions.sceneValid = [live[@"valid"] boolValue];
+        conditions.sceneActive = [live[@"active"] boolValue];
+    }
+    return conditions;
+}
+- (BOOL)checkLifetime {
+    if (!NSThread.isMainThread || !self.running || self.closed || self.closing || self.closePending) return NO;
+    @try {
+        PPOWindowConditions conditions = [self lifetimeConditions];
+        if (!self.running || self.closed || self.closing || self.closePending) return NO;
+        PPOWindowStop stop = _lifetime.evaluate(conditions);
+        if (stop != PPOWindowStop::None) { [self closeBecause:PPOWindowStopName(stop)]; return NO; }
+        if (!CGSizeEqualToSize(self.windowScene.coordinateSpace.bounds.size, self.fallbackNativeFrame.size)) {
+            [self closeBecause:@"geometry-changed"]; return NO;
+        }
+        return YES;
+    } @catch (NSException *exception) {
+        (void)exception; [self closeBecause:@"lifecycle-exception"]; return NO;
+    }
+}
+- (void)keepFromButton:(UIButton *)sender {
+    (void)sender;
+    if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing || self.closePending) return;
+    @try {
+        if (![self checkLifetime]) return;
+        PPOWindowConditions conditions = [self lifetimeConditions];
+        if (!self.running || self.closed || self.closing || self.closePending) return;
+        if (!_lifetime.keep(conditions)) { [self checkLifetime]; return; }
+        [self.keepButton setTitle:@"Păstrată" forState:UIControlStateNormal];
+        self.keepButton.enabled = NO;
+        self.titleLabel.text = self.displayName;
+        self.nextHeartbeat = NSProcessInfo.processInfo.systemUptime + 30;
+        [self record:@"kept-by-user"];
+    } @catch (NSException *exception) {
+        (void)exception; [self closeBecause:@"keep-exception"];
+    }
 }
 - (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier
               displayName:(NSString *)displayName {
@@ -156,6 +269,9 @@ static BOOL PPOTrialAllowed(void) {
     self.opening = YES;
     NSString *result = @"Probă de prezentare refuzată";
     @try {
+        if (![self accessAllowed]) {
+            [self record:@"access-refused"]; return @"Fereastra nu poate fi deschisă în starea curentă";
+        }
         id foreignScene = nil;
         self.selection = PPOFindUniqueScene(objc_lookUpClass("FBSceneManager"),
             objc_lookUpClass("FBScene"), bundleIdentifier, &foreignScene);
@@ -180,6 +296,11 @@ static BOOL PPOTrialAllowed(void) {
             object:scene queue:NSOperationQueue.mainQueue usingBlock:inactive];
         self.protectedObserver = [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationProtectedDataWillBecomeUnavailable
             object:nil queue:NSOperationQueue.mainQueue usingBlock:protectedStop];
+        self.deviceLockObserver = [NSNotificationCenter.defaultCenter
+            addObserverForName:@"SBDeviceLockStateChangedNotification" object:nil
+            queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+                (void)note; [weakSelf closeBecause:@"device-lock-notification"];
+            }];
         NSMutableDictionary *classes = [NSMutableDictionary dictionary];
         for (NSString *name in @[@"FBSceneWorkspace", @"_UISceneHostingControllerAdvancedConfiguration",
                 @"_UISceneHostingController", @"FBScene", @"FBSSceneDefinition",
@@ -210,14 +331,21 @@ static BOOL PPOTrialAllowed(void) {
         self.rootController = root;
         self.window.rootViewController = root;
         root.view.frame = CGRectMake(0, 0, width, height);
-        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, width - 60, 44)];
+        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, width - 164, 44)];
         NSString *name = [displayName isKindOfClass:NSString.class] && displayName.length > 0 && displayName.length <= 128
             ? displayName : @"PPO";
         title.text = [NSString stringWithFormat:@"%@ · 15 s", name];
+        self.displayName = name; self.titleLabel = title;
         title.lineBreakMode = NSLineBreakByTruncatingTail; title.textColor = UIColor.whiteColor;
         title.font = [UIFont systemFontOfSize:12]; title.userInteractionEnabled = YES;
         [title addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)]];
         [root.view addSubview:title];
+        UIButton *keep = [UIButton buttonWithType:UIButtonTypeSystem];
+        keep.frame = CGRectMake(width - 140, 0, 96, 44);
+        keep.titleLabel.font = [UIFont systemFontOfSize:12];
+        [keep setTitle:@"Păstrează" forState:UIControlStateNormal];
+        [keep addTarget:self action:@selector(keepFromButton:) forControlEvents:UIControlEventTouchUpInside];
+        self.keepButton = keep; [root.view addSubview:keep];
         UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
         close.frame = CGRectMake(width - 44, 0, 44, 44);
         [close setTitle:@"✕" forState:UIControlStateNormal];
@@ -252,11 +380,12 @@ static BOOL PPOTrialAllowed(void) {
         [self.content addSubview:self.scalingWrapper];
         [child didMoveToParentViewController:root];
         if (![self fitPresentation]) return @"Geometria ferestrei nu este disponibilă";
+        if (self.closePending || ![self accessAllowed]) return @"Deschiderea ferestrei a fost oprită";
+        if (!_lifetime.start(NSProcessInfo.processInfo.systemUptime)) return @"Temporizator indisponibil";
         // Keep existing key-window ownership and app scene foreground/geometry.
         self.window.hidden = NO;
         [self record:@"window-shown"];
         if (self.closePending || !PPOTrialAllowed()) return result;
-        self.deadline = NSProcessInfo.processInfo.systemUptime + 15;
         self.timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
         if (!self.timer) return @"Temporizator indisponibil; proba se închide";
         dispatch_source_set_timer(self.timer, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 4),
@@ -264,14 +393,15 @@ static BOOL PPOTrialAllowed(void) {
         dispatch_source_set_event_handler(self.timer, ^{
             PPOOwnedSafariTrial *trial = weakSelf;
             if (!trial) return;
-            if (!PPOTrialAllowed()) [trial closeBecause:@"disabled"];
-            else if (trial.windowScene.activationState != UISceneActivationStateForegroundActive)
-                [trial closeBecause:@"host-inactive"];
-            else if (NSProcessInfo.processInfo.systemUptime >= trial.deadline)
-                [trial closeBecause:@"timeout"];
+            if (![trial checkLifetime]) return;
+            if (trial->_lifetime.kept() && NSProcessInfo.processInfo.systemUptime >= trial.nextHeartbeat) {
+                trial.nextHeartbeat = NSProcessInfo.processInfo.systemUptime + 30;
+                [trial captureState:@"kept-heartbeat"];
+            }
         });
         dispatch_resume(self.timer);
         self.running = YES;
+        if (![self checkLifetime]) return @"Fereastra a fost închisă de protecțiile active";
         [self captureLayout:@"post-layout"];
         if (self.closed || self.closePending || !self.running) return @"Fereastra nu poate fi afișată";
         for (NSNumber *delay in @[@0.1, @0.75]) {
@@ -283,7 +413,7 @@ static BOOL PPOTrialAllowed(void) {
                 });
         }
         // Six extra state-only samples cover the observed foreground transition.
-        // No timer extension, private notifications or repeated layout writes.
+        // These early observations do not extend the timer or rewrite layout.
         for (NSNumber *delay in @[@2, @4, @6, @8, @10, @12]) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)),
                 dispatch_get_main_queue(), ^{
@@ -435,9 +565,10 @@ static BOOL PPOTrialAllowed(void) {
     self.running = NO;
     if (self.timer) { dispatch_source_cancel(self.timer); self.timer = nil; }
     for (id observer in @[self.observer ?: NSNull.null, self.backgroundObserver ?: NSNull.null,
-                          self.protectedObserver ?: NSNull.null])
+                          self.protectedObserver ?: NSNull.null, self.deviceLockObserver ?: NSNull.null])
         if (observer != NSNull.null) [NSNotificationCenter.defaultCenter removeObserver:observer];
     self.observer = nil; self.backgroundObserver = nil; self.protectedObserver = nil;
+    self.deviceLockObserver = nil;
     BOOL uiClean = YES;
     @try {
         self.content.userInteractionEnabled = NO;
@@ -469,6 +600,7 @@ static BOOL PPOTrialAllowed(void) {
     if (uiClean) {
         self.window = nil; self.content = nil; self.scalingWrapper = nil;
         self.childController = nil; self.rootController = nil;
+        self.keepButton = nil; self.titleLabel = nil;
     }
     self.uiCleanupConfirmed = uiClean;
     if (ownerClosed) {

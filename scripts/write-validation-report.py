@@ -7,6 +7,8 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'lock-state-tests.log': 'Screen lock state tests passed:',
+    'window-lifetime-tests.log': 'Window lifetime tests passed:',
     'owned-scene-tests.log': 'Owned scene host tests passed:',
     'visibility-tests.log': 'Visibility context tests passed:',
     'layer-probe-tests.log': 'Scene layer probe tests passed:',
@@ -33,6 +35,7 @@ not_run = [
     'LaunchServices app launching from the new service context',
     'Application scene rendering, touch/keyboard routing and teardown',
     'Lock/unlock, orientation, process death and watchdog integration',
+    'Keep mode beyond fifteen seconds and lock-transition frame exposure',
     'Dopamine and ElleKit runtime compatibility',
     'vphone-cli: no compatible physical Apple Silicon Mac is accessible',
 ]
@@ -44,7 +47,8 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'Safari-only isolated own-scene/workspace trial; client admission and rendering not device-verified',
+    'floating_application_hosting_implemented': 'Safari-only owned scene; explicit Keep with lock/scene/data guards. New lifetime behavior not device-verified.',
+    'prior_device_baseline': '0.9.1: five clean sessions, X/reopen, user-confirmed interaction/web navigation and rendering over another foreground app; no full-platform compatibility claim',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -53,7 +57,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Not a final candidate. Safari-only independent scene candidate. Firmware declares Safari supports multiple scenes and Settings does not. No original source scene is hosted or mutated. Client admission, rendering and actual teardown remain device-unverified.**\n\n'
+    '**Not a final candidate. Safari-only own-scene candidate with explicit Keep. Earlier0.9.1 rendering/input/reuse observations do not validate the new lifetime/lock guards. No original source scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)
