@@ -6,6 +6,12 @@ Executable commit:025cf5d835d4454c60c771fea19e17e60c126add on debug/owned-safari
 
 This is an incomplete Safari-only independent-scene development build. It is not the requested final all-application release. Dopamine/ElleKit compatibility, pixels and private scene lifecycle are not established by this build.
 
+## Subsequent device evidence
+
+After this CI report was prepared, the user supplied host-0.9.1.json and confirmed visible content and automatic closure. The new scene retained2 layers while the original Safari scene remained backgrounded with0 layers. Timeout closed after about15.044 seconds visible; owned controller and workspace cleanup returned, quarantine was cleared and replacement was allowed. This validates one independent rendering/timeout/owned-cleanup operation, not full compatibility. See DEVICE_VALIDATION.md. Source025cf5d835d4454c60c771fea19e17e60c126add is preserved as stable/verified-safari-ownscene-timeout.
+
+The artifact's original CI report remains a record of automation only. Its not-executed list below describes what was not run in CI. Touch/keyboard, manual X, live reopening and wider lifecycle stress remain unconfirmed by the subsequent phone trial.
+
 ## Executed
 
 - Exact23A355 firmware analysis of FBSComponentScene construction, class forwarding, weak target getter and hostScene return semantics. No live private API was invoked during this analysis; no Apple binary is distributed.
@@ -37,6 +43,6 @@ DEB SHA256:181c597c751c5bf2818d82c5eaf4c5e3d456162666bc866fb649244760672e2d
 
 Artifact ZIP SHA256:fac0600ebbe70301df2304bbceda056d0344ef2ba203e8a7ad901e40ba8ac4e3
 
-Install manually only if proceeding with the essential device gate, then perform one manual respring to load the new code and discard0.9.0's pinned uncertain resources. Open Safari normally once, return to NewTerm, select Safari in PPO and request its15-second separate-scene trial. Record whether content appears and the automatic close occurs; provide /var/mobile/Library/Logs/PullOverPro/host-0.9.1.json. Do not repeat0.9.0 or begin with all-app/input stress.
+The original rendering/timeout device gate has now completed. The next gate uses0.9.1 already installed, with no reinstall or respring: keep NewTerm underneath, open the Safari trial, try one visible Safari button or short scroll, close with X and reopen once. Record the visual result and updated /var/mobile/Library/Logs/PullOverPro/host-0.9.1.json. Do not repeat0.9.0 or begin with all-app/keyboard stress.
 
 Recovery: X/timeout, /var/mobile/.ppo_disable to block new attempts, manual respring for quarantine; if injection prevents normal startup, use Dopamine without injection and remove only this package. The raw uploaded phone JSON is not committed.

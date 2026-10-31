@@ -1,5 +1,23 @@
 # Device validation
 
+## User-confirmed 0.9.1~dev.componentproxy1 — independent Safari rendering and timeout
+
+Executable source025cf5d835d4454c60c771fea19e17e60c126add passed Actions run41165469987 and was installed manually by the user. The user then supplied host-0.9.1.json and confirmed visible content and automatic closure. Preserved source reference:stable/verified-safari-ownscene-timeout. This reference describes this specific verified operation, not full compatibility or all-application support.
+
+The report contains one session and13 events. All three framework UUIDs match; the original Safari selection is unique among7 scenes. The component binding is verified-proxy, matchesCreatedScene=true and matchesBorrowedSource=false. Preparation completes about21ms after the request and the window is shown at36.7ms.
+
+The first two layer observations have no layers. At the750ms scheduled observation, about811ms after the request, the new scene has2 type1 layers and the hosting hierarchy contains2 _UIContextLayerHostView instances. Those remain present in every later observation through12.062s. This bounds the observed arrival time; it does not measure the exact first frame.
+
+Across every paired sample, the original scene has settingsBackgrounded=true and0 layers, while the independently hosted scene has settingsBackgrounded=false, active=true and valid=true. Thus the new scene retains render sources while the original is logically backgrounded. The user's separate observation establishes visible content. The JSON does not identify the app underneath the window or record actual page contents, screenshots or input events.
+
+closeReason=timeout and close-returned occur15.080s after the preparation request, about15.044s after showing the window. Final sceneHost.state=closed, controllerInvalidateReturned=true, workspaceInvalidateReturned=true, pinned=false and poisoned=false show completed owned cleanup; replacementAllowed=true also requires confirmed UI cleanup. In the implementation this state requires the owned scene to be invalid and its workspace empty before workspace invalidation returns. It is not a proof of Safari client session database cleanup or long-term process behavior.
+
+The final live/layer sample values are historical readings taken around12.062s, roughly3.018s before close. Their active=true/layerCount=2 values are not post-close observations. The final geometry is empty and windowHidden=true. No source mutation was requested by this adapter.
+
+This confirms one independent Safari rendering/timeout/owned-cleanup operation on the stated device. It does not confirm touch, scrolling, keyboard/focus, manual X, reopening, lock, rotation, process death, repeated stress, other applications or full Dopamine/ElleKit compatibility. The report's conservative runtimeCompatibilityConfirmed=false remains appropriate.
+
+The next indispensable gate requires no new package: on the existing0.9.1, keep NewTerm underneath, open the Safari trial, try one visible Safari button such as Tabs or a short scroll, close with X, and reopen once. This probes actual remote input and manual cleanup/reuse. UIView interaction flags do not establish remote-event blocking, so no speculative flag/private input change is justified before this observation. Timeout remains15 seconds. No phone operation is performed automatically; the raw phone report is not committed.
+
 ## Device report: 0.9.0~dev.ownedscene1 — preparation rejected
 
 The actual host-0.9.0.json contains one Safari session. All three expected framework UUIDs match; original selection is unique among7 inspected scenes. workspaceVerified=true and the code path reaching unverified-controller-scene establish that the isolated child namespace, pointer inequality, validity, Safari client identity and application role checks passed. The combined activation-component/hostScene guard then rejected preparation in about25ms.
