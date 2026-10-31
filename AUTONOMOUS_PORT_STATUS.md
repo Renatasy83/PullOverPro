@@ -2,7 +2,7 @@
 
 Current isolated development source:0.9.1~dev.componentproxy1 on debug/owned-safari-scene. This is an incomplete Safari-only independent-scene trial, not a final release or confirmed Dopamine/ElleKit compatibility. The0.9.0 device report stopped before UI attachment at unverified-controller-scene; it does not validate the new scene's rendering or cleanup.
 
-Exact firmware inspection identified FBSComponentScene:NSProxy between the activation component and its raw FBScene. The old raw pointer comparison falsely rejects this supported binding.0.9.1 requires the proxy's exact actual runtime class, its declared read-only scene getter ABI and equality of its underlying target to the owned child. Unknown bindings remain quarantined. New diagnostics distinguish the guard operands, and native fixtures model the proxy's forwarded identity. See COMPONENT_PROXY_23A355.md. CI for this revision is pending; prior0.9.0 CI evidence below does not validate it.
+Exact firmware inspection identified FBSComponentScene:NSProxy between the activation component and its raw FBScene. The old raw pointer comparison falsely rejects this supported binding.0.9.1 requires the proxy's exact actual runtime class, its declared read-only scene getter ABI and equality of its underlying target to the owned child. Unknown bindings remain quarantined. New diagnostics distinguish the guard operands, and native fixtures model the proxy's forwarded identity. See COMPONENT_PROXY_23A355.md. Executable source025cf5d835d4454c60c771fea19e17e60c126add passed Actions run41165469987, including702 ownership checks. Artifact13028552395 contains the DEB and full evidence; see VALIDATION_0.9.1.md for scope and remaining live gates.
 
 ## Preserved references
 
@@ -23,6 +23,8 @@ Uncertain private constructors remain strongly pinned because their automatic de
 See OWNED_SAFARI_SCENE_23A355.md for concrete static evidence, native test boundaries, normal destructor semantics and recovery. Report schema7:/var/mobile/Library/Logs/PullOverPro/host-0.9.1.json separates hosted-scene samples from original-scene samples and adds componentBinding evidence.
 
 ## Completed automation and remaining live gate
+
+Current0.9.1 source025cf5d835d4454c60c771fea19e17e60c126add passed all15 automated suites, iOS Clang analysis, Theos rootless arm64/arm64e build and package/lifecycle/license inspection in run41165469987. The702 ownership checks include realistic NSProxy identity, strict target rejection, captured diagnostics and100 normal cycles under ASan/UBSan. The downloaded artifact's ZIP digest and DEB SHA256 were verified; local payload inspection also passed. The earlier run41165049197 failed only to compile a fixture ternary between unrelated Objective-C pointer types under -Werror. An explicit id cast fixed that fixture; production safeguards were retained.
 
 Executable sourcea51c7cdfbb5515cff23f0ec29fc60dd29184f9a0 passed GitHub Actions run41116185796. New ownership tests573 checks with ASan/UBSan; existing suites, iOS Clang analysis, Theos rootless build, arm64/arm64e binary checks, package/lifecycle/license inspection and evidence generation passed. Artifact13005358295 contains DEB and full validation reports.
 

@@ -38,6 +38,8 @@ Native NSProxy fixtures reproduce the actual forwarded identity rather than only
 
 ## Remaining device gate
 
+Automation completed for executable source025cf5d835d4454c60c771fea19e17e60c126add in [Actions run41165469987](https://github.com/Renatasy83/PullOverPro/actions/runs/41165469987):702 native ownership checks with ASan/UBSan, all15 suites, iOS Clang analysis, Theos arm64/arm64e rootless packaging and payload/license/lifecycle inspection passed. The downloaded artifact and DEB hashes were checked and local package inspection passed. See VALIDATION_0.9.1.md. These results do not change the device-validation limits below.
+
 After successful CI, one corrected separate Safari trial over NewTerm plus its visual outcome and /var/mobile/Library/Logs/PullOverPro/host-0.9.1.json is indispensable. Safari scene connection, actual pixels, input, client session persistence and private teardown cannot be established by native mocks or a successful DEB build. This remains an incomplete Safari-only development build, not the requested final all-app floating-window release.
 
 Recovery: X or15-second timeout, /var/mobile/.ppo_disable to prevent new attempts, and manual respring for quarantined resources. If injection prevents normal startup, use Dopamine without injection and remove only this package. No personal data or other tweaks are modified.
