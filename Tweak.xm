@@ -107,7 +107,8 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
 static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL readable, NSError *error) {
     NSDictionary *report = @{@"schema": @1, @"version": @"0.15.0~dev.favorites1", @"event": event,
         @"favoriteCount": @(MIN(count, PPOFavoriteIdentifiersLimit)), @"readable": @(readable),
-        @"errorCode": @(error.code), @"runtimeCompatibilityConfirmed": @NO};
+        @"errorCode": @(error.code), @"errorDomain": error ? ([error.domain isEqual:NSPOSIXErrorDomain] ? @"posix" : @"data") : @"none",
+        @"runtimeCompatibilityConfirmed": @NO};
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES

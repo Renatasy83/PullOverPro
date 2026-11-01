@@ -25,7 +25,7 @@ static NSData *Wire(id schema, id identifiers) {
 static NSDictionary *App(NSString *identifier, NSString *name) {
     return @{@"bundleIdentifier": identifier, @"name": name};
 }
-static BOOL Boolean(id value, BOOL expected) {
+static BOOL FavoriteIsBoolean(id value, BOOL expected) {
     return [value isKindOfClass:NSNumber.class] &&
         CFGetTypeID((__bridge CFTypeRef)value) == CFBooleanGetTypeID() &&
         [value boolValue] == expected;
@@ -36,7 +36,7 @@ static void Row(NSDictionary *row, NSString *identifier, NSString *name,
         "projected row contains only four normalized fields");
     Check([row[@"bundleIdentifier"] isEqual:identifier] && [row[@"name"] isEqual:name],
         "projected row preserves exact identity and the expected current name");
-    Check(Boolean(row[@"available"], available) && Boolean(row[@"favorite"], favorite),
+    Check(FavoriteIsBoolean(row[@"available"], available) && FavoriteIsBoolean(row[@"favorite"], favorite),
         "projected availability and favorite flags are real Booleans");
 }
 static void InvalidIdentifiers(id value) {
@@ -71,7 +71,7 @@ int main(void) {
         NSDictionary *persisted = [NSPropertyListSerialization propertyListWithData:encoded
             options:NSPropertyListImmutable format:NULL error:NULL];
         Check([persisted isKindOfClass:NSDictionary.class] && persisted.count == 2 &&
-            [persisted[@"schema"] isEqual:@1] && !Boolean(persisted[@"schema"], YES) &&
+            [persisted[@"schema"] isEqual:@1] && !FavoriteIsBoolean(persisted[@"schema"], YES) &&
             [persisted[@"bundleIdentifiers"] isEqual:favorites],
             "serialized schema contains only numeric version and ordered identifiers");
         Check(PPOFavoriteIdentifiersNormalize(@[]) != nil &&
