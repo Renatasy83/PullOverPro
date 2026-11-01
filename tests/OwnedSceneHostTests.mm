@@ -351,7 +351,7 @@ static void ResetForApplication(NSString *application) {
     [(OwnedFixtureClient *)definition.clientIdentity setBundleIdentifier:originalApplication];
 }
 static NSDictionary *DynamicCapability(NSString *application, NSString *status = @"eligible") {
-    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v2",
+    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v3",
         @"bundleIdentifier": application, @"status": status,
         @"eligible": [status isEqual:@"eligible"] ? @YES : @NO,
         @"reason": [status isEqual:@"eligible"] ? @"declared-single-application-scene" :
@@ -686,6 +686,27 @@ int main(void) {
         Check([current close] && current.closed && !current.poisoned && controllerInvalidations == 1 && workspaceInvalidations == 1,
               "programmatic proof does not change verified controller/workspace cleanup");
         SourceUnchanged();
+        ResetDynamic();
+        NSMutableDictionary *namedProof = [DynamicCapability(originalApplication) mutableCopy];
+        namedProof[@"reason"] = @"declared-named-application-configurations";
+        requestedCapability = namedProof;
+        Check(Prepare(sourceScene) &&
+              [current.snapshot[@"admission"][@"sceneCapability"][@"reason"] isEqual:@"declared-named-application-configurations"],
+              "named eligibility uses the existing independently owned scene path");
+        Check([current close] && current.closed && !current.poisoned && controllerInvalidations == 1 && workspaceInvalidations == 1,
+              "named proof preserves verified controller/workspace cleanup");
+        SourceUnchanged();
+        for (NSString *oldPolicy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+            ResetDynamic();
+            NSMutableDictionary *oldProof = [DynamicCapability(originalApplication) mutableCopy];
+            oldProof[@"policy"] = oldPolicy;
+            oldProof[@"reason"] = @"declared-named-application-configurations";
+            requestedCapability = oldProof;
+            Check(!Prepare(sourceScene) && current.closed && !current.poisoned && constructors == 0 &&
+                  workspaceConstructions == 0 && sourceProbes == 0,
+                  "old policies refuse named admission before private work");
+            SourceUnchanged();
+        }
         for (unsigned failure = 0; failure < 5; failure++) {
             ResetDynamic();
             if (failure == 0) requestedCapability = nil;

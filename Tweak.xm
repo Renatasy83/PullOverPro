@@ -91,7 +91,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 // plist/user contents. The bridge response has already passed nonce validation.
 static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *response, NSError *error) {
     NSDictionary *capability = PPOSceneCapabilityNormalize(response[@"sceneCapability"]);
-    NSDictionary *report = @{@"schema": @1, @"version": @"0.16.0~dev.programmatic1",
+    NSDictionary *report = @{@"schema": @1, @"version": @"0.17.0~dev.namedconfigs1",
         @"bundleIdentifier": identifier, @"responseStatus": response[@"status"] ?: @"unavailable",
         @"sceneCapability": capability ?: (id)NSNull.null, @"errorCode": @(error.code),
         @"observedUptime": @(NSProcessInfo.processInfo.systemUptime), @"runtimeCompatibilityConfirmed": @NO};
@@ -99,20 +99,20 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
         withIntermediateDirectories:YES attributes:nil error:NULL])
-        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-0.16.0.json"]
+        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-0.17.0.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
 // Worker-only bounded diagnostics: counts/outcome, never the favorite IDs or names.
 static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL readable, NSError *error) {
-    NSDictionary *report = @{@"schema": @1, @"version": @"0.16.0~dev.programmatic1", @"event": event,
+    NSDictionary *report = @{@"schema": @1, @"version": @"0.17.0~dev.namedconfigs1", @"event": event,
         @"favoriteCount": @(MIN(count, PPOFavoriteIdentifiersLimit)), @"readable": @(readable),
         @"errorCode": @(error.code), @"errorDomain": error ? ([error.domain isEqual:NSPOSIXErrorDomain] ? @"posix" : @"data") : @"none",
         @"runtimeCompatibilityConfirmed": @NO};
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES
-        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-0.16.0.json"]
+        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-0.17.0.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
@@ -306,9 +306,9 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 0.16.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 0.17.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.16.0] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 0.17.0] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport scenă salvat (Filza)" : @"Raport API: eroare";
@@ -331,7 +331,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     self.listView.hidden = YES;
     ppoPanel.hidden = !ppoExpanded;
     ppoStatus.text = @"Selectează o aplicație";
-    NSLog(@"[PPO 0.16.0] panel %@", ppoExpanded ? @"open" : @"closed");
+    NSLog(@"[PPO 0.17.0] panel %@", ppoExpanded ? @"open" : @"closed");
 }
 - (void)panned:(UIPanGestureRecognizer *)recognizer {
     if (!ppoWindow) return;
@@ -597,7 +597,7 @@ static void PPOCommitOverlay(UIWindow *window, UIViewController *controller,
 }
 
 static void PPOBuildOverlay(UIWindowScene *scene) {
-    NSLog(@"[PPO 0.16.0] ui-build-begin");
+    NSLog(@"[PPO 0.17.0] ui-build-begin");
     UIWindow *ppoWindow = [[UIWindow alloc] initWithWindowScene:scene];
     ppoWindow.frame = CGRectMake(0, 170, PPOClosedWidth, 44);
     ppoWindow.windowLevel = UIWindowLevelStatusBar + 1;
@@ -613,7 +613,7 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
     ppoPanel.layer.cornerRadius = 12;
     ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.16.0-dev", 8)];
+    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.17.0-dev", 8)];
     [ppoPanel addSubview:PPOLabel(@"Aplicații", 43)];
     UIButton *apps = [UIButton buttonWithType:UIButtonTypeSystem];
     apps.frame = CGRectMake(10, 72, PPOOpenWidth - 20, 32);
@@ -677,10 +677,10 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [ppoHandle addGestureRecognizer:favorites];
     [ppoController.view addSubview:ppoHandle];
 
-    NSLog(@"[PPO 0.16.0] ui-built; showing");
+    NSLog(@"[PPO 0.17.0] ui-built; showing");
     ppoWindow.hidden = NO;
     PPOCommitOverlay(ppoWindow, ppoController, ppoTarget, ppoPanel, ppoStatus, ppoHandle);
-    NSLog(@"[PPO 0.16.0] ui-visible");
+    NSLog(@"[PPO 0.17.0] ui-visible");
 }
 
 static BOOL ppoScheduled;
@@ -719,12 +719,12 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 0.16.0] no-active-scene; stopped");
+                NSLog(@"[PPO 0.17.0] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 0.16.0] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 0.17.0] ui-exception=%@; stopped", exception.name);
             ppoStopped = YES;
         }
         if (ppoStopped && ppoSceneObserver) {
@@ -736,10 +736,10 @@ static void PPOScheduleOverlay(void) {
 
 %ctor {
     @autoreleasepool {
-        NSLog(@"[PPO 0.16.0] loaded; os=%@",
+        NSLog(@"[PPO 0.17.0] loaded; os=%@",
               NSProcessInfo.processInfo.operatingSystemVersionString);
         if (!PPOOverlayAllowed()) {
-            NSLog(@"[PPO 0.16.0] overlay-disabled; no hooks installed");
+            NSLog(@"[PPO 0.17.0] overlay-disabled; no hooks installed");
             return;
         }
         // No UIKit objects or private SpringBoard methods touched in the ctor.
@@ -749,7 +749,7 @@ static void PPOScheduleOverlay(void) {
                 queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                     PPOScheduleOverlay();
                 }];
-            NSLog(@"[PPO 0.16.0] overlay-armed");
+            NSLog(@"[PPO 0.17.0] overlay-armed");
             PPOScheduleOverlay();
         });
     }

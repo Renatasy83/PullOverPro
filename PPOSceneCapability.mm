@@ -2,7 +2,7 @@
 #import <CoreFoundation/CoreFoundation.h>
 #include <cmath>
 
-static NSString *const CapabilityPolicy = @"installed-basic-multiscene-v2";
+static NSString *const CapabilityPolicy = @"installed-basic-multiscene-v3";
 
 static BOOL CapabilityASCIIAlphanumeric(unichar value) {
     return (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') ||
@@ -97,7 +97,7 @@ NSDictionary *PPOSceneCapabilityNormalize(id value) {
         if ([raw[@"status"] isEqual:@"eligible"] && [raw[@"eligible"] boolValue]) {
             status = @"eligible";
             reason = CapabilityCanonicalReason(raw[@"reason"], @[@"declared-single-application-scene",
-                @"declared-programmatic-application-scenes"]);
+                @"declared-programmatic-application-scenes", @"declared-named-application-configurations"]);
         } else if ([raw[@"status"] isEqual:@"ineligible"] && ![raw[@"eligible"] boolValue]) {
             status = @"ineligible";
             reason = CapabilityCanonicalReason(raw[@"reason"], CapabilityIneligibleReasons());
@@ -189,19 +189,36 @@ NSDictionary *PPOSceneCapabilityFromInfo(id info, NSString *identifier, NSTimeIn
         id application = configurations[@"UIWindowSceneSessionRoleApplication"];
         if (![application isKindOfClass:NSArray.class])
             return PPOSceneCapabilityUnknown(identifier, @"manifest-unknown", observedUptime);
-        if ([(NSArray *)application count] != 1)
+        NSUInteger configurationCount = [(NSArray *)application count];
+        if (configurationCount == 0 || configurationCount > 8)
             return PPOSceneCapabilityUnknown(identifier, @"manifest-complex", observedUptime);
-        id configuration = [(NSArray *)application objectAtIndex:0];
-        if (![configuration isKindOfClass:NSDictionary.class] || [(NSDictionary *)configuration count] == 0 ||
-            [(NSDictionary *)configuration count] > 8 || !CapabilityDictionaryKeys(configuration,
-                @[@"UISceneConfigurationName", @"UISceneClassName", @"UISceneDelegateClassName",
-                  @"UISceneStoryboardFile", @"UILaunchStoryboardName"]))
-            return PPOSceneCapabilityUnknown(identifier, @"manifest-complex", observedUptime);
-        for (id key in configuration) {
-            if (!CapabilityText(configuration[key], 256))
+        BOOL namedMultiple = configurationCount > 1;
+        NSArray<NSString *> *allowed = namedMultiple
+            ? @[@"UISceneConfigurationName", @"UISceneClassName", @"UISceneDelegateClassName", @"UISceneStoryboardFile"]
+            : @[@"UISceneConfigurationName", @"UISceneClassName", @"UISceneDelegateClassName",
+                @"UISceneStoryboardFile", @"UILaunchStoryboardName"];
+        NSMutableSet<NSString *> *names = [NSMutableSet set];
+        // Validate every declaration. UIKit, rather than PPO, selects the
+        // default/requested/app-delegate configuration during connection.
+        for (id configuration in (NSArray *)application) {
+            if (![configuration isKindOfClass:NSDictionary.class] || [(NSDictionary *)configuration count] == 0 ||
+                [(NSDictionary *)configuration count] > 8 || !CapabilityDictionaryKeys(configuration, allowed))
                 return PPOSceneCapabilityUnknown(identifier, @"manifest-complex", observedUptime);
+            for (id key in configuration) {
+                if (!CapabilityText(configuration[key], 256))
+                    return PPOSceneCapabilityUnknown(identifier, @"manifest-complex", observedUptime);
+            }
+            if (namedMultiple) {
+                NSString *name = configuration[@"UISceneConfigurationName"];
+                if (!CapabilityText(name, 256) ||
+                    [name stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet].length == 0 ||
+                    [names containsObject:name])
+                    return PPOSceneCapabilityUnknown(identifier, @"manifest-complex", observedUptime);
+                [names addObject:[name copy]];
+            }
         }
-        return CapabilityResult(identifier, @"eligible", @"declared-single-application-scene", observedUptime);
+        return CapabilityResult(identifier, @"eligible", namedMultiple
+            ? @"declared-named-application-configurations" : @"declared-single-application-scene", observedUptime);
     } @catch (NSException *exception) {
         (void)exception; return PPOSceneCapabilityUnknown(identifier, @"plist-invalid", observedUptime);
     }

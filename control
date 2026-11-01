@@ -1,8 +1,8 @@
 Package: com.renatasy83.pulloverpro.diagnostic
 Name: PullOver Pro Development
-Version: 0.16.0~dev.programmatic1
+Version: 0.17.0~dev.namedconfigs1
 Architecture: iphoneos-arm64
-Description: Rootless app picker, mobile launch service and guarded owned app windows. Guarded owned app windows with bounded programmatic multiscene eligibility, favorites and quick selection. New clients require device validation.
+Description: Rootless app picker, mobile launch service and guarded owned app windows with bounded named and programmatic multiscene eligibility. New client types require device validation.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks

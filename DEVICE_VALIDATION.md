@@ -1,5 +1,17 @@
 # Device validation
 
+## User-confirmed 0.16.0 — Calendar programmatic admission and window controls
+
+The supplied schema10 host-0.16.0.json contains two com.apple.mobilecal sessions. Both use basis=installed-info, policy=installed-basic-multiscene-v2 and reason=declared-programmatic-application-scenes. Thus the new programmatic-configuration eligibility path actually ran; this is not a success through the prior single-static-configuration path or firmware fallback. The matching executable is ac825acfe64f4d740a9158417d9b7b6fb4817006, selected for stable/verified-calendar-programmatic-reuse. Its existing Actions41284629913/artifact13075350024 remains the automated source/build evidence; recording this phone result does not imply a new executable.
+
+Each session selects one original among6 inspected scenes, matches all four hosting framework UUIDs and verifies that the activation proxy binds the newly created child rather than the borrowed original. The first session runs in kept mode and closes manually at22.796s. It records Keep at8.375s, minimize at10.754s, restore at15.281s, and resize to380x680 at18.771s; there are2 completed moves and1 minimize/restore/resize each. The observed standard window is300x480 and minimized bar300x44, with captured insets{44,0,34,0}. Available active/valid samples and2 hosted layers accompany this session. The interval between minimize and restore is about4.527s.
+
+The second session has no recorded control changes and closes by the default timeout at15.066s from preparation, approximately15.037s after showing at0.029s. Hosted layers progress from0 at post-layout to1 at0.138s and2 at0.793s, remaining present through the12.052s sample. These are sampled layer counts, not a pixel or input trace. Both sessions finish closed, unpinned and unpoisoned, with controller/workspace invalidations returned and replacementAllowed=true. Final sampled live/layer values are historical readings, not post-invalidation resource measurements.
+
+The user says “Am verificat. Funcționează bine toate” in response to the requested Calendar window/interaction/X/reopen gate. That confirmation supplies the functional outcome beyond telemetry. This completes the requested representative programmatic-client gate; no repetition of ordinary Calendar, Safari or favorite tests is needed. The available parsed evidence does not establish an exact reopening gap, sampled private native-frame dimensions or original-scene background/layer state, so none is inferred here. Raw report, calendar records and app contents are not published.
+
+Preview, multiple-named-configuration clients, dedicated floating keyboard/focus, new-version lock/orientation/process-death/watchdog stress, indefinite/global cleanup and full Dopamine/ElleKit compatibility remain unconfirmed. The next stage concerns bounded multiple-named application configurations while retaining the tested owner and window-control paths.
+
 ## User-confirmed 0.15.0 — favorite read and long-press quick access
 
 The supplied picker-0.15.0.json reports schema1, version0.15.0~dev.favorites1, event=load, readable=true, favoriteCount=1, errorDomain=none and errorCode=0. The user explicitly confirms that the favorite appears when holding the PPO handle. This establishes a successful current favorite-store read and visible long-press quick access. The report intentionally contains no favorite identifier or name, so the app must not be inferred as Safari or another specific client.

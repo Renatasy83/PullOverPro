@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Pure plist/descriptor fixtures. No private APIs, real bundle reads or iOS UI.
+// Fixture contract: pure synthetic plist/descriptor policy v3, normalization and freshness.
+// Files (two names) and Mail (four names) model metadata shapes only. They do not
+// read Apple bundles/binaries, call private APIs or establish app/scene admission.
 static unsigned checks;
 static NSString *const Identifier = @"com.example.application";
 static void Check(BOOL condition, const char *message) {
@@ -35,13 +37,51 @@ static NSMutableDictionary *Roles(NSMutableDictionary *info) {
     manifest[@"UISceneConfigurations"] = roles;
     return roles;
 }
+static NSMutableDictionary *NamedInfo(NSArray<NSString *> *names) {
+    NSMutableDictionary *info = Info();
+    NSMutableArray *configurations = [NSMutableArray array];
+    for (NSString *name in names) {
+        [configurations addObject:@{@"UISceneConfigurationName": name,
+            @"UISceneClassName": @"UIWindowScene",
+            @"UISceneDelegateClassName": @"Fixture.NamedSceneDelegate",
+            @"UISceneStoryboardFile": @"FixtureScenes"}];
+    }
+    Roles(info)[@"UIWindowSceneSessionRoleApplication"] = configurations;
+    return info;
+}
+static NSMutableArray *NamedConfigurations(NSMutableDictionary *info) {
+    NSMutableDictionary *roles = Roles(info);
+    NSMutableArray *configurations = [roles[@"UIWindowSceneSessionRoleApplication"] mutableCopy];
+    roles[@"UIWindowSceneSessionRoleApplication"] = configurations;
+    return configurations;
+}
+static NSMutableDictionary *FilesInfo(void) {
+    NSMutableDictionary *info = NamedInfo(@[@"Files Browser", @"Files Document"]);
+    NSMutableArray *configurations = NamedConfigurations(info);
+    for (NSUInteger index = 0; index < configurations.count; index++) {
+        NSMutableDictionary *configuration = [configurations[index] mutableCopy];
+        [configuration removeObjectsForKeys:@[@"UISceneClassName", @"UISceneStoryboardFile"]];
+        configurations[index] = configuration;
+    }
+    return info;
+}
+static NSMutableDictionary *MailInfo(void) {
+    NSMutableDictionary *info = NamedInfo(@[@"Mail Viewer", @"Mail Compose", @"Mail Message", @"Mail Search"]);
+    NSMutableArray *configurations = NamedConfigurations(info);
+    for (NSUInteger index = 0; index < configurations.count; index++) {
+        NSMutableDictionary *configuration = [configurations[index] mutableCopy];
+        [configuration removeObjectForKey:@"UISceneStoryboardFile"];
+        configurations[index] = configuration;
+    }
+    return info;
+}
 static NSDictionary *Read(id info) { return PPOSceneCapabilityFromInfo(info, Identifier, 100); }
 static void Result(NSDictionary *value, NSString *status, NSString *reason) {
     Check(value != nil && value.count == 7, "capability contains only the normalized seven scalar fields");
     Check([value[@"status"] isEqual:status] && [value[@"reason"] isEqual:reason],
           "outcome distinguishes explicit negatives from unavailable or unsupported metadata");
     Check([value[@"bundleIdentifier"] isEqual:Identifier] &&
-          [value[@"policy"] isEqual:@"installed-basic-multiscene-v2"] &&
+          [value[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
           [value[@"schema"] isEqual:@1] && [value[@"observedUptime"] isEqual:@100],
           "result is bound to the requested app, fixed policy and injected observation time");
     Check(CFGetTypeID((__bridge CFTypeRef)value[@"eligible"]) == CFBooleanGetTypeID() &&
@@ -51,11 +91,11 @@ static void Result(NSDictionary *value, NSString *status, NSString *reason) {
     Check([NSJSONSerialization isValidJSONObject:value], "normalized diagnostics are safely serializable");
 }
 static void NormalizeField(NSString *field, NSArray *values) {
-    for (NSDictionary *fixture in @[Read(Info()), Read(ProgrammaticInfo())])
+    for (NSDictionary *fixture in @[Read(Info()), Read(ProgrammaticInfo()), Read(FilesInfo()), Read(MailInfo())])
         for (id invalid in values) {
             NSMutableDictionary *value = [fixture mutableCopy];
             value[field] = invalid;
-            Check(PPOSceneCapabilityNormalize(value) == nil, "malformed descriptor scalar is rejected for either positive shape");
+            Check(PPOSceneCapabilityNormalize(value) == nil, "malformed descriptor scalar is rejected for every positive metadata shape");
         }
 }
 int main(void) {
@@ -97,6 +137,164 @@ int main(void) {
                   "Calendar and Preview synthetic programmatic fixtures retain their selected identifier");
             Check([PPOSceneCapabilityFromInfo(fixture, Identifier, 100)[@"reason"] isEqual:@"identifier-mismatch"],
                   "a programmatic manifest does not let metadata cross application identifiers");
+        }
+        Result(Read(FilesInfo()), @"eligible", @"declared-named-application-configurations");
+        Result(Read(MailInfo()), @"eligible", @"declared-named-application-configurations");
+        for (NSDictionary *fixture in @[
+                @{@"identifier": @"com.example.FixtureFiles", @"info": FilesInfo(), @"count": @2},
+                @{@"identifier": @"com.example.FixtureMail", @"info": MailInfo(), @"count": @4}]) {
+            NSMutableDictionary *metadata = fixture[@"info"];
+            metadata[@"CFBundleIdentifier"] = fixture[@"identifier"];
+            NSDictionary *manifest = metadata[@"UIApplicationSceneManifest"];
+            NSArray *configurations = manifest[@"UISceneConfigurations"][@"UIWindowSceneSessionRoleApplication"];
+            NSDictionary *capability = PPOSceneCapabilityFromInfo(metadata, fixture[@"identifier"], 100);
+            Check(manifest.count == 2 && [configurations count] == [fixture[@"count"] unsignedIntegerValue] &&
+                  [capability[@"bundleIdentifier"] isEqual:fixture[@"identifier"]] &&
+                  [capability[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
+                  [capability[@"reason"] isEqual:@"declared-named-application-configurations"] &&
+                  [capability[@"status"] isEqual:@"eligible"] &&
+                  [PPOSceneCapabilityNormalize(capability) isEqual:capability],
+                  "synthetic Files two-name and Mail four-name factories retain only their selected identifier");
+            Check(capability.count == 7 &&
+                  ![[capability description] containsString:@"Fixture.NamedSceneDelegate"] &&
+                  ![[capability description] containsString:configurations[0][@"UISceneConfigurationName"]],
+                  "named eligibility publishes no configuration names, delegates or raw metadata");
+            Check([PPOSceneCapabilityFromInfo(metadata, Identifier, 100)[@"reason"] isEqual:@"identifier-mismatch"],
+                  "named metadata cannot cross application identifiers");
+        }
+        for (NSUInteger count = 2; count <= 8; count++) {
+            NSMutableArray *names = [NSMutableArray array];
+            for (NSUInteger index = 0; index < count; index++)
+                [names addObject:[NSString stringWithFormat:@"Named Configuration %lu", (unsigned long)index]];
+            Result(Read(NamedInfo(names)), @"eligible", @"declared-named-application-configurations");
+        }
+        Result(Read(NamedInfo(@[@"Document", @"document", @" Document "])), @"eligible",
+               @"declared-named-application-configurations");
+        Result(Read(NamedInfo(@[@"Only Configuration"])), @"eligible", @"declared-single-application-scene");
+        NSMutableDictionary *legacySingle = NamedInfo(@[@"Legacy Single Configuration"]);
+        NSMutableArray *legacyConfigurations = NamedConfigurations(legacySingle);
+        NSMutableDictionary *legacyConfiguration = [legacyConfigurations[0] mutableCopy];
+        legacyConfiguration[@"UILaunchStoryboardName"] = @"LegacyLaunch";
+        legacyConfigurations[0] = legacyConfiguration;
+        Result(Read(legacySingle), @"eligible", @"declared-single-application-scene");
+        Result(Read(NamedInfo(@[])), @"unknown", @"manifest-complex");
+        Result(Read(NamedInfo(@[@"One", @"Two", @"Three", @"Four", @"Five", @"Six", @"Seven", @"Eight", @"Nine"])),
+               @"unknown", @"manifest-complex");
+        for (NSMutableDictionary *named in @[FilesInfo(), MailInfo()]) {
+            for (id malformed in @[@YES, @1, @"named", @{}, NSNull.null]) {
+                NSMutableDictionary *metadata = [named mutableCopy];
+                Roles(metadata)[@"UIWindowSceneSessionRoleApplication"] = malformed;
+                Result(Read(metadata), @"unknown", @"manifest-unknown");
+            }
+            for (NSUInteger index = 0; index < [NamedConfigurations(named) count]; index++) {
+                for (id malformed in @[@{}, @[], @YES, @"configuration", NSNull.null]) {
+                    NSMutableDictionary *metadata = [named mutableCopy];
+                    NamedConfigurations(metadata)[index] = malformed;
+                    Result(Read(metadata), @"unknown", @"manifest-complex");
+                }
+                NSMutableDictionary *metadata = [named mutableCopy];
+                NSMutableArray *configurations = NamedConfigurations(metadata);
+                NSMutableDictionary *configuration = [configurations[index] mutableCopy];
+                [configuration removeObjectForKey:@"UISceneConfigurationName"];
+                configurations[index] = configuration;
+                Result(Read(metadata), @"unknown", @"manifest-complex");
+            }
+            for (NSString *field in @[@"UISceneConfigurationName", @"UISceneClassName", @"UISceneDelegateClassName",
+                    @"UISceneStoryboardFile"]) {
+                for (id malformed in @[@"", @1, @YES, @[], @{}, NSNull.null,
+                        [@"a" stringByPaddingToLength:257 withString:@"a" startingAtIndex:0]]) {
+                    NSMutableDictionary *metadata = [named mutableCopy];
+                    NSMutableArray *configurations = NamedConfigurations(metadata);
+                    NSMutableDictionary *last = [configurations.lastObject mutableCopy];
+                    last[field] = malformed; configurations[configurations.count - 1] = last;
+                    Result(Read(metadata), @"unknown", @"manifest-complex");
+                }
+                NSMutableDictionary *metadata = [named mutableCopy];
+                NSMutableArray *configurations = NamedConfigurations(metadata);
+                NSMutableDictionary *last = [configurations.lastObject mutableCopy];
+                last[field] = [@"a" stringByPaddingToLength:256 withString:@"a" startingAtIndex:0];
+                configurations[configurations.count - 1] = last;
+                Result(Read(metadata), @"eligible", @"declared-named-application-configurations");
+            }
+            for (id invalidKey in @[@"UILaunchStoryboardName", @"UnknownConfigurationKey", @1]) {
+                NSMutableDictionary *metadata = [named mutableCopy];
+                NSMutableArray *configurations = NamedConfigurations(metadata);
+                NSMutableDictionary *last = [configurations.lastObject mutableCopy];
+                last[invalidKey] = @"Launch"; configurations[configurations.count - 1] = last;
+                Result(Read(metadata), @"unknown", @"manifest-complex");
+            }
+            for (NSString *name in @[@" ", @"\t\n", @"\u00a0"]) {
+                NSMutableDictionary *metadata = [named mutableCopy];
+                NSMutableArray *configurations = NamedConfigurations(metadata);
+                NSMutableDictionary *last = [configurations.lastObject mutableCopy];
+                last[@"UISceneConfigurationName"] = name; configurations[configurations.count - 1] = last;
+                Result(Read(metadata), @"unknown", @"manifest-complex");
+            }
+            NSMutableDictionary *metadata = [named mutableCopy];
+            NSMutableArray *configurations = NamedConfigurations(metadata);
+            NSMutableDictionary *last = [configurations.lastObject mutableCopy];
+            last[@"UISceneConfigurationName"] = configurations[0][@"UISceneConfigurationName"];
+            configurations[configurations.count - 1] = last;
+            Result(Read(metadata), @"unknown", @"manifest-complex");
+        }
+        // Only the name is mandatory; the three other accepted fields remain optional.
+        NSMutableDictionary *nameOnly = FilesInfo();
+        NSMutableArray *nameOnlyConfigurations = NamedConfigurations(nameOnly);
+        nameOnlyConfigurations[0] = @{@"UISceneConfigurationName": @"Name Only One"};
+        nameOnlyConfigurations[1] = @{@"UISceneConfigurationName": @"Name Only Two"};
+        Result(Read(nameOnly), @"eligible", @"declared-named-application-configurations");
+        for (NSString *field in @[@"UISceneClassName", @"UISceneDelegateClassName", @"UISceneStoryboardFile"]) {
+            NSMutableDictionary *metadata = FilesInfo();
+            NSMutableArray *configurations = NamedConfigurations(metadata);
+            NSMutableDictionary *last = [configurations.lastObject mutableCopy];
+            last[field] = @" "; configurations[configurations.count - 1] = last;
+            Result(Read(metadata), @"eligible", @"declared-named-application-configurations");
+        }
+        for (id multiple in @[@1, @0, @"true", NSNull.null]) {
+            NSMutableDictionary *metadata = FilesInfo();
+            Manifest(metadata)[@"UIApplicationSupportsMultipleScenes"] = multiple;
+            Result(Read(metadata), @"unknown", @"manifest-unknown");
+        }
+        NSMutableDictionary *namedMissingSupport = MailInfo();
+        [Manifest(namedMissingSupport) removeObjectForKey:@"UIApplicationSupportsMultipleScenes"];
+        Result(Read(namedMissingSupport), @"unknown", @"manifest-unknown");
+        for (NSString *rootKey in @[@"system-windows-secure", @"UnexpectedSCENEOption", @"UIWindowOptions"])
+            for (NSNumber *flag in @[@YES, @NO]) {
+                NSMutableDictionary *metadata = FilesInfo(); metadata[rootKey] = flag;
+                Result(Read(metadata), @"unknown", @"manifest-complex");
+            }
+        for (id extraKey in @[@"UIApplicationSupportsTabbedScenes", @"UnexpectedManifestOption", @1]) {
+            NSMutableDictionary *metadata = MailInfo(); Manifest(metadata)[extraKey] = @YES;
+            Result(Read(metadata), @"unknown", @"manifest-complex");
+        }
+        for (id role in @[@"UIWindowSceneSessionRoleExternalDisplay", @"UnknownRole", @1]) {
+            NSMutableDictionary *metadata = FilesInfo(); Roles(metadata)[role] = @[@{}];
+            Result(Read(metadata), @"unknown", @"manifest-complex");
+        }
+        NSMutableDictionary *namedDisabled = MailInfo();
+        Manifest(namedDisabled)[@"UIApplicationSupportsMultipleScenes"] = @NO;
+        Manifest(namedDisabled)[@"UnexpectedManifestOption"] = @YES;
+        namedDisabled[@"UnexpectedWindowOption"] = @YES;
+        Result(Read(namedDisabled), @"ineligible", @"multiple-scenes-disabled");
+        for (id malformed in @[@[], @[@{}, @{}], NSNull.null]) {
+            NSMutableDictionary *metadata = FilesInfo();
+            Manifest(metadata)[@"UIApplicationSupportsMultipleScenes"] = @NO;
+            Roles(metadata)[@"UIWindowSceneSessionRoleApplication"] = malformed;
+            Result(Read(metadata), @"ineligible", @"multiple-scenes-disabled");
+        }
+        for (NSMutableDictionary *metadata in @[FilesInfo(), MailInfo()]) {
+            metadata[@"CFBundlePackageType"] = @"XPC!";
+            Result(Read(metadata), @"ineligible", @"not-application");
+            metadata[@"CFBundlePackageType"] = @"APPL"; metadata[@"NSExtension"] = NSNull.null;
+            Result(Read(metadata), @"ineligible", @"app-extension");
+            [metadata removeObjectForKey:@"NSExtension"]; metadata[@"UIDeviceFamily"] = @[@2];
+            Result(Read(metadata), @"ineligible", @"not-iphone");
+            metadata[@"UIDeviceFamily"] = @[@1];
+            for (NSString *flag in @[@"LSBackgroundOnly", @"LSUIElement", @"UIBackgroundOnly"]) {
+                metadata[flag] = @YES; Result(Read(metadata), @"ineligible", @"not-application");
+                metadata[flag] = @1; Result(Read(metadata), @"unknown", @"manifest-unknown");
+                [metadata removeObjectForKey:flag];
+            }
         }
         NSMutableDictionary *info = Info();
         info[@"UnrelatedUserInfo"] = @{@"nested": @[@{@"notForSerialization": @"private-value"}]};
@@ -213,7 +411,8 @@ int main(void) {
         for (NSString *reason in unknownReasons)
             Result(PPOSceneCapabilityUnknown(Identifier, reason, 100), @"unknown", reason);
         Check(PPOSceneCapabilityUnknown(Identifier, @"made-up", 100) == nil, "unknown reason cannot expand the protocol");
-        for (NSString *reason in @[@"declared-single-application-scene", @"declared-programmatic-application-scenes"]) {
+        for (NSString *reason in @[@"declared-single-application-scene", @"declared-programmatic-application-scenes",
+                @"declared-named-application-configurations"]) {
             NSMutableDictionary *candidate = [Read(Info()) mutableCopy];
             candidate[@"reason"] = reason;
             Result(PPOSceneCapabilityNormalize(candidate), @"eligible", reason);
@@ -228,19 +427,50 @@ int main(void) {
             Check(PPOSceneCapabilityNormalize(candidate) == nil,
                   "an eligible reason cannot turn a false eligibility flag into an eligible proof");
         }
+        NSArray *reasonGroups = @[
+            @{@"status": @"eligible", @"reasons": @[@"declared-single-application-scene",
+                @"declared-programmatic-application-scenes", @"declared-named-application-configurations"]},
+            @{@"status": @"ineligible", @"reasons": @[@"not-application", @"app-extension",
+                @"not-iphone", @"multiple-scenes-disabled"]},
+            @{@"status": @"unknown", @"reasons": unknownReasons}];
+        for (NSDictionary *group in reasonGroups)
+            for (NSString *reason in group[@"reasons"]) {
+                for (NSString *status in @[@"eligible", @"ineligible", @"unknown"])
+                    for (NSDictionary *flag in @[@{@"value": @YES, @"genuine": @YES},
+                            @{@"value": @NO, @"genuine": @YES},
+                            @{@"value": @1, @"genuine": @NO}, @{@"value": @0, @"genuine": @NO}]) {
+                        NSMutableDictionary *candidate = [Read(Info()) mutableCopy];
+                        candidate[@"reason"] = reason; candidate[@"status"] = status;
+                        candidate[@"eligible"] = flag[@"value"];
+                        BOOL expected = [group[@"status"] isEqual:status] && [flag[@"genuine"] boolValue] &&
+                            [flag[@"value"] boolValue] == [status isEqual:@"eligible"];
+                        NSDictionary *normalized = PPOSceneCapabilityNormalize(candidate);
+                        Check(expected ? [normalized isEqual:candidate] : normalized == nil,
+                              "the complete canonical reason/status matrix requires its matching genuine Boolean");
+                    }
+                NSMutableDictionary *canonical = [Read(Info()) mutableCopy];
+                canonical[@"reason"] = reason; canonical[@"status"] = group[@"status"];
+                canonical[@"eligible"] = @([group[@"status"] isEqual:@"eligible"]);
+                for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+                    canonical[@"policy"] = policy;
+                    Check(PPOSceneCapabilityNormalize(canonical) == nil && !PPOSceneCapabilityFresh(canonical, 100),
+                          "legacy policy rejection also covers every unknown and ineligible canonical reason");
+                }
+            }
         for (NSNumber *badTime in @[@(-1), @(NAN), @(INFINITY)])
             Check(PPOSceneCapabilityFromInfo(Info(), Identifier, badTime.doubleValue) == nil &&
                   PPOSceneCapabilityUnknown(Identifier, @"file-unavailable", badTime.doubleValue) == nil,
                   "invalid observation clocks never produce descriptors");
 
         NormalizeField(@"schema", @[@YES, @0, @2, @0.5, @(NAN), @(INFINITY), @"1", NSNull.null]);
-        NormalizeField(@"policy", @[@"installed-basic-multiscene-v1", @"unknown-v2", @1, NSNull.null]);
+        NormalizeField(@"policy", @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"unknown-v2", @1, NSNull.null]);
         NormalizeField(@"bundleIdentifier", @[@"com.other..app", @"com.apple.springboard", @1, NSNull.null]);
         NormalizeField(@"status", @[@"unknown", @"ineligible", @"other", @1, NSNull.null]);
         NormalizeField(@"eligible", @[@1, @0, @NO, @"true", NSNull.null]);
         NormalizeField(@"reason", @[@"manifest-unknown", @"not-application", @"other",
             @"declared-programmatic-application-scene", @"Declared-programmatic-application-scenes",
-            @"declared-programmatic-application-scenes ", @1, NSNull.null]);
+            @"declared-programmatic-application-scenes ", @"declared-named-application-configuration",
+            @"Declared-named-application-configurations", @"declared-named-application-configurations ", @1, NSNull.null]);
         NormalizeField(@"observedUptime", @[@YES, @(-1), @(NAN), @(INFINITY), @"100", NSNull.null]);
         NSDictionary *valid = Read(Info());
         for (NSString *field in valid) {
@@ -258,7 +488,7 @@ int main(void) {
         Check(PPOSceneCapabilityNormalize(contradictory) != nil, "integral numeric schema is distinct from a Boolean");
 
         NSMutableString *mutableIdentifier = [Identifier mutableCopy];
-        NSMutableString *mutablePolicy = [@"installed-basic-multiscene-v2" mutableCopy];
+        NSMutableString *mutablePolicy = [@"installed-basic-multiscene-v3" mutableCopy];
         NSMutableString *mutableStatus = [@"eligible" mutableCopy];
         NSMutableString *mutableReason = [@"declared-single-application-scene" mutableCopy];
         NSMutableDictionary *caller = [valid mutableCopy];
@@ -279,6 +509,21 @@ int main(void) {
         snapshot = PPOSceneCapabilityNormalize(caller);
         [programmaticReason setString:@"file-unavailable"]; [caller removeAllObjects];
         Result(snapshot, @"eligible", @"declared-programmatic-application-scenes");
+        NSMutableString *namedReason = [@"declared-named-application-configurations" mutableCopy];
+        caller = [Read(MailInfo()) mutableCopy]; caller[@"reason"] = namedReason;
+        snapshot = PPOSceneCapabilityNormalize(caller);
+        [namedReason setString:@"file-unavailable"]; [caller removeAllObjects];
+        Result(snapshot, @"eligible", @"declared-named-application-configurations");
+        NSMutableDictionary *namedMetadata = MailInfo();
+        NSMutableArray *mutableConfigurations = NamedConfigurations(namedMetadata);
+        NSMutableString *mutableName = [@"Mutable Named Configuration" mutableCopy];
+        NSMutableDictionary *mutableConfiguration = [mutableConfigurations.lastObject mutableCopy];
+        mutableConfiguration[@"UISceneConfigurationName"] = mutableName;
+        mutableConfigurations[mutableConfigurations.count - 1] = mutableConfiguration;
+        NSDictionary *namedSnapshot = Read(namedMetadata);
+        [mutableName setString:@" "]; [mutableConfiguration removeAllObjects];
+        [mutableConfigurations removeAllObjects]; [namedMetadata removeAllObjects];
+        Result(namedSnapshot, @"eligible", @"declared-named-application-configurations");
         NSDictionary *programmatic = Read(ProgrammaticInfo());
         NSDictionary *wireCopy = [NSJSONSerialization JSONObjectWithData:
             [NSJSONSerialization dataWithJSONObject:programmatic options:0 error:NULL] options:0 error:NULL];
@@ -296,12 +541,22 @@ int main(void) {
               PPOSceneCapabilityFresh(programmatic, 99.9) && !PPOSceneCapabilityFresh(programmatic, 105.0001) &&
               !PPOSceneCapabilityFresh(programmatic, 99.8999),
               "programmatic eligibility uses the same freshness and future-skew limits");
-        for (NSDictionary *fixture in @[valid, programmatic]) {
-            NSMutableDictionary *legacy = [fixture mutableCopy]; legacy[@"policy"] = @"installed-basic-multiscene-v1";
-            Check(PPOSceneCapabilityNormalize(legacy) == nil && !PPOSceneCapabilityFresh(legacy, 100),
-                  "v1 proofs are rejected without translation or freshening for either eligible reason");
+        for (NSDictionary *fixture in @[valid, programmatic, Read(FilesInfo()), Read(MailInfo())]) {
+            NSDictionary *jsonCopy = [NSJSONSerialization JSONObjectWithData:
+                [NSJSONSerialization dataWithJSONObject:fixture options:0 error:NULL] options:0 error:NULL];
+            Check([PPOSceneCapabilityNormalize(jsonCopy) isEqual:fixture],
+                  "JSON round trip retains the exact normalized proof for every eligible shape");
+            Check(PPOSceneCapabilityFresh(fixture, 100) && PPOSceneCapabilityFresh(fixture, 105) &&
+                  PPOSceneCapabilityFresh(fixture, 99.9) && !PPOSceneCapabilityFresh(fixture, 105.0001) &&
+                  !PPOSceneCapabilityFresh(fixture, 99.8999),
+                  "every current-policy eligible reason obeys the same freshness boundaries");
+            for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+                NSMutableDictionary *legacy = [fixture mutableCopy]; legacy[@"policy"] = policy;
+                Check(PPOSceneCapabilityNormalize(legacy) == nil && !PPOSceneCapabilityFresh(legacy, 100),
+                      "v1 and v2 proofs are rejected without translation or freshening for every eligible reason");
+            }
         }
-        printf("Scene capability tests passed: %u checks; pure metadata policy, not app admission\n", checks);
+        printf("Scene capability tests passed: %u checks; policy v3 synthetic metadata, normalization and freshness; no app admission\n", checks);
     }
     return 0;
 }

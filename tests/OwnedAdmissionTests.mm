@@ -15,7 +15,7 @@ static void Check(BOOL condition, const char *message) {
 static NSDictionary *Capability(NSString *identifier, NSString *status, double observed = 100) {
     NSString *reason = [status isEqual:@"eligible"] ? @"declared-single-application-scene" :
         ([status isEqual:@"ineligible"] ? @"multiple-scenes-disabled" : @"manifest-unknown");
-    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v2",
+    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v3",
         @"bundleIdentifier": identifier, @"status": status,
         @"eligible": [status isEqual:@"eligible"] ? @YES : @NO,
         @"reason": reason, @"observedUptime": @(observed)};
@@ -66,6 +66,21 @@ int main(void) {
         programmatic[@"policy"] = @"installed-basic-multiscene-v1";
         Check(PPOOwnedAdmissionSnapshot(dynamic, programmatic, 101) == nil,
               "a previous-policy descriptor is never upgraded into programmatic permission");
+        NSMutableDictionary *named = [Capability(dynamic, @"eligible") mutableCopy];
+        named[@"reason"] = @"declared-named-application-configurations";
+        NSDictionary *namedAdmission = PPOOwnedAdmissionSnapshot(dynamic, named, 101);
+        Check([namedAdmission[@"basis"] isEqual:@"installed-info"] &&
+              [namedAdmission[@"sceneCapability"][@"reason"] isEqual:named[@"reason"]],
+              "named configurations retain the same bound installed-info provenance");
+        Check(PPOOwnedAdmissionSnapshot(@"com.example.other", named, 101) == nil &&
+              PPOOwnedAdmissionSnapshot(dynamic, named, 105.000001) == nil,
+              "named configuration metadata cannot cross app IDs or extend freshness");
+        for (NSString *oldPolicy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+            named[@"policy"] = oldPolicy;
+            Check(PPOOwnedAdmissionSnapshot(dynamic, named, 101) == nil &&
+                  PPOOwnedAdmissionSnapshot(@"com.apple.mobilesafari", named, 101) == nil,
+                  "previous policy cannot grant named eligibility or silently trigger baseline fallback");
+        }
         Check(PPOOwnedAdmissionSnapshot(dynamic, Capability(dynamic, @"eligible"), 105.000001) == nil &&
               PPOOwnedAdmissionSnapshot(dynamic, Capability(dynamic, @"eligible", 100.100001), 100) == nil,
               "expired and excessively future observations cannot grant eligibility");
@@ -109,7 +124,7 @@ int main(void) {
               PPOOwnedAdmissionSnapshot(@"com.apple.mobilesafari", (id)NSNull.null, 100) == nil,
               "supplied metadata must be a valid dictionary rather than a truthy value");
         NSMutableString *request = [dynamic mutableCopy], *proofID = [dynamic mutableCopy];
-        NSMutableString *policy = [@"installed-basic-multiscene-v2" mutableCopy];
+        NSMutableString *policy = [@"installed-basic-multiscene-v3" mutableCopy];
         NSMutableString *status = [@"eligible" mutableCopy], *reason = [@"declared-single-application-scene" mutableCopy];
         NSMutableDictionary *mutableProof = [Capability(dynamic, @"eligible") mutableCopy];
         mutableProof[@"bundleIdentifier"] = proofID; mutableProof[@"policy"] = policy;
@@ -122,7 +137,7 @@ int main(void) {
         NSDictionary *frozenProof = frozen[@"sceneCapability"];
         Check([frozen[@"bundleIdentifier"] isEqual:dynamic] &&
               [frozenProof[@"bundleIdentifier"] isEqual:dynamic] &&
-              [frozenProof[@"policy"] isEqual:@"installed-basic-multiscene-v2"] &&
+              [frozenProof[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
               [frozenProof[@"status"] isEqual:@"eligible"] &&
               [frozenProof[@"reason"] isEqual:@"declared-single-application-scene"] &&
               [frozenProof[@"observedUptime"] isEqual:@100] && [frozenProof[@"eligible"] isEqual:@YES],

@@ -39,7 +39,9 @@ The latest supplied0.15.0 picker report records load/readable=true/count1/error0
 
 Safari0.14.0 min/restore/underlying-input/bar-X/default expiry, Safari0.13.0 viewport controls, Contacts0.12.0 and Reminders0.11.0 retain their operation-specific tested references. No repeat of those ordinary gates is required. See DEVICE_VALIDATION.md for historical sample and scope limits.
 
-## Not executed here
+## Not executed here at build time
+
+The following list records the original build-time limits. The subsequent Calendar phone evidence below satisfies the representative programmatic-client gate; Preview and the remaining untested operations retain their limits.
 
 - Actual0.16.0 installation, matching new helper runtime and current installed Calendar/Preview Info shape.
 - Actual new client session/configuration selection, app delegate/SwiftUI result, FrontBoard admission, pixels/scroll/input, X/reopen and actual client/session cleanup for programmatic targets.
@@ -48,7 +50,9 @@ Safari0.14.0 min/restore/underlying-input/bar-X/default expiry, Safari0.13.0 vie
 - General Dopamine/ElleKit compatibility. Prior device observations remain version/operation-specific; exact Dopamine version is unknown.
 - vphone-cli:no compatible physical Apple Silicon Mac is accessible. Linux/macOS Intel fixtures cannot execute actual iOS clients.
 
-## Indispensable new phone gate after successful automation
+## Historical phone gate — subsequently satisfied for Calendar
+
+The following was the original requested test, not a request to repeat it. The received report and user confirmation below complete it for Calendar.
 
 Install the verified single DEB manually and respring. Open Calendar normally once, return to NewTerm, select Calendar in PPO and request its small window. Check visible content and scrolling/navigation without creating/editing events; close with X and reopen once. Leave Keep off/default15seconds. Send host-0.16.0.json. The admission reason must show whether the new programmatic path actually ran; a static-configuration success is still useful new-client evidence but does not prove this added path. If metadata refuses before hosting, provide capability-0.16.0.json and the exact displayed message. Do not repeat favorite or ordinary Safari tests.
 
@@ -57,3 +61,13 @@ Recovery:X/default15-second expiry; /var/mobile/.ppo_disable; manual respring fo
 ## Single-scene research boundary
 
 SBSceneManager transfer migrates original tracking/maps/binders and settings with no per-request lease/rollback established. The actual device scene-view factory owns a presenter but consumes ready content and changes original snapshot settings without a demonstrated activation/restoration contract. Neither is used. See SINGLE_SCENE_BROKER_AUDIT_23A355.md. Exact single-scene identifier handling differs from the owned UUID path. This candidate does not claim Settings, Photos or other explicit no-multiple-scene applications.
+
+## Subsequent actual-device evidence — Calendar gate completed
+
+The received schema10 host-0.16.0.json contains two com.apple.mobilecal sessions admitted through installed-info with policy=installed-basic-multiscene-v2 and reason=declared-programmatic-application-scenes. This directly exercises the new eligible programmatic shape rather than the older static shape or baseline fallback. Each selects one original among6 inspected scenes, matches all four hosting framework UUIDs and verifies the activation proxy targets the newly created child rather than the original. The corresponding source is ac825acfe64f4d740a9158417d9b7b6fb4817006, selected for stable/verified-calendar-programmatic-reuse.
+
+The first session runs22.796s in kept mode before manual close. Keep/minimize/restore/resize occur at8.375/10.754/15.281/18.771s; the minimized interval is about4.527s. It records2 completed moves and1 minimize, restore and resize each. Standard300x480, minimized300x44 and large380x680 frames appear, with insets{44,0,34,0}; available hosted samples are active/valid with2 layers. The second session makes no recorded control changes and times out at15.066s from preparation, approximately15.037s after showing. Its layers progress from0 at post-layout to1 at0.138s and2 at0.793s, remaining present through12.052s.
+
+Both sessions finish closed/unpinned/unpoisoned, return controller/workspace invalidations and allow replacement. Sampled state is historical, not a post-teardown resource measurement. The user's “Am verificat. Funcționează bine toate” confirms the requested functional outcome, including the window/interaction/X/reopen gate; JSON alone does not record pixels or input. No exact reopening interval, private native-frame dimensions or original-scene background/layer state is asserted from the available parsed evidence.
+
+This completes the representative Calendar programmatic-client test. No repeat installation or ordinary Calendar/Safari/favorite test is requested. Preview, multiple-named client configuration selection, dedicated keyboard/focus, new-version lock/orientation/process-death/watchdog stress, indefinite/global cleanup and full Dopamine/ElleKit compatibility remain unconfirmed. The earlier successful CI/build/package evidence is unchanged. No raw report or personal calendar data is published. See DEVICE_VALIDATION.md for the operation-specific device record.

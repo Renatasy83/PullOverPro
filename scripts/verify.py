@@ -145,7 +145,7 @@ require('PPOSceneCapabilityNormalize(capability)' in admission_source and
         'Dynamic admission must be copied, fresh and bound to the selected identifier')
 require('object_getClass(specification)' in owned_source and 'object_getClass(childSpecification)' in owned_source,
         'Dynamic source and child specifications must reject unreviewed subclasses')
-require('CFBooleanGetTypeID()' in capability_source and 'installed-basic-multiscene-v2' in capability_source and
+require('CFBooleanGetTypeID()' in capability_source and 'installed-basic-multiscene-v3' in capability_source and
         'observed + 5.0' in capability_source,
         'Capability policy must use explicit booleans and short-lived normalized metadata')
 require(bundle_reader.count('objc_msgSend') == 1 and 'GetterOwner(object_getClass(proxy)' in bundle_reader and
@@ -200,7 +200,7 @@ require('if (!_presentation.minimized()) {' in owned_trial and
         'Minimized geometry must preserve a positive expanded viewport without fitting a zero-height bar')
 require('[(NSDictionary *)manifest count] == 1 && !manifest[@"UISceneConfigurations"]' in capability_source and
         'declared-programmatic-application-scenes' in capability_source and
-        'installed-basic-multiscene-v2' in capability_source,
+        'installed-basic-multiscene-v3' in capability_source,
         'Programmatic eligibility must require the exact absent-key shape under the new policy')
 programmatic_facts = json.loads((ROOT / 'PROGRAMMATIC_SCENE_TARGETS_23A355.json').read_text())
 require(programmatic_facts['runtimeCompatibilityConfirmed'] is False and
@@ -213,6 +213,29 @@ require(programmatic_facts['runtimeCompatibilityConfirmed'] is False and
             app['otherSceneOrWindowKeys'] == [] and re.fullmatch(r'[0-9a-f]{64}', app['infoSHA256'])
             for app in programmatic_facts['applications']),
         'Programmatic facts must remain separate advisory declarations, never baseline permission')
+require('configurationCount == 0 || configurationCount > 8' in capability_source and
+        'BOOL namedMultiple = configurationCount > 1;' in capability_source and
+        '[names containsObject:name]' in capability_source and
+        'stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet' in capability_source and
+        'declared-named-application-configurations' in capability_source,
+        'Named configuration eligibility must remain bounded and reject blank or duplicate names')
+named_facts = json.loads((ROOT / 'NAMED_CONFIGURATION_SCENE_TARGETS_23A355.json').read_text())
+named_keys = {'UISceneConfigurationName', 'UISceneClassName', 'UISceneDelegateClassName', 'UISceneStoryboardFile'}
+require(named_facts['runtimeCompatibilityConfirmed'] is False and
+        named_facts['firmware'] == target_facts['firmware'] and
+        {app['bundleIdentifier']: len(app['applicationRoleConfigurations']) for app in named_facts['applications']} ==
+            {'com.apple.DocumentsApp': 2, 'com.apple.mobilemail': 4} and all(
+            app['packageType'] == 'APPL' and 1 in app['deviceFamilies'] and app['declaresMultipleScenes'] is True and
+            app['sceneManifestKeys'] == ['UIApplicationSupportsMultipleScenes', 'UISceneConfigurations'] and
+            app['roleKeys'] == ['UIWindowSceneSessionRoleApplication'] and
+            app['otherSceneOrWindowKeys'] == [] and re.fullmatch(r'[0-9a-f]{64}', app['infoSHA256']) and
+            2 <= len(app['applicationRoleConfigurations']) <= 8 and
+            len({c['UISceneConfigurationName'] for c in app['applicationRoleConfigurations']}) ==
+                len(app['applicationRoleConfigurations']) and all(
+                set(c) <= named_keys and all(isinstance(v, str) and 0 < len(v) <= 256 for v in c.values()) and
+                c['UISceneConfigurationName'].strip() for c in app['applicationRoleConfigurations'])
+            for app in named_facts['applications']),
+        'Named facts must retain bounded application-only declarations and never become baseline permission')
 require('childView.frame =' in owned_trial and
         owned_trial.index('childView.frame =') < owned_trial.index('[root addChildViewController:child]'),
         'Provide public native child geometry before attachment/appearance')
@@ -272,7 +295,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.16.0~dev.programmatic1'), 'Unexpected version')
+    require(field('Version').startswith('0.17.0~dev.namedconfigs1'), 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
