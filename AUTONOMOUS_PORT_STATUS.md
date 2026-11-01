@@ -1,6 +1,8 @@
 # Autonomous port status — 2026-10-31
 
-Current isolated work:0.14.0~dev.minimize1 on debug/minimize-owned-window. Public ••• actions add explicit same-window minimize/restore while retaining the positive expanded viewport and original owner/native frame/lifetime. New mode geometry has403376 local sanitizer/assertion checks. Executable020017780f099a4b1a6335797a0d54ded91449c0 passed all22 suites, iOS Clang analysis, Theos rootless arm64/arm64e build and downloaded ZIP/DEB inspection. Delivered candidate:Actions41251070344/artifact13061840118. See VALIDATION_0.14.0.md for hashes, executed tests and actual-phone limits. See MINIMIZED_OWNED_WINDOW.md.
+Current isolated work:0.15.0~dev.favorites1 on debug/favorite-app-picker. This adds up to16 persistent favorite IDs, All/Favorites filtering and long-press quick selection with immutable row identity and tested Foundation transaction ownership. Current-source CI is pending.
+
+Previous minimize stage:0.14.0~dev.minimize1 on debug/minimize-owned-window. Public ••• actions add explicit same-window minimize/restore while retaining the positive expanded viewport and original owner/native frame/lifetime. New mode geometry has403376 local sanitizer/assertion checks. Executable020017780f099a4b1a6335797a0d54ded91449c0 passed all22 suites, iOS Clang analysis, Theos rootless arm64/arm64e build and downloaded ZIP/DEB inspection. Delivered candidate:Actions41251070344/artifact13061840118. See VALIDATION_0.14.0.md for hashes, executed tests and actual-phone limits. See MINIMIZED_OWNED_WINDOW.md.
 
 ## Preserved actual device evidence
 

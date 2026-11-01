@@ -62,6 +62,27 @@ jobs:
           xcrun clang++ -fobjc-arc -Wall -Wextra -Werror -framework Foundation \
             tests/AppDataTests.mm PPOAppData.mm -o "$RUNNER_TEMP/ppo-appdata-tests"
           "$RUNNER_TEMP/ppo-appdata-tests" | tee diagnostics/appdata-tests.log
+      - name: Analyze and test favorites persistence and picker transactions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source in PPOFavoriteApps.mm PPOFavoritesStore.mm PPOPickerState.mm; do
+            xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+              -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -I . \
+              -Xanalyzer -analyzer-output=text "$source"
+          done 2>&1 | tee diagnostics/favorites-analysis.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation -framework CoreFoundation tests/FavoriteAppsTests.mm \
+            PPOFavoriteApps.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-favorite-apps-tests"
+          "$RUNNER_TEMP/ppo-favorite-apps-tests" | tee diagnostics/favorite-apps-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation -framework CoreFoundation tests/FavoritesStoreTests.mm \
+            PPOFavoritesStore.mm PPOFavoriteApps.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-favorites-store-tests"
+          "$RUNNER_TEMP/ppo-favorites-store-tests" | tee diagnostics/favorites-store-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation -framework CoreFoundation tests/PickerStateTests.mm \
+            PPOPickerState.mm PPOFavoriteApps.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-picker-state-tests"
+          "$RUNNER_TEMP/ppo-picker-state-tests" | tee diagnostics/picker-state-tests.log
       - name: Analyze isolated helper
         shell: bash
         run: |
@@ -255,7 +276,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.14.0-minimize-${{ github.sha }}
+          name: PullOverPro-0.15.0-favorites-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

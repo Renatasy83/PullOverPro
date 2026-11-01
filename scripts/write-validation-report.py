@@ -7,6 +7,9 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'favorite-apps-tests.log': 'Favorite apps tests passed:',
+    'favorites-store-tests.log': 'Favorites store tests passed:',
+    'picker-state-tests.log': 'Picker state tests passed:',
     'floating-presentation-tests.log': 'Floating presentation tests passed:',
     'floating-geometry-tests.log': 'Floating window geometry tests passed:',
     'scene-capability-tests.log': 'Scene capability tests passed:',
@@ -41,7 +44,7 @@ not_run = [
     'Application scene rendering, touch/keyboard routing and teardown',
     'Lock/unlock, orientation, process death and watchdog integration',
     'Keep mode beyond fifteen seconds and lock-transition frame exposure',
-    'Public menu, same-scene minimized clipping/input, restore after keep and default minimized timeout on iOS',
+    'Favorites directory sandbox access, UIKit filter/star/long-press behavior and quick selection on iOS',
     'Dopamine and ElleKit runtime compatibility',
     'vphone-cli: no compatible physical Apple Silicon Mac is accessible',
 ]
@@ -53,8 +56,8 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'Owned scenes and selected-app manifest eligibility; public window size/drag plus same-scene minimize/restore. New-version UIKit rendering/input and minimized scene activity remain unverified.',
-    'prior_device_baseline': '0.13.0 Safari resize/move/kept/manual/reuse;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
+    'floating_application_hosting_implemented': 'Owned scenes and selected-app manifest eligibility; public owned-window controls plus a bounded persistent favorite picker. New-version UIKit favorite interactions and store sandbox access remain unverified.',
+    'prior_device_baseline': '0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -63,7 +66,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Not a final candidate. Dynamic candidate apps require fresh selected-app manifest inspection through the mobile service. Metadata is eligibility evidence, not authenticated permission or runtime compatibility. Baseline Safari/Reminders/Contacts observations remain version-specific. Current public menu/minimize/restore and minimized scene/input behavior require actual device validation. No original source scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
+    '**Not a final candidate. Dynamic candidate apps require fresh selected-app manifest inspection through the mobile service. Metadata is eligibility evidence, not authenticated permission or runtime compatibility. Baseline Safari/Reminders/Contacts observations remain version-specific. Current favorites/filter/quick-selection UI and sandboxed persistence require actual device validation. No original source scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)

@@ -2,7 +2,9 @@
 
 This is an incomplete GPL-3.0 port of c1d3rdev/Will Smillie’s PullOver Pro. Main preserves Alpha4; the earlier tested picker/launch/rendering and Safari/Reminders source branches remain preserved.
 
-Current isolated work is0.14.0~dev.minimize1 on debug/minimize-owned-window. It adds a public ••• action menu and minimized bar/restore for the same owned application scene, preserving original native geometry, owner, explicit Keep, timer and safety closures. This is not full feature parity. New-version menu/compositor/input behavior needs actual device validation after successful CI.
+Current isolated work is0.15.0~dev.favorites1 on debug/favorite-app-picker. It adds bounded persistent favorites, All/Favorites filtering and long-press quick selection without changing private hosting or keyboard focus. Current-source CI is pending.
+
+Prior0.14.0 on debug/minimize-owned-window was the minimize/restore stage. It adds a public ••• action menu and minimized bar/restore for the same owned application scene, preserving original native geometry, owner, explicit Keep, timer and safety closures. This is not full feature parity. New-version menu/compositor/input behavior needs actual device validation after successful CI.
 
 Actual device observations confirm the stated Safari0.9.1/0.10.0 window/input/Keep/lock/reuse operations and Reminders0.11.0 window/manual-close/timeout/reuse. Safari0.13.0 size/drag/kept/manual/reuse operations are now also confirmed. These are version-specific observations. Contacts0.12.0 installed-info/window/X/reopen/timeout is now also confirmed for the requested operations. Nonbaseline dynamic clients remain untested. Complete original functionality and full Dopamine/ElleKit compatibility are unconfirmed; development artifacts are not final releases.
 

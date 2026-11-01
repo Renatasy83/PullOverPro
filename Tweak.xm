@@ -3,6 +3,9 @@
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
 #import "PPOAppData.h"
+#import "PPOFavoriteApps.h"
+#import "PPOFavoritesStore.h"
+#import "PPOPickerState.h"
 #import "PPOBridgeClient.h"
 #import "PPOBridgeProtocol.h"
 #import "PPOScenePreflight.h"
@@ -64,6 +67,7 @@ static NSString *PPOAPIMetadata(void) {
 
 
 static NSString *const PPOAppsPath = @"/var/mobile/Library/Logs/PullOverPro/apps-0.5.7.json";
+static NSString *const PPOFavoritesDirectory = @"/var/mobile/Library/Preferences/com.renatasy83.pulloverpro.diagnostic.favorites";
 static NSString *const PPOSelectionPath = @"/var/mobile/Library/Preferences/com.renatasy83.pulloverpro.diagnostic.selection.plist";
 static dispatch_queue_t PPOFileQueue(void) {
     static dispatch_queue_t queue;
@@ -87,7 +91,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 // plist/user contents. The bridge response has already passed nonce validation.
 static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *response, NSError *error) {
     NSDictionary *capability = PPOSceneCapabilityNormalize(response[@"sceneCapability"]);
-    NSDictionary *report = @{@"schema": @1, @"version": @"0.14.0~dev.minimize1",
+    NSDictionary *report = @{@"schema": @1, @"version": @"0.15.0~dev.favorites1",
         @"bundleIdentifier": identifier, @"responseStatus": response[@"status"] ?: @"unavailable",
         @"sceneCapability": capability ?: (id)NSNull.null, @"errorCode": @(error.code),
         @"observedUptime": @(NSProcessInfo.processInfo.systemUptime), @"runtimeCompatibilityConfirmed": @NO};
@@ -95,9 +99,30 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
         withIntermediateDirectories:YES attributes:nil error:NULL])
-        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-0.14.0.json"]
+        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-0.15.0.json"]
             options:NSDataWritingAtomic error:NULL];
 }
+
+// Worker-only bounded diagnostics: counts/outcome, never the favorite IDs or names.
+static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL readable, NSError *error) {
+    NSDictionary *report = @{@"schema": @1, @"version": @"0.15.0~dev.favorites1", @"event": event,
+        @"favoriteCount": @(MIN(count, PPOFavoriteIdentifiersLimit)), @"readable": @(readable),
+        @"errorCode": @(error.code), @"runtimeCompatibilityConfirmed": @NO};
+    NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
+    NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
+    if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES
+        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-0.15.0.json"]
+            options:NSDataWritingAtomic error:NULL];
+}
+
+// Each row carries immutable identity and a render generation, rather than an
+// index that could silently select another app after filtering or page changes.
+@interface PPOPickerRowButton : UIButton
+@property(nonatomic,copy) NSString *boundIdentifier;
+@property(nonatomic) NSUInteger boundGeneration;
+@end
+@implementation PPOPickerRowButton
+@end
 
 @interface PPOHandleTarget : NSObject
 - (void)tapped:(id)sender;
@@ -107,12 +132,17 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
 @property(nonatomic,strong) PPOHostSessionSlot *hostSessions;
 - (void)openFloatingApp:(UIButton *)sender;
 - (void)openPreparedApplication:(NSDictionary *)selected capability:(NSDictionary *)capability;
-@property(nonatomic,copy) NSArray<NSDictionary *> *apps;
-@property(nonatomic,copy) NSString *selectedIdentifier;
+@property(nonatomic,strong) PPOPickerState *picker;
+@property(nonatomic,copy,readonly) NSArray<NSDictionary *> *apps;
+@property(nonatomic,copy,readonly) NSString *selectedIdentifier;
+@property(nonatomic,copy) NSArray<NSDictionary *> *listRows;
+@property(nonatomic) NSUInteger renderGeneration;
+@property(nonatomic,strong) UISegmentedControl *pickerModes;
+@property(nonatomic,strong) UILabel *pickerStatus;
+@property(nonatomic,copy) NSString *pickerMessage;
 @property(nonatomic) NSUInteger page;
-@property(nonatomic) NSUInteger listEpoch;
-@property(nonatomic) NSUInteger saveEpoch;
-@property(nonatomic) BOOL selectionSaving;
+@property(nonatomic,readonly) NSUInteger saveEpoch;
+@property(nonatomic,readonly) BOOL selectionSaving;
 @property(nonatomic) BOOL launchInProgress;
 @property(nonatomic) BOOL launchStopped;
 @property(nonatomic) BOOL hostInspectionPending;
@@ -123,16 +153,25 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
 @property(nonatomic,strong) UIButton *previousButton;
 @property(nonatomic,strong) UIButton *nextButton;
 - (void)showApps:(UIButton *)sender;
+- (void)loadPicker;
+- (void)quickFavorites:(UILongPressGestureRecognizer *)recognizer;
+- (void)pickerModeChanged:(UISegmentedControl *)sender;
+- (void)toggleFavorite:(PPOPickerRowButton *)sender;
+- (NSDictionary *)rowForButton:(PPOPickerRowButton *)sender;
 - (void)launchSelected:(UIButton *)sender;
 - (void)updateLaunchButton;
 - (void)renderApps;
 - (void)closeApps:(id)sender;
 - (void)changePage:(UIButton *)sender;
-- (void)selectApp:(UIButton *)sender;
+- (void)selectApp:(PPOPickerRowButton *)sender;
 - (void)inspectAPI:(UIButton *)sender;
 @end
 
 @implementation PPOHandleTarget
+- (NSArray<NSDictionary *> *)apps { return self.picker.apps; }
+- (NSString *)selectedIdentifier { return self.picker.selectedIdentifier; }
+- (NSUInteger)saveEpoch { return self.picker.selectionGeneration; }
+- (BOOL)selectionSaving { return self.picker.selectionSaving; }
 - (void)openFloatingApp:(UIButton *)sender {
     (void)sender;
     if (self.launchInProgress || self.selectionSaving || self.hostInspectionPending) return;
@@ -227,7 +266,8 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
             NSDictionary *response = PPOBridgeSend(@"launch", identifier, &error);
             dispatch_async(dispatch_get_main_queue(), ^{
                 self.launchInProgress = NO;
-                // Unknown result must not be retried automatically.
+                // An unknown opener result blocks further launches for this process,
+                // including other targets; selection changes do not retry it.
                 self.launchStopped = !response;
                 [self updateLaunchButton];
                 if (selectionEpoch != self.saveEpoch) return;
@@ -265,9 +305,9 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 0.14.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 0.15.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.14.0] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 0.15.0] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport scenă salvat (Filza)" : @"Raport API: eroare";
@@ -286,11 +326,11 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
     frame.origin.y = MAX(0, MIN(maxY, frame.origin.y));
     ppoWindow.frame = frame;
     ppoController.view.frame = CGRectMake(0, 0, frame.size.width, frame.size.height);
-    self.listEpoch++;
+    [self.picker closeList];
     self.listView.hidden = YES;
     ppoPanel.hidden = !ppoExpanded;
     ppoStatus.text = @"Selectează o aplicație";
-    NSLog(@"[PPO 0.14.0] panel %@", ppoExpanded ? @"open" : @"closed");
+    NSLog(@"[PPO 0.15.0] panel %@", ppoExpanded ? @"open" : @"closed");
 }
 - (void)panned:(UIPanGestureRecognizer *)recognizer {
     if (!ppoWindow) return;
@@ -316,175 +356,207 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
     ppoStatus.text = ppoLightTheme ? @"Temă: deschisă" : @"Temă: închisă";
 }
 - (void)showApps:(UIButton *)sender {
+    (void)sender;
     if (!ppoExpanded) return;
-    sender.enabled = NO;
-    NSUInteger epoch = ++self.listEpoch;
-    ppoStatus.text = @"Se încarcă aplicațiile…";
+    [self.picker requestListFavoritesOnly:NO]; self.page = 0;
+    [self loadPicker];
+}
+- (void)quickFavorites:(UILongPressGestureRecognizer *)recognizer {
+    if (recognizer.state != UIGestureRecognizerStateBegan) return;
+    if (!ppoExpanded) [self tapped:nil];
+    [self.picker requestListFavoritesOnly:YES]; self.page = 0;
+    [self loadPicker];
+}
+- (void)loadPicker {
+    if (!ppoExpanded || !self.picker.listRequested) return;
+    PPOPickerTicket *ticket = [self.picker beginLoad];
+    self.pickerMessage = nil;
+    [self renderApps];
+    if (self.picker.listRequested) { self.listView.hidden = NO; ppoPanel.hidden = YES; }
+    if (!ticket) return; // Coalesce an in-flight load; its result uses current mode/visibility.
     dispatch_async(PPOFileQueue(), ^{
         @autoreleasepool {
-            NSArray<NSDictionary *> *apps = nil;
+            NSArray *apps = nil, *favorites = nil;
             NSDictionary *selected = nil;
-            NSString *loadMessage = nil;
+            NSString *message = nil;
             @try {
                 NSDictionary *refresh = PPOBridgeSend(@"refresh", nil, NULL);
                 if (![refresh[@"status"] isEqual:@"refreshed"]) {
-                    loadMessage = refresh ? PPOBridgeFailureMessage(refresh) : @"Serviciul PPO nu răspunde";
+                    message = refresh ? PPOBridgeFailureMessage(refresh) : @"Serviciul PPO nu răspunde";
                 } else {
                     apps = PPOAppsFromData(PPOReadBoundedFile(PPOAppsPath, 2 * 1024 * 1024, NULL), NULL);
-                    selected = PPOSelectionFromData(PPOReadBoundedFile(PPOSelectionPath, 16384, NULL));
-                    BOOL found = NO;
-                    for (NSDictionary *app in apps) {
-                        if ([app[@"bundleIdentifier"] isEqual:selected[@"bundleIdentifier"]]) { found = YES; break; }
-                    }
-                    if (!found) selected = nil;
+                    if (apps) {
+                        selected = PPOSelectionFromData(PPOReadBoundedFile(PPOSelectionPath, 16384, NULL));
+                        NSError *favoriteError = nil;
+                        favorites = PPOFavoritesLoad(PPOFavoritesDirectory, &favoriteError);
+                        PPOWritePickerObservation(@"load", favorites.count, favorites != nil, favoriteError);
+                    } else message = @"Lista nu este disponibilă";
                 }
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.14.0] app-file-exception=%@", exception.name);
-                apps = nil;
+                (void)exception; apps = nil; message = @"Lista nu este disponibilă";
             }
             dispatch_async(dispatch_get_main_queue(), ^{
-                sender.enabled = YES;
-                if (epoch != self.listEpoch || !ppoExpanded) return;
-                if (!apps) { ppoStatus.text = loadMessage ?: @"Lista nu este disponibilă"; return; }
-                self.apps = apps;
-                self.page = 0;
-                self.selectedIdentifier = selected[@"bundleIdentifier"];
+                if (![self.picker finishLoad:ticket apps:apps selection:selected favorites:favorites]) return;
+                self.pickerMessage = message;
                 [self updateLaunchButton];
-                ppoStatus.text = selected ? [NSString stringWithFormat:@"Selectat: %@", selected[@"name"]]
-                                         : @"Nicio aplicație selectată";
-                @try {
-                    [self renderApps];
-                    self.listView.hidden = NO;
-                    ppoPanel.hidden = YES;
-                } @catch (NSException *exception) {
-                    [self.listView removeFromSuperview];
-                    self.listView = nil;
-                    ppoPanel.hidden = NO;
-                    ppoStatus.text = @"Lista nu poate fi afișată";
-                    NSLog(@"[PPO 0.14.0] app-ui-exception=%@", exception.name);
-                }
+                if (!ppoExpanded || !self.picker.listRequested) return;
+                [self renderApps];
+                if (self.picker.listRequested) { self.listView.hidden = NO; ppoPanel.hidden = YES; }
             });
         }
     });
 }
 - (void)renderApps {
+    @try {
     if (!self.listView) {
         UIView *panel = [[UIView alloc] initWithFrame:ppoPanel.frame];
-        panel.layer.cornerRadius = 12;
-        panel.clipsToBounds = YES;
+        panel.layer.cornerRadius = 12; panel.clipsToBounds = YES;
         UIButton *back = [UIButton buttonWithType:UIButtonTypeSystem];
         back.frame = CGRectMake(8, 4, 94, 32);
         [back setTitle:@"◀ Înapoi" forState:UIControlStateNormal];
         [back addTarget:self action:@selector(closeApps:) forControlEvents:UIControlEventTouchUpInside];
         [panel addSubview:back];
         UILabel *pageLabel = [[UILabel alloc] initWithFrame:CGRectMake(104, 4, 106, 32)];
-        pageLabel.font = [UIFont systemFontOfSize:11];
-        pageLabel.textAlignment = NSTextAlignmentRight;
+        pageLabel.font = [UIFont systemFontOfSize:11]; pageLabel.textAlignment = NSTextAlignmentRight;
         [panel addSubview:pageLabel];
-        UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(6, 42, PPOOpenWidth - 12, 214)];
+        UISegmentedControl *modes = [[UISegmentedControl alloc] initWithItems:@[@"Toate", @"★ Preferate"]];
+        modes.frame = CGRectMake(8, 40, PPOOpenWidth - 16, 32);
+        [modes addTarget:self action:@selector(pickerModeChanged:) forControlEvents:UIControlEventValueChanged];
+        [panel addSubview:modes]; self.pickerModes = modes;
+        UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(8, 76, PPOOpenWidth - 16, 22)];
+        status.font = [UIFont systemFontOfSize:10]; status.numberOfLines = 2;
+        [panel addSubview:status]; self.pickerStatus = status;
+        UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(6, 102, PPOOpenWidth - 12, 190)];
         [panel addSubview:scroll];
         UIButton *previous = [UIButton buttonWithType:UIButtonTypeSystem];
-        previous.frame = CGRectMake(8, 264, 94, 32);
-        previous.tag = -1;
+        previous.frame = CGRectMake(8, 300, 94, 36); previous.tag = -1;
         [previous setTitle:@"◀ Anterior" forState:UIControlStateNormal];
         [previous addTarget:self action:@selector(changePage:) forControlEvents:UIControlEventTouchUpInside];
         [panel addSubview:previous];
         UIButton *next = [UIButton buttonWithType:UIButtonTypeSystem];
-        next.frame = CGRectMake(112, 264, 98, 32);
-        next.tag = 1;
+        next.frame = CGRectMake(112, 300, 98, 36); next.tag = 1;
         [next setTitle:@"Următor ▶" forState:UIControlStateNormal];
         [next addTarget:self action:@selector(changePage:) forControlEvents:UIControlEventTouchUpInside];
         [panel addSubview:next];
         [ppoController.view addSubview:panel];
-        self.listView = panel;
-        self.listScroll = scroll;
-        self.pageLabel = pageLabel;
-        self.previousButton = previous;
-        self.nextButton = next;
+        self.listView = panel; self.listScroll = scroll; self.pageLabel = pageLabel;
+        self.previousButton = previous; self.nextButton = next;
     }
+    self.listRows = self.picker.rows; self.renderGeneration++;
     UIColor *foreground = ppoLightTheme ? UIColor.blackColor : UIColor.whiteColor;
     self.listView.backgroundColor = ppoPanel.backgroundColor;
-    self.pageLabel.textColor = foreground;
-    for (UIView *view in self.listView.subviews) {
+    self.pageLabel.textColor = foreground; self.pickerStatus.textColor = foreground;
+    self.pickerModes.selectedSegmentIndex = self.picker.favoritesOnly ? 1 : 0;
+    self.pickerModes.overrideUserInterfaceStyle = ppoLightTheme ? UIUserInterfaceStyleLight : UIUserInterfaceStyleDark;
+    self.pickerStatus.text = self.picker.loading ? @"Se încarcă aplicațiile…"
+        : (self.picker.favoritesSaving ? @"Se salvează preferatele…"
+        : (self.pickerMessage ?: (self.picker.favoritesReadable ? @"Atinge ☆ pentru preferate (max. 16)" : @"Preferatele nu sunt disponibile")));
+    for (UIView *view in self.listView.subviews)
         if ([view isKindOfClass:UIButton.class]) [(UIButton *)view setTitleColor:foreground forState:UIControlStateNormal];
-    }
-    for (UIView *view in [self.listScroll.subviews copy]) {
+    for (UIView *view in [self.listScroll.subviews copy])
         if ([view isKindOfClass:UIButton.class]) [view removeFromSuperview];
-    }
-    NSUInteger pages = (self.apps.count + 24) / 25;
+    NSUInteger pages = (self.listRows.count + 24) / 25;
     if (!pages || self.page >= pages) self.page = 0;
-    self.previousButton.enabled = self.page > 0;
-    self.nextButton.enabled = self.page + 1 < pages;
+    self.previousButton.enabled = self.page > 0; self.nextButton.enabled = self.page + 1 < pages;
     self.pageLabel.text = pages ? [NSString stringWithFormat:@"%lu/%lu · %lu",
-        (unsigned long)self.page + 1, (unsigned long)pages, (unsigned long)self.apps.count] : @"0 aplicații";
-    NSUInteger start = self.page * 25;
-    NSUInteger end = MIN(start + 25, self.apps.count);
+        (unsigned long)self.page + 1, (unsigned long)pages, (unsigned long)self.listRows.count] : @"0 aplicații";
     CGFloat y = 0;
-    for (NSUInteger i = start; i < end; i++) {
-        NSDictionary *app = self.apps[i];
-        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-        button.frame = CGRectMake(2, y, PPOOpenWidth - 16, 46);
-        button.tag = (NSInteger)i;
+    for (NSUInteger i = self.page * 25; i < MIN(self.page * 25 + 25, self.listRows.count); i++) {
+        NSDictionary *app = self.listRows[i]; NSString *identifier = app[@"bundleIdentifier"];
+        PPOPickerRowButton *button = [PPOPickerRowButton new];
+        button.frame = CGRectMake(2, y, PPOOpenWidth - 62, 46);
+        button.boundIdentifier = identifier; button.boundGeneration = self.renderGeneration;
         button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-        button.titleLabel.numberOfLines = 2;
-        button.titleLabel.font = [UIFont systemFontOfSize:11];
+        button.titleLabel.numberOfLines = 2; button.titleLabel.font = [UIFont systemFontOfSize:11];
         button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-        NSString *mark = [app[@"bundleIdentifier"] isEqual:self.selectedIdentifier] ? @"✓ " : @"";
-        [button setTitle:[NSString stringWithFormat:@"%@%@\n%@", mark, app[@"name"], app[@"bundleIdentifier"]]
-               forState:UIControlStateNormal];
+        NSString *mark = [identifier isEqual:self.selectedIdentifier] ? @"✓ " : @"";
+        [button setTitle:[NSString stringWithFormat:@"%@%@\n%@", mark, app[@"name"],
+            [app[@"available"] boolValue] ? identifier : @"Indisponibilă"] forState:UIControlStateNormal];
         [button setTitleColor:foreground forState:UIControlStateNormal];
+        button.enabled = [app[@"available"] boolValue] && PPOSceneApplicationIdentifierAllowed(identifier);
         [button addTarget:self action:@selector(selectApp:) forControlEvents:UIControlEventTouchUpInside];
         [self.listScroll addSubview:button];
-        y += 48;
+        PPOPickerRowButton *star = [PPOPickerRowButton new];
+        star.frame = CGRectMake(PPOOpenWidth - 58, y, 44, 46);
+        star.boundIdentifier = identifier; star.boundGeneration = self.renderGeneration;
+        BOOL favorite = [app[@"favorite"] boolValue];
+        [star setTitle:favorite ? @"★" : @"☆" forState:UIControlStateNormal];
+        [star setTitleColor:foreground forState:UIControlStateNormal];
+        star.accessibilityLabel = [NSString stringWithFormat:favorite ? @"Elimină %@ din preferate" : @"Adaugă %@ la preferate", app[@"name"]];
+        star.enabled = self.picker.favoritesReadable && !self.picker.favoritesSaving && !self.picker.loading &&
+            PPOSceneApplicationIdentifierAllowed(identifier);
+        [star addTarget:self action:@selector(toggleFavorite:) forControlEvents:UIControlEventTouchUpInside];
+        [self.listScroll addSubview:star]; y += 48;
     }
-    self.listScroll.contentSize = CGSizeMake(PPOOpenWidth - 12, y);
-    self.listScroll.contentOffset = CGPointZero;
+    self.listScroll.contentSize = CGSizeMake(PPOOpenWidth - 12, y); self.listScroll.contentOffset = CGPointZero;
+    } @catch (NSException *exception) {
+        (void)exception; [self.picker closeList]; self.renderGeneration++;
+        self.listView.hidden = YES; ppoPanel.hidden = !ppoExpanded;
+        ppoStatus.text = @"Lista nu poate fi afișată";
+    }
+}
+- (NSDictionary *)rowForButton:(PPOPickerRowButton *)sender {
+    if (![sender isKindOfClass:PPOPickerRowButton.class] || sender.boundGeneration != self.renderGeneration ||
+        !ppoExpanded || !self.picker.listRequested || self.listView.hidden) return nil;
+    for (NSDictionary *row in self.listRows)
+        if ([row[@"bundleIdentifier"] isEqual:sender.boundIdentifier]) return row;
+    return nil;
+}
+- (void)pickerModeChanged:(UISegmentedControl *)sender {
+    if (!ppoExpanded || !self.picker.listRequested || self.listView.hidden) return;
+    [self.picker requestListFavoritesOnly:sender.selectedSegmentIndex == 1]; self.page = 0;
+    [self renderApps];
 }
 - (void)closeApps:(id)sender {
-    self.listEpoch++;
-    self.listView.hidden = YES;
-    ppoPanel.hidden = !ppoExpanded;
+    (void)sender; [self.picker closeList]; self.renderGeneration++;
+    self.listView.hidden = YES; ppoPanel.hidden = !ppoExpanded;
 }
 - (void)changePage:(UIButton *)sender {
+    if (!self.picker.listRequested || self.listView.hidden) return;
     NSInteger next = (NSInteger)self.page + sender.tag;
-    NSUInteger pages = (self.apps.count + 24) / 25;
+    NSUInteger pages = (self.listRows.count + 24) / 25;
     if (next < 0 || (NSUInteger)next >= pages) return;
-    self.page = (NSUInteger)next;
-    @try { [self renderApps]; }
-    @catch (NSException *exception) {
-        [self closeApps:nil];
-        ppoStatus.text = @"Pagina nu poate fi afișată";
-        NSLog(@"[PPO 0.14.0] page-exception=%@", exception.name);
-    }
+    self.page = (NSUInteger)next; [self renderApps];
 }
-- (void)selectApp:(UIButton *)sender {
-    if (sender.tag < 0 || (NSUInteger)sender.tag >= self.apps.count) return;
-    NSDictionary *selection = self.apps[(NSUInteger)sender.tag];
-    self.selectedIdentifier = selection[@"bundleIdentifier"];
-    self.selectionSaving = YES;
-    [self updateLaunchButton];
-    [self closeApps:nil];
-    NSUInteger epoch = ++self.saveEpoch;
-    ppoStatus.text = @"Se salvează selecția…";
+- (void)toggleFavorite:(PPOPickerRowButton *)sender {
+    NSDictionary *row = [self rowForButton:sender]; if (!row) return;
+    PPOPickerTicket *ticket = [self.picker beginFavoriteToggle:row[@"bundleIdentifier"]];
+    if (!ticket) { self.pickerMessage = @"Limita este de 16 preferate sau lista este ocupată"; [self renderApps]; return; }
+    self.pickerMessage = nil; [self renderApps];
     dispatch_async(PPOFileQueue(), ^{
         @autoreleasepool {
             BOOL saved = NO;
             @try {
-                NSData *data = PPOSelectionData(selection, NULL);
+                NSError *error = nil;
+                saved = PPOFavoritesCommit(PPOFavoritesDirectory, ticket.expectedFavorites, ticket.replacementFavorites, &error);
+                PPOWritePickerObservation(@"save", saved ? ticket.replacementFavorites.count : ticket.expectedFavorites.count, saved, error);
+            }
+            @catch (NSException *exception) { (void)exception; }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (![self.picker finishFavorite:ticket saved:saved]) return;
+                self.pickerMessage = saved ? nil : @"Preferata nu a fost salvată; redeschide lista";
+                if (ppoExpanded && self.picker.listRequested) [self renderApps];
+            });
+        }
+    });
+}
+- (void)selectApp:(PPOPickerRowButton *)sender {
+    NSDictionary *row = [self rowForButton:sender]; if (!row || ![row[@"available"] boolValue]) return;
+    PPOPickerTicket *ticket = [self.picker beginSelection:row[@"bundleIdentifier"]]; if (!ticket) return;
+    [self updateLaunchButton]; [self closeApps:nil]; ppoStatus.text = @"Se salvează selecția…";
+    dispatch_async(PPOFileQueue(), ^{
+        @autoreleasepool {
+            BOOL saved = NO;
+            @try {
+                NSData *data = PPOSelectionData(ticket.selection, NULL);
                 NSString *directory = PPOSelectionPath.stringByDeletingLastPathComponent;
                 if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
-                    withIntermediateDirectories:YES attributes:nil error:NULL]) {
+                    withIntermediateDirectories:YES attributes:nil error:NULL])
                     saved = [data writeToFile:PPOSelectionPath options:NSDataWritingAtomic error:NULL];
-                }
-            } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.14.0] selection-exception=%@", exception.name);
-            }
+            } @catch (NSException *exception) { (void)exception; }
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (epoch != self.saveEpoch) return;
-                ppoStatus.text = saved ? [NSString stringWithFormat:@"Selectat: %@", selection[@"name"]]
-                                      : @"Selecție nesalvată";
-                if (!saved) self.selectedIdentifier = nil;
-                self.selectionSaving = NO;
+                if (![self.picker finishSelection:ticket saved:saved]) return;
+                ppoStatus.text = saved ? [NSString stringWithFormat:@"Selectat: %@", ticket.selection[@"name"]] : @"Selecție nesalvată";
                 [self updateLaunchButton];
             });
         }
@@ -524,7 +596,7 @@ static void PPOCommitOverlay(UIWindow *window, UIViewController *controller,
 }
 
 static void PPOBuildOverlay(UIWindowScene *scene) {
-    NSLog(@"[PPO 0.14.0] ui-build-begin");
+    NSLog(@"[PPO 0.15.0] ui-build-begin");
     UIWindow *ppoWindow = [[UIWindow alloc] initWithWindowScene:scene];
     ppoWindow.frame = CGRectMake(0, 170, PPOClosedWidth, 44);
     ppoWindow.windowLevel = UIWindowLevelStatusBar + 1;
@@ -534,12 +606,13 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoWindow.rootViewController = ppoController;
     // Initialize the action target before attaching any favorite buttons.
     PPOHandleTarget *ppoTarget = [PPOHandleTarget new];
+    ppoTarget.picker = [PPOPickerState new];
 
     UIView *ppoPanel = [[UIView alloc] initWithFrame:CGRectMake(0, 44, PPOOpenWidth, PPOPanelHeight - 44)];
     ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
     ppoPanel.layer.cornerRadius = 12;
     ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.14.0-dev", 8)];
+    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.15.0-dev", 8)];
     [ppoPanel addSubview:PPOLabel(@"Aplicații", 43)];
     UIButton *apps = [UIButton buttonWithType:UIButtonTypeSystem];
     apps.frame = CGRectMake(10, 72, PPOOpenWidth - 20, 32);
@@ -598,12 +671,15 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [ppoHandle addTarget:ppoTarget action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:ppoTarget action:@selector(panned:)];
     [ppoHandle addGestureRecognizer:pan];
+    UILongPressGestureRecognizer *favorites = [[UILongPressGestureRecognizer alloc]
+        initWithTarget:ppoTarget action:@selector(quickFavorites:)];
+    [ppoHandle addGestureRecognizer:favorites];
     [ppoController.view addSubview:ppoHandle];
 
-    NSLog(@"[PPO 0.14.0] ui-built; showing");
+    NSLog(@"[PPO 0.15.0] ui-built; showing");
     ppoWindow.hidden = NO;
     PPOCommitOverlay(ppoWindow, ppoController, ppoTarget, ppoPanel, ppoStatus, ppoHandle);
-    NSLog(@"[PPO 0.14.0] ui-visible");
+    NSLog(@"[PPO 0.15.0] ui-visible");
 }
 
 static BOOL ppoScheduled;
@@ -642,12 +718,12 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 0.14.0] no-active-scene; stopped");
+                NSLog(@"[PPO 0.15.0] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 0.14.0] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 0.15.0] ui-exception=%@; stopped", exception.name);
             ppoStopped = YES;
         }
         if (ppoStopped && ppoSceneObserver) {
@@ -659,10 +735,10 @@ static void PPOScheduleOverlay(void) {
 
 %ctor {
     @autoreleasepool {
-        NSLog(@"[PPO 0.14.0] loaded; os=%@",
+        NSLog(@"[PPO 0.15.0] loaded; os=%@",
               NSProcessInfo.processInfo.operatingSystemVersionString);
         if (!PPOOverlayAllowed()) {
-            NSLog(@"[PPO 0.14.0] overlay-disabled; no hooks installed");
+            NSLog(@"[PPO 0.15.0] overlay-disabled; no hooks installed");
             return;
         }
         // No UIKit objects or private SpringBoard methods touched in the ctor.
@@ -672,7 +748,7 @@ static void PPOScheduleOverlay(void) {
                 queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                     PPOScheduleOverlay();
                 }];
-            NSLog(@"[PPO 0.14.0] overlay-armed");
+            NSLog(@"[PPO 0.15.0] overlay-armed");
             PPOScheduleOverlay();
         });
     }
