@@ -1,0 +1,31 @@
+# Favorite apps and quick selection — 0.15.0
+
+Isolated branch:debug/favorite-app-picker. This restores useful original favorite selection through the public picker. It adds no private icon/recents enumeration, scene mutation, hosting operation or keyboard focus request. The tested0.14.0 owner/minimize/restore implementation changes only its version/report filenames in this stage.
+
+## User behavior
+
+The picker has Toate and ★ Preferate filters,25-row pagination and separate44-point star targets. A row selects the exact app; its star adds/removes a favorite without selecting or launching it. Up to16 ordered favorite IDs are stored. Long-pressing the PPO handle opens the favorites filter directly; normal tap/drag remains. Launching or opening a window still requires the existing explicit panel action and current admission/service guards. Choosing another target does not replace an active or uncertain window.
+
+Names resolve from the current inventory, preserving stored favorite order. Missing entries stay visible in Favorites as Indisponibilă and may be explicitly removed with their star; they cannot be selected or launched. Neither empty nor incomplete/failed inventory causes automatic preference pruning. There is no automatic replacement selection or launch. Search/keyboard behavior is deliberately outside this stage; existing key-window/focus ownership remains.
+
+## Transactions and identity
+
+PPOPickerState is the production Foundation coordinator, not a parallel test model. Opaque immutable tickets bind current load, selection and favorite operations; foreign, replayed and superseded completions cannot change current state. Loads coalesce to one in flight; close/reopen uses latest requested filter/visibility. Every target mutation advances the selection generation, including failure/reconciliation clearing, invalidating old launch/inspection UI results. A load begun while a selection write is pending cannot restore an older disk target even if that write finishes first. Workers use frozen ticket snapshots on the existing serial file queue; model/UIKit access stays on main.
+
+Rows carry copied exact bundle identifiers and render generations in an allocated UIButton subclass. Page/filter changes therefore cannot retarget an old indexed callback. Favorite updates serialize and publish only after successful persistence. A failed store keeps old IDs but disables writes until a valid reload, preventing accidental replacement of corrupt/unreadable preferences. Launch unknown-result blocking remains intentionally process-wide as in the prior implementation; selection changes do not automatically retry an uncertain private opener.
+
+## Own bounded storage
+
+The schema1 plist has exactly schema and bundleIdentifiers; schema must be numeric1, not a Boolean. Maximum16 unique permitted identifiers and16KiB encoded data. Critical process IDs and malformed IDs are refused; favorite membership does not imply launch or floating-scene permission. No application names or user records are stored.
+
+Only /var/mobile/Library/Preferences/com.renatasy83.pulloverpro.diagnostic.favorites/favorites.plist is read/replaced. The parent Preferences directory must already exist. A new own0700 directory and0600 single-link regular file use current UID, NOFOLLOW/NONBLOCK reads, bounded size/post-stat checks and directory identity checks. Existing permissions are never repaired. Missing favorites are genuinely empty; errors/corruption remain errors. Main-thread file access is rejected before I/O.
+
+Commit uses a nonblocking directory lock, compares the ordered expected IDs before and immediately before replacement, writes/fsyncs a random own0600 temporary and atomically renames it. Only a verified own temporary is removed on failure; unrelated files are untouched. Cooperating writers cannot silently overwrite newer favorites. A noncooperating external editor can still race the final comparison/rename, so the protocol is not authenticated CAS. No other tweak/preferences are read or changed. picker-0.15.0.json reports only operation, count, readability and scalar error category/code; it includes no favorite IDs/names.
+
+## Automation and real boundary
+
+New native suites exercise the actual data codec/projection, isolated filesystem store and production coordinator:exact schema/bounds/copy isolation, unavailable/renamed app identity, no pruning, corruption/mode/symlink/FIFO/hardlink/conflict/lock failures, concurrent writers, main-thread zero-I/O, coalesced loads, closed/reopened views, stale saves and selection-generation ownership. Executablec23360fc032479ff1052d50a216eca79d50eda35 passed all25 suites, including new codec268/store264/coordinator94 checks, applicable ASan/UBSan, iOS Clang, Theos rootless arm64/arm64e packaging and downloaded ZIP/DEB inspection. Actions41256552751/artifact13063642671 contains the candidate/evidence; see VALIDATION_0.15.0.md for exact digests and unexecuted live tests. scripts/build-local.sh now reads the actual control Version instead of looking for the obsolete0.7.0 package.
+
+The necessary phone gate is only the changed picker/store/UI behavior:star an already working app, use Favorites and select it, close/reopen the list or long-press the handle to verify disk reload/quick access, then open the selected app with the existing action. Removing a favorite should not launch/select it. No keyboard, extra respring or repeat of ordinary min/restore tests is required. Real sandbox access to the new own directory and UIKit long-press/star behavior cannot be established by native filesystem fixtures. If needed provide picker-0.15.0.json; ordinary host data is host-0.15.0.json. No raw favorite plist is requested by default.
+
+Recovery:X/default15-second expiry, /var/mobile/.ppo_disable and manual respring for uncertain pinned resources. Keep has no timed expiry. If injection prevents startup, start Dopamine without injection and remove only this package. Tested0.14.0 fallback is Actions41251070344/artifact13061840118. No automatic installation/respring, personal-record deletion or other-tweak modification occurs. Full original functionality and general Dopamine/ElleKit compatibility remain unconfirmed; no compatible physical Apple Silicon Mac is accessible for vphone-cli.

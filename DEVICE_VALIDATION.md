@@ -1,5 +1,17 @@
 # Device validation
 
+## User-confirmed 0.14.0 — minimized Safari, restore, underlying input and expiry
+
+The actual schema10 report contains three attempts. The first safely refuses selection:not-found with0 matches among3 inspected scenes, creates no owner/window and allows replacement; opening-failed is a generic terminal label for that refusal, not evidence of a crash. The subsequent two Safari sessions both use fresh installed-info admission, matching framework UUIDs, verified own-child proxy binding and clean controller/workspace invalidation. Executable020017780f099a4b1a6335797a0d54ded91449c0 is preserved as stable/verified-safari-minimize-restore.
+
+The kept session lasts86.291s and closes manually from the minimized bar. It records2 minimizes,1 restore and5 completed moves. First minimize occurs at22.495s and restore at61.472s, about38.977s later. Its public window alternates300x480/300x44 while the content viewport stays300x436 at y44 and sampled private native frames remain414x896. Recorded scene state stays active/valid; layers are present while minimized and after restoring. The first two ownership events and last14 events are retained, so early Keep/window-shown events are trimmed, not new failures.
+
+A new timed session starts19.398s after closure, minimizes at10.010s and expires at15.076s from prepare (about15.048s from showing). It has1 minimize and1 bar move, no restore, and minAtClose=true. Thus minimization does not restart the original deadline in this sample. Both displayed sessions end closed/unpinned/unpoisoned with both invalidations returned and replacement allowed. Final layer/live values are historical readings about5.277s/3.022s before closure, not post-invalidation observations.
+
+The user subsequently explicitly answers yes to both visual questions:restored Safari displays content and responds to scrolling; NewTerm responds to touches/scrolling outside the minimized bar. These answers supply the visual/input evidence missing from telemetry and complete the requested0.14.0 combined gate. No repeat of this same installed-build test is needed. Contacts/Reminders minimized behavior, dedicated floating keyboard/focus, lock/orientation/new-version stress, indefinite/global cleanup and full Dopamine/ElleKit compatibility remain unconfirmed. Raw reports, URLs and app contents are not published.
+
+The next stage is public favorites/quick selection, preserving the tested host/minimize/restore implementations.
+
 ## User-confirmed 0.13.0 — Safari window sizes, dragging, Keep and reuse
 
 The supplied schema9 host-0.13.0.json contains two Safari sessions and the user confirms the requested controls work. Executablec86083b77575af887973c195e73b0beff28ccfef is preserved as stable/verified-safari-window-geometry. Both admissions use fresh installed-info metadata, select a unique original among6 scenes, match all four framework UUIDs, and bind the activation proxy to the owned child rather than the original.
