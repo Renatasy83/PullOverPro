@@ -1,5 +1,7 @@
 # Programmatic application scenes — 0.16.0
 
+Subsequent result:the supplied Calendar0.16.0 report and user confirmation complete this document’s representative programmatic-client gate, with the actual declared-programmatic-application-scenes reason. See VALIDATION_0.16.0.md and DEVICE_VALIDATION.md. The original planned gate below is historical, not a request to repeat it. V3 multiple-named work is documented separately in NAMED_APP_CONFIGURATIONS_23A355.md.
+
 Isolated branch:debug/app-client-configuration. This extends the existing metadata policy to a second bounded multiscene shape. It does not call another private method, select a guessed app configuration, transfer an existing scene or add a firmware-baseline bypass. Current client admission remains a real-device result.
 
 ## Exact-firmware UIKit evidence
