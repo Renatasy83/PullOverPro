@@ -35,7 +35,9 @@ The received 0.16.0 report exercises Calendar’s new programmatic reason in bot
 
 Safari, Reminders, Contacts, viewport/minimize/Keep/lock operations and favorite read/long-press access retain their stated version and operation limits in [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md). Main remains Alpha4 at `af336d84a6b4812e6b6406af87803fb15bf29c3b`. GPL attribution and license remain preserved. No ordinary Calendar/Safari/favorite gate needs repetition.
 
-## Not executed here
+## Not executed here at build time
+
+The following list records the original build-time limits. The subsequent actual Files report below establishes the named admission path, visible functionality and two default-timeout cleanups for Files. It does not supply a manual-X event or general application compatibility.
 
 - Installing this version on the iPhone; actual matching new helper/tweak runtime and currently installed Files/Mail declarations.
 - Actual multiple-named app configuration choice/callbacks, FrontBoard admission, rendered pixels, interaction and client-specific X/reopen/cleanup.
@@ -44,10 +46,24 @@ Safari, Reminders, Contacts, viewport/minimize/Keep/lock operations and favorite
 - General Dopamine/ElleKit compatibility. iPhone12,5/iOS26.0.1 build23A355/ElleKit1.2 have supplied evidence; Dopamine rootless is user-reported and its exact version is unknown. Earlier watchdog IPS were not supplied, so their causes remain unconfirmed.
 - vphone-cli: no compatible physical Apple Silicon Mac is accessible. Linux/macOS Intel fixtures cannot execute actual iOS clients.
 
-## Single necessary device gate after successful automation
+## Historical device gate — subsequent Files evidence received
+
+The following was the requested0.17.0 test, not a request to repeat it. The actual report and user confirmation below supply the operation-specific outcome.
 
 Manually install the single verified DEB and respring. Open Files/Fișiere normally once, return to NewTerm, select it in PPO and request its small window. Check visible content and scrolling without opening, editing or deleting personal documents. Close with X and reopen once. Leave Keep off for the default 15-second limit. Send `/var/mobile/Library/Logs/PullOverPro/host-0.17.0.json`; the admission reason must establish whether the new named path ran. If metadata refuses before hosting, send `capability-0.17.0.json` and the displayed message instead.
 
 This is one representative new mechanism gate, not a request to test every app. A static/programmatic admission success would be useful new-client evidence but would not prove the added named path. Mail remains untested. Native fixtures cannot replace this app/OS compositor observation.
 
 Recovery: X/default timeout; create `/var/mobile/.ppo_disable` if needed; manual respring for pinned uncertain resources. Keep intentionally has no timed expiry. If injection prevents startup, start Dopamine without injection and remove only PPO. The 0.16.0 fallback remains preserved. No automatic phone installation/respring, personal-data edit/deletion or other-tweak change occurs. This is a development candidate; complete original functionality and general compatibility are not claimed.
+
+## Subsequent actual-device evidence — Files named path
+
+The supplied schema10 `host-0.17.0.json` contains two `com.apple.DocumentsApp` sessions with `installed-info`, `installed-basic-multiscene-v3` and `declared-named-application-configurations`. Thus the added named-configuration policy actually ran. Each selects a unique original (1/5 and1/6), matches all four hosting framework UUIDs and verifies the activation proxy binds the created child rather than the borrowed original.
+
+Both histories close by timeout at15.066145s and15.060634s from preparation. No manual-X event appears, so the report is not represented as a manual-close test. The first hosted scene reaches1/2 layers at0.151502/0.827965s and the second at0.808461/2.057269s;2 layers remain through12.051669/12.048514s. Available native frames remain414x896 with a300x436 viewport, and paired original samples remain logically backgrounded with0 layers. Final samples are historical pre-close readings. Both sessions finish closed/unpinned/unpoisoned, return controller/workspace invalidations and allow replacement.
+
+The user's “Funcționează și acesta” confirms the Files functional outcome; JSON alone is not a pixel/input trace. This records the representative named-client admission/rendering/default-expiry gate without claiming all apps, manual-X from this file, dedicated keyboard/focus, indefinite cleanup or general Dopamine/ElleKit compatibility. The original CI/build/package hashes above remain unchanged. No raw report or personal document content is committed.
+
+The source is preserved at `stable/verified-files-named-config-reuse`. A permanent [recovery DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/a5c6ac9bcd6d188b9fb2b5d6032ff84cd0911920/recovery/0.17.0/com.renatasy83.pulloverpro.diagnostic_0.17.0~dev.namedconfigs1_iphoneos-arm64.deb) is stored on `recovery/0.17.0`, commit `a5c6ac9bcd6d188b9fb2b5d6032ff84cd0911920`, with the same DEB SHA256 above. Source and full GPL/build files remain available in that branch. This gives a fallback independent of Actions artifact expiry.
+
+No repeat of ordinary0.17.0 Files/Calendar/Safari/favorite gates is requested. The new1.0.0 RC interface changes require their own combined edge-gesture/Settings/remote-input device observation after successful automation; those outcomes are not inferred from this0.17.0 result. See [ORIGINAL_STYLE_INTERFACE.md](ORIGINAL_STYLE_INTERFACE.md).

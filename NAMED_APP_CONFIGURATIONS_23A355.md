@@ -1,5 +1,7 @@
 # Named application configurations — 0.17.0
 
+Subsequent result:the supplied Files0.17.0 report and user confirmation exercise the named reason in two clean timeout sessions. The planned representative gate below is historical; no repeat is requested. See VALIDATION_0.17.0.md and DEVICE_VALIDATION.md. Current original-style RC interface work has its separate combined gate in VALIDATION_1.0.0_RC1.md.
+
 Branch: `debug/named-application-configurations`. Version: `0.17.0~dev.namedconfigs1`.
 
 This stage extends advisory metadata eligibility to a bounded list of named application configurations. UIKit and the application select the actual configuration. PPO does not choose a list entry, instantiate a declared class, call an app delegate, force a configuration name or transfer an existing scene.
