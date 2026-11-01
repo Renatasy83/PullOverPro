@@ -304,7 +304,7 @@ static NSArray<NSArray<NSDictionary *> *> *PPOSettingsRows(void) {
                     @"values": @[@"recent", @"favorites"], @"labels": @[@"Recente", @"Favorite"]},
                 @{@"key": @"recentAppsCount", @"title": @"Număr de aplicații recente", @"kind": @"stepper", @"min": @1, @"max": @16, @"step": @1},
                 @{@"key": @"quickSwitchScale", @"title": @"Scară comutator", @"kind": @"stepper", @"min": @1, @"max": @3, @"step": @0.25},
-                @{@"key": @"hideLabels", @"title": @"Ascunde numele aplicațiilor", @"kind": @"switch"},
+                @{@"key": @"hideLabels", @"title": @"Ascunde indicațiile de glisare", @"kind": @"switch"},
                 @{@"title": @"Alege/reordonează favoritele", @"kind": @"favorites"}
             ],
             @[
@@ -334,6 +334,7 @@ static NSArray<NSArray<NSDictionary *> *> *PPOSettingsRows(void) {
 @implementation PPOSettingsController
 
 - (void)loadView {
+    if (!self.preferences) self.preferences = PPOUserPreferencesDefaults();
     UITableView *table = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
     table.dataSource = self;
     table.delegate = self;

@@ -15,7 +15,7 @@ TWEAK_NAME := PullOverProDiagnostic
 PullOverProDiagnostic_FILES := Tweak.xm PPOUserPreferences.mm PPOAppData.mm PPOFavoriteApps.mm PPOFavoritesStore.mm PPOPickerState.mm PPOBridgeClient.mm PPOBridgeProtocol.mm PPOBridgeIO.cpp PPOScenePreflight.mm PPOSceneLayerProbe.mm PPOOwnedSceneHost.mm PPOOwnedSafariTrial.mm PPOHostSessionSlot.mm PPOScreenLockState.mm PPOSceneCapability.mm PPOOwnedAdmission.mm
 PullOverProDiagnostic_OBJCFLAGS := -fobjc-arc
 PullOverProDiagnostic_CCFLAGS := -std=c++17
-PullOverProDiagnostic_FRAMEWORKS := Foundation UIKit CoreFoundation
+PullOverProDiagnostic_FRAMEWORKS := Foundation UIKit CoreFoundation QuartzCore
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 

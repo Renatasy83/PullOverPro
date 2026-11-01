@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
 #import "PPOAppData.h"
@@ -38,6 +39,7 @@ static NSDictionary *ppoPreferences;
 static PPOEdgeDrawerLayout ppoEdgeLayout;
 static double ppoChooserProgress;
 static BOOL ppoHandleNubbed;
+static BOOL ppoWasDrawerOpen;
 static NSTimeInterval ppoLastInteraction;
 static BOOL ppoFirmwareMatches;
 static dispatch_source_t ppoVisibilityTimer;
@@ -192,6 +194,16 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 @property(nonatomic) BOOL verticalPan;
 @property(nonatomic) BOOL panTargetsHost;
 @property(nonatomic) BOOL quickChoosing;
+@property(nonatomic) BOOL handlingPan;
+@property(nonatomic) BOOL quickDragging;
+@property(nonatomic,strong) PPOPickerRowButton *quickDragSource;
+@property(nonatomic) CGPoint quickSourcePoint;
+@property(nonatomic,strong) UIView *quickDropTarget;
+@property(nonatomic,strong) UILabel *quickDropInstruction;
+@property(nonatomic,strong) UILabel *quickDragBadge;
+- (void)cancelQuickChoosing;
+- (void)beginQuickDragAtPoint:(CGPoint)point;
+- (void)updateQuickDragAtPoint:(CGPoint)point;
 @property(nonatomic) NSInteger pickerMode;
 @property(nonatomic,strong) PPOPickerRowButton *hoveredButton;
 @property(nonatomic,strong) UISelectionFeedbackGenerator *feedback;
@@ -387,7 +399,8 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 }
 - (void)launchNormalFromRow:(PPOPickerRowButton *)sender {
     NSDictionary *row = [self rowForButton:sender];
-    if (!row || ![row[@"available"] boolValue] || !PPOOverlayAllowed() || self.launchInProgress || self.launchStopped) return;
+    if (!row || ![row[@"available"] boolValue] || !PPOOverlayAllowed() || ppoWindow.hidden ||
+        !UIApplication.sharedApplication.protectedDataAvailable || self.launchInProgress || self.launchStopped) return;
     NSString *identifier = [row[@"bundleIdentifier"] copy];
     if (!PPOSceneApplicationIdentifierAllowed(identifier)) return;
     self.launchInProgress = YES; [self closeChooser]; ppoStatus.text = @"Se deschide pe tot ecranul…";
@@ -448,6 +461,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 }
 - (void)closeChooser { [self cancelOpening]; [self hideChooser]; }
 - (void)hideChooser {
+    [self cancelQuickChoosing]; self.handlingPan = NO;
     [self.picker closeList]; self.renderGeneration++;
     self.listView.hidden = YES;
     ppoExpanded = NO; ppoChooserProgress = 0; ppoPanel.hidden = YES;
@@ -474,7 +488,11 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     [self showChooser:0];
 }
 - (void)panned:(UIPanGestureRecognizer *)recognizer {
+    if (recognizer.state == UIGestureRecognizerStateBegan) self.handlingPan = YES;
+    if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled ||
+        recognizer.state == UIGestureRecognizerStateFailed) self.handlingPan = NO;
     if (!ppoWindow || !PPOOverlayAllowed()) return;
+    ppoLastInteraction = NSProcessInfo.processInfo.systemUptime;
     CGPoint delta = [recognizer translationInView:ppoWindow];
     PPOOwnedSafariTrial *active = ppoExpanded ? nil : [self activeDrawer];
     if (recognizer.state == UIGestureRecognizerStateBegan) {
@@ -536,38 +554,109 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     }
 }
 - (void)showApps:(UIButton *)sender { (void)sender; [self showChooser:0]; }
+- (void)cancelQuickChoosing {
+    self.hoveredButton.transform = CGAffineTransformIdentity;
+    self.hoveredButton = nil; self.quickDragSource = nil;
+    self.quickChoosing = NO; self.quickDragging = NO; self.feedback = nil;
+    [self.quickDropTarget removeFromSuperview]; self.quickDropTarget = nil;
+    [self.quickDropInstruction removeFromSuperview]; self.quickDropInstruction = nil;
+    [self.quickDragBadge removeFromSuperview]; self.quickDragBadge = nil;
+}
+- (void)beginQuickDragAtPoint:(CGPoint)point {
+    NSDictionary *row = [self rowForButton:self.quickDragSource];
+    if (!row || ![row[@"available"] boolValue] || !ppoController || ppoWindow.hidden) return;
+    CGRect bounds = ppoController.view.bounds;
+    if (!std::isfinite(bounds.size.width) || !std::isfinite(bounds.size.height) ||
+        !std::isfinite(point.x) || !std::isfinite(point.y) || bounds.size.width < 100 || bounds.size.height < 100) return;
+    self.quickDragging = YES;
+    self.hoveredButton.transform = CGAffineTransformIdentity; self.hoveredButton = nil;
+    UIView *target = [[UIView alloc] initWithFrame:CGRectMake(CGRectGetMidX(bounds)-50, CGRectGetMidY(bounds)-50, 100, 100)];
+    target.userInteractionEnabled = NO; target.layer.cornerRadius = 12;
+    target.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.88];
+    CAShapeLayer *outline = [CAShapeLayer layer]; outline.frame = target.bounds;
+    outline.path = [UIBezierPath bezierPathWithRoundedRect:target.bounds cornerRadius:12].CGPath;
+    outline.fillColor = UIColor.clearColor.CGColor; outline.strokeColor = UIColor.labelColor.CGColor;
+    outline.lineWidth = 2; outline.lineDashPattern = @[@5, @5]; [target.layer addSublayer:outline];
+    [ppoController.view addSubview:target]; self.quickDropTarget = target;
+    UILabel *instruction = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMidX(bounds)-100, CGRectGetMaxY(target.frame)+8, 200, 48)];
+    instruction.userInteractionEnabled = NO; instruction.numberOfLines = 2; instruction.textAlignment = NSTextAlignmentCenter;
+    instruction.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold]; instruction.textColor = UIColor.labelColor;
+    instruction.text = @"Glisează în chenar\nDeschide pe tot ecranul";
+    instruction.hidden = [ppoPreferences[@"hideLabels"] boolValue];
+    [ppoController.view addSubview:instruction]; self.quickDropInstruction = instruction;
+    UILabel *badge = [[UILabel alloc] initWithFrame:CGRectMake(0,0,56,56)];
+    badge.userInteractionEnabled = NO; badge.textAlignment = NSTextAlignmentCenter;
+    badge.font = [UIFont systemFontOfSize:26 weight:UIFontWeightSemibold]; badge.textColor = UIColor.labelColor;
+    badge.backgroundColor = UIColor.secondarySystemBackgroundColor; badge.layer.cornerRadius = 14; badge.clipsToBounds = YES;
+    NSString *name = row[@"name"];
+    badge.text = [name isKindOfClass:NSString.class] && name.length
+        ? [name substringWithRange:[name rangeOfComposedCharacterSequenceAtIndex:0]] : @"◉";
+    [ppoController.view addSubview:badge]; self.quickDragBadge = badge;
+    [self.feedback selectionChanged]; [self updateQuickDragAtPoint:point];
+}
+- (void)updateQuickDragAtPoint:(CGPoint)point {
+    if (!self.quickDragging || !self.quickDragBadge || !self.quickDropTarget) return;
+    CGRect bounds = ppoController.view.bounds;
+    self.quickDragBadge.center = CGPointMake(MAX(28,MIN(CGRectGetMaxX(bounds)-28,point.x)),
+        MAX(28,MIN(CGRectGetMaxY(bounds)-28,point.y)));
+    self.quickDropTarget.alpha = CGRectContainsPoint(self.quickDropTarget.frame,point) ? 1 : 0.65;
+}
 - (void)quickFavorites:(UILongPressGestureRecognizer *)recognizer {
     if (recognizer.state == UIGestureRecognizerStateBegan) {
-        self.quickChoosing = YES;
+        [self cancelQuickChoosing];
         [self showChooser:[ppoPreferences[@"quickSwitchMode"] isEqual:@"favorites"] ? 2 : 1];
+        if (!ppoExpanded || !PPOOverlayAllowed() || ppoWindow.hidden) return;
+        self.quickChoosing = YES;
         if ([ppoPreferences[@"hapticFeedback"] boolValue]) {
             self.feedback = [UISelectionFeedbackGenerator new]; [self.feedback prepare];
         }
     }
     if (!self.quickChoosing) return;
-    CGPoint location = [recognizer locationInView:self.listScroll];
-    PPOPickerRowButton *found = nil;
-    for (UIView *view in self.listScroll.subviews) {
-        if (![view isKindOfClass:PPOPickerRowButton.class] || view.bounds.size.width <= 44) continue;
-        PPOPickerRowButton *row = (PPOPickerRowButton *)view;
-        if (CGRectContainsPoint(row.restingFrame, location) && row.enabled) { found = row; break; }
+    if (!PPOOverlayAllowed() || ppoWindow.hidden || !UIApplication.sharedApplication.protectedDataAvailable) {
+        [self cancelQuickChoosing]; return;
     }
-    if (found != self.hoveredButton) {
-        self.hoveredButton.transform = CGAffineTransformIdentity;
-        self.hoveredButton = found;
-        if (found) {
-            CGFloat scale = MIN([ppoPreferences[@"quickSwitchScale"] doubleValue], 3);
-            found.transform = CGAffineTransformMakeScale(1, scale);
-            [self.listScroll bringSubviewToFront:found];
-            [self.feedback selectionChanged];
+    ppoLastInteraction = NSProcessInfo.processInfo.systemUptime;
+    CGPoint location = [recognizer locationInView:self.listScroll];
+    CGPoint rootPoint = [recognizer locationInView:ppoController.view];
+    if (!std::isfinite(rootPoint.x) || !std::isfinite(rootPoint.y)) { [self cancelQuickChoosing]; return; }
+    BOOL insideList = self.listScroll && CGRectContainsPoint(self.listScroll.bounds,location);
+    NSDictionary *source = [self rowForButton:self.quickDragSource];
+    // Latch once the chosen row leaves the visible list or is pulled sideways.
+    // The wide accessible chooser can overlap the central target, so reentry
+    // must not silently switch the source application after dragging begins.
+    if (!self.quickDragging && source && (!insideList || fabs(rootPoint.x-self.quickSourcePoint.x) >= 44))
+        [self beginQuickDragAtPoint:rootPoint];
+    if (self.quickDragging) {
+        if (![self rowForButton:self.quickDragSource]) { [self cancelQuickChoosing]; return; }
+        [self updateQuickDragAtPoint:rootPoint];
+    } else {
+        PPOPickerRowButton *found = nil;
+        if (insideList) for (UIView *view in self.listScroll.subviews) {
+            if (![view isKindOfClass:PPOPickerRowButton.class] || view.bounds.size.width <= 44) continue;
+            PPOPickerRowButton *row = (PPOPickerRowButton *)view;
+            if (CGRectContainsPoint(row.restingFrame,location) && row.enabled) { found = row; break; }
+        }
+        if (found != self.hoveredButton) {
+            self.hoveredButton.transform = CGAffineTransformIdentity; self.hoveredButton = found;
+            if (found) {
+                self.quickDragSource = found; self.quickSourcePoint = rootPoint;
+                CGFloat scale = MIN([ppoPreferences[@"quickSwitchScale"] doubleValue],3);
+                found.transform = CGAffineTransformMakeScale(1,scale);
+                [self.listScroll bringSubviewToFront:found]; [self.feedback selectionChanged];
+            }
         }
     }
     if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled ||
         recognizer.state == UIGestureRecognizerStateFailed) {
-        PPOPickerRowButton *chosen = self.hoveredButton;
-        chosen.transform = CGAffineTransformIdentity; self.hoveredButton = nil; self.feedback = nil;
-        self.quickChoosing = NO;
-        if (recognizer.state == UIGestureRecognizerStateEnded && chosen) [self selectApp:chosen];
+        PPOPickerRowButton *chosen = self.hoveredButton, *dragged = self.quickDragSource;
+        BOOL launch = recognizer.state == UIGestureRecognizerStateEnded && self.quickDragging &&
+            self.quickDropTarget && CGRectContainsPoint(self.quickDropTarget.frame,rootPoint) &&
+            [self rowForButton:dragged] != nil;
+        [self cancelQuickChoosing];
+        // Validate before hiding the chooser: its generation and visible list
+        // bind the user's committed row to the existing isolated launch bridge.
+        if (launch) [self launchNormalFromRow:dragged];
+        else if (recognizer.state == UIGestureRecognizerStateEnded && chosen) [self selectApp:chosen];
     }
 }
 - (void)loadPicker {
@@ -610,6 +699,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     });
 }
 - (void)renderApps {
+    if (self.quickChoosing && (self.hoveredButton || self.quickDragSource)) [self cancelQuickChoosing];
     @try {
     if (!self.listView) {
         UIView *panel = [[UIView alloc] initWithFrame:ppoPanel.bounds];
@@ -685,8 +775,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
         button.titleLabel.numberOfLines = 2; button.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
         button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         NSString *mark = [identifier isEqual:self.selectedIdentifier] ? @"✓ " : @"";
-        NSString *label = self.quickChoosing && [ppoPreferences[@"hideLabels"] boolValue]
-            ? @"◉" : app[@"name"];
+        NSString *label = app[@"name"];
         [button setTitle:[NSString stringWithFormat:@"%@%@%@", mark, label,
             [app[@"available"] boolValue] ? @"" : @" · indisponibilă"] forState:UIControlStateNormal];
         button.accessibilityLabel = app[@"name"];
@@ -824,7 +913,9 @@ static void PPOApplyOverlayLayout(void) {
         {insets.top,insets.left,insets.bottom,insets.right}, PPOChosenEdge(),
         [ppoPreferences[@"handleYRatio"] doubleValue], [ppoPreferences[@"handleSize"] doubleValue],
         ppoChooserProgress, &ppoEdgeLayout)) { ppoWindow.hidden = YES; return; }
-    ppoWindow.frame = screen; ppoController.view.frame = CGRectMake(0,0,screen.size.width,screen.size.height);
+    if (!CGRectEqualToRect(ppoWindow.frame,screen)) ppoWindow.frame = screen;
+    CGRect rootFrame = CGRectMake(0,0,screen.size.width,screen.size.height);
+    if (!CGRectEqualToRect(ppoController.view.frame,rootFrame)) ppoController.view.frame = rootFrame;
     PPOOpenWidth = ppoEdgeLayout.openDrawer.width;
     CGRect drawer = PPOCGRect(ppoEdgeLayout.drawer); drawer.origin.x -= screen.origin.x; drawer.origin.y -= screen.origin.y;
     ppoPanel.frame = drawer; ppoPanel.hidden = !ppoExpanded;
@@ -879,9 +970,13 @@ static void PPORefreshOverlayVisibility(void) {
         if ([ppoPreferences[@"hideInLandscape"] boolValue] && screen.size.width > screen.size.height) allowed = NO;
         ppoWindow.hidden = !allowed;
         if (!allowed) [ppoTarget closeChooser];
-        if (allowed && [ppoPreferences[@"autoHideHandle"] boolValue] && !ppoExpanded &&
-            NSProcessInfo.processInfo.systemUptime - ppoLastInteraction >= [ppoPreferences[@"autoHideDelay"] doubleValue])
-            ppoHandleNubbed = YES;
+        NSTimeInterval now = NSProcessInfo.processInfo.systemUptime;
+        BOOL drawerOpen = ppoExpanded || [ppoTarget activeDrawer].drawerProgress > 0;
+        if (ppoWasDrawerOpen && !drawerOpen) ppoLastInteraction = now;
+        ppoWasDrawerOpen = drawerOpen;
+        ppoHandleNubbed = allowed && [ppoPreferences[@"autoHideHandle"] boolValue] &&
+            !drawerOpen && !ppoTarget.handlingPan && !ppoTarget.quickChoosing &&
+            now >= ppoLastInteraction && now-ppoLastInteraction >= [ppoPreferences[@"autoHideDelay"] doubleValue];
         PPOApplyOverlayLayout();
     } @catch (NSException *exception) { (void)exception; ppoWindow.hidden = YES; }
 }
@@ -925,7 +1020,7 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoStatus = status; ppoHandle = handle; ppoHandlePill = pill; ppoHandleBlur = blur; ppoHandleIcon = icon;
     ppoRenderedTheme = -1; ppoRenderedSymbol = nil;
     ppoFirmwareMatches = [PPOSceneFrameworkIdentity()[@"matches"] boolValue];
-    ppoLastInteraction = NSProcessInfo.processInfo.systemUptime;
+    ppoLastInteraction = NSProcessInfo.processInfo.systemUptime; ppoWasDrawerOpen = NO;
     PPOApplyOverlayLayout(); PPORefreshOverlayVisibility();
     dispatch_source_set_timer(ppoVisibilityTimer, dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC), NSEC_PER_SEC,NSEC_PER_MSEC*100);
     dispatch_source_set_event_handler(ppoVisibilityTimer, ^{ PPORefreshOverlayVisibility(); });
@@ -959,8 +1054,14 @@ static void PPORequestPreferences(void) {
             ppoPreferencesLoading = NO;
             if (ppoPreferencesPending) { ppoPreferencesPending = NO; PPORequestPreferences(); return; }
             if (error) return; // Preserve a known disabled/cache state on a storage error.
-            BOOL edgeChanged = ppoPreferences && ![snapshot[@"edge"] isEqual:ppoPreferences[@"edge"]];
-            ppoPreferences = snapshot;
+            NSDictionary *applied = snapshot;
+            if (![snapshot[@"rememberPosition"] boolValue]) {
+                NSMutableDictionary *runtime = [snapshot mutableCopy];
+                runtime[@"handleYRatio"] = ppoPreferences[@"handleYRatio"] ?: @0.5;
+                applied = [runtime copy]; // Ignore old persisted position without deleting it.
+            }
+            BOOL edgeChanged = ppoPreferences && ![applied[@"edge"] isEqual:ppoPreferences[@"edge"]];
+            ppoPreferences = applied;
             if (!PPOOverlayAllowed() || edgeChanged) {
                 [[ppoTarget activeDrawer] close]; [ppoTarget closeChooser];
             }
@@ -972,7 +1073,7 @@ static void PPORequestPreferences(void) {
 static void PPOPreferencesChanged(CFNotificationCenterRef center, void *observer, CFStringRef name,
     const void *object, CFDictionaryRef userInfo) {
     (void)center; (void)observer; (void)name; (void)object; (void)userInfo;
-    dispatch_async(dispatch_get_main_queue(), ^{ PPORequestPreferences(); });
+    dispatch_async(dispatch_get_main_queue(), ^{ [ppoTarget cancelQuickChoosing]; PPORequestPreferences(); });
 }
 
 // Main queue only, at most three attempts per process; never wait for a scene.
