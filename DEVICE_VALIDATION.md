@@ -1,5 +1,13 @@
 # Device validation
 
+## User-confirmed 0.15.0 — favorite read and long-press quick access
+
+The supplied picker-0.15.0.json reports schema1, version0.15.0~dev.favorites1, event=load, readable=true, favoriteCount=1, errorDomain=none and errorCode=0. The user explicitly confirms that the favorite appears when holding the PPO handle. This establishes a successful current favorite-store read and visible long-press quick access. The report intentionally contains no favorite identifier or name, so the app must not be inferred as Safari or another specific client.
+
+Sourcec23360fc032479ff1052d50a216eca79d50eda35 is preserved as stable/verified-favorites-read-quick-access. Prior Actions41256552751/artifact13063642671 passed25 suites, rootless build and downloaded package/hash checks. No new executable is implied by recording this phone evidence.
+
+This supplied observation does not separately confirm favorite-row selection/window opening, star removal, maximum capacity, respring persistence, every error state, or full platform compatibility. Those unconfirmed operations need not be retested merely to acknowledge the successful read/access. Raw preferences and app names are not requested or published. The next stage concerns bounded programmatic-multiscene client eligibility rather than another change to the favorite UI.
+
 ## User-confirmed 0.14.0 — minimized Safari, restore, underlying input and expiry
 
 The actual schema10 report contains three attempts. The first safely refuses selection:not-found with0 matches among3 inspected scenes, creates no owner/window and allows replacement; opening-failed is a generic terminal label for that refusal, not evidence of a crash. The subsequent two Safari sessions both use fresh installed-info admission, matching framework UUIDs, verified own-child proxy binding and clean controller/workspace invalidation. Executable020017780f099a4b1a6335797a0d54ded91449c0 is preserved as stable/verified-safari-minimize-restore.

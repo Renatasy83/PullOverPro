@@ -1,0 +1,34 @@
+# Programmatic application scenes — 0.16.0
+
+Isolated branch:debug/app-client-configuration. This extends the existing metadata policy to a second bounded multiscene shape. It does not call another private method, select a guessed app configuration, transfer an existing scene or add a firmware-baseline bypass. Current client admission remains a real-device result.
+
+## Exact-firmware UIKit evidence
+
+The existing local iPhone12,5 iOS26.0.1 build23A355 dyld cache was read with bounded quiet disassembly. UIKitCore UUID remains C98EAB32-B273-3430-B0C5-46522C904CBB. No Apple binary/raw plist is included in the repository.
+
+- UISceneSession initializer0x189246994 calls UISceneConfiguration.configurationWithName:sessionRole: at0x189246a44. The ordinary new-session connection path at0x189cf408c supplies name=nil.
+- UISceneConfiguration.initWithName:sessionRole:0x18a0f42e8 enables plist lookup. _initWithName:sessionRole:includingPlist:0x18a0f42f0 follows0x18a0f4398→439c→0x18a0f49a4 when the configuration dictionary and name are nil, returning without resolution errors or class/delegate/storyboard overrides. A nonnil requested name without declarations instead reaches an error flag at0x18a0f43a4. No requested name is forced by PPO.
+- Missing UISceneConfigurations remains nil in the parser:bs_safeDictionaryForKey assignment0x189796020–602c and getter0x188a1d988. This is distinct from fabricating a configuration from the first list entry.
+- UIApplication connection first considers matching requested configurations0x189cf4180–41fc; when implemented and allowed, app delegate application:configurationForConnectingSceneSession:options: at0x189cf4254 can override the configuration. Optional SwiftUI effective configuration follows at0x189cf4314. Nil overrides preserve the preceding configuration. The final construction is0x189cf4384.
+- UIScene _sceneForFBSScene:create:withSession:connectionOptions:0x18916cef8 reads config.sceneClass at0x18916d008. Nil falls back to source specification.uiSceneMinimumClass at0x18916d014–01c. UIKit verifies subclasses of both the minimum and UIScene at0x18916d024–48 and nonnil options at0x18916d04c before allocation/init.
+- Exact UIApplicationSceneSpecification minimum0x188a316f4 resolves UIWindowScene, role0x1889f4e90 resolves UIWindowSceneSessionRoleApplication, isUIKitManaged0x188a31648 is YES and isInternal0x188a31650 is NO. Its inherited allowsConfigurationByAppDelegate0x188a30db0 is YES.
+
+These prove a viable ordinary unnamed/no-static-config shape. They do not prove that a particular owned-host request reaches that branch, that an app delegate returns a suitable class, FrontBoard admission, actual pixels/input or long-term cleanup. Runtime selection remains UIKit/app code; PPO does not instantiate a plist class or invoke those configuration/private getters itself.
+
+## Policy v2 boundary
+
+All prior hard negatives, APPL/nonextension/iPhone requirements, critical-ID exclusions, genuine Boolean validation and extra top-level scene/window policy checks remain. Existing simple one-static-application-configuration positives retain their reason. The additional positive requires the manifest to have exactly one key, UIApplicationSupportsMultipleScenes=true, with UISceneConfigurations absent. Explicit empty/null/wrong-type configurations, extra manifest keys, other roles, multiple static configurations and unknown security/window fields remain unknown. Explicit support=false remains negative.
+
+The seven-field descriptor uses installed-basic-multiscene-v2 and canonical new eligible reason declared-programmatic-application-scenes. Prior v1 descriptors are rejected rather than translated. Schema1 envelope, nonce/selected-ID/five-second checks and fail-closed missing response behavior remain. Package configuration restarts only PPO's own service as before; stale/old helper data cannot grant v2 permission.
+
+The existing host still requires the exact UIApplicationSceneSpecification runtime class for nonbaseline source AND child before specification getters, normal application role, independent same-app identities, source/child inequality, fresh owned namespace, verified proxy target, inactive-before-UI, exact framework/ABI gates, explicit own invalidation and quarantine. The three-item Safari/Reminders/Contacts firmware-baseline policy is unchanged; Calendar/Preview never gain fallback from static facts. No metadata is an entitlement or authenticated provenance.
+
+PROGRAMMATIC_SCENE_TARGETS_23A355.json records only selected exact-firmware Calendar/Preview declarations/hashes:APPL, iPhone families, the one true manifest key, no static configurations or other scene/window fields. It is separate from the three-app baseline JSON. Installed bundle updates can differ and must pass the actual helper inspection. An ordinary successful Calendar window alone would not prove the new path unless its host admission records the new reason.
+
+## Automation and live boundary
+
+Native tests cover both canonical reasons, v1 rejection, strict reason/status/Boolean combinations, only-absent-key positives, empty/null/complex exclusions, hard-negative precedence, identifier/freshness bounds, protocol round trips and the same owned cleanup path. Executableac825acfe64f4d740a9158417d9b7b6fb4817006 passed25 suites, including metadata924/admission83/owner829 checks, iOS analysis, Theos rootless arm64/arm64e build and downloaded package/hash inspection. Actions41284629913/artifact13075350024 contains the candidate/evidence; see VALIDATION_0.16.0.md for exact digests and actual-client limits. Host/picker code differs only in version/report strings; no input/lifetime/geometry behavior is changed.
+
+The indispensable new phone gate is one previously untested programmatic candidate:open Calendar normally once, return to NewTerm, select Calendar in PPO and request its window. Check visible content and scrolling/navigation without creating/editing events, X and reopen once. Leave Keep off. Provide host-0.16.0.json; if eligibility is refused before a host report, provide capability-0.16.0.json and the displayed message. Do not repeat ordinary Safari or favorite tests. Native fixtures/macOS Intel CI cannot execute this actual app callback/compositor path. No compatible physical Apple Silicon Mac is accessible for vphone-cli.
+
+Recovery:X/default15-second expiry, /var/mobile/.ppo_disable, manual respring for pinned uncertain resources. If injection prevents startup, start Dopamine without injection and remove only this package. The0.15.0 read/quick-access and0.14.0 hosted/minimized Safari baselines remain preserved. No automatic phone operation, personal-record edit/deletion or other-tweak modification is performed. Full original functionality and general Dopamine/ElleKit compatibility remain unconfirmed.

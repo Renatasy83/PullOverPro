@@ -55,3 +55,7 @@ Install the verified single DEB manually and respring. Star Safari or another al
 Provide the outcome and, if needed, /var/mobile/Library/Logs/PullOverPro/picker-0.15.0.json. It contains only operation/count/readability/error category/code, no favorite IDs/names; no raw favorites plist is requested. If the separate window-opening path fails, host-0.15.0.json remains the lifecycle report.
 
 Recovery:X/default15-second expiry; /var/mobile/.ppo_disable; manual respring for uncertain pinned cleanup. Keep intentionally has no timer expiry. If injection prevents startup, start Dopamine without injection and remove only this package. The tested0.14.0 fallback remains available. No automatic installation/respring, personal-record deletion or other-tweak change is performed. Raw phone reports/app contents are not published.
+
+## Subsequent actual device evidence — 2026-11-01
+
+The supplied picker report records load/readable=true/count1/error0 and the user confirms the favorite appears on long-press. Preserved source:stable/verified-favorites-read-quick-access atc23360fc032479ff1052d50a216eca79d50eda35. This confirms own-store read and visible quick access, not a specific favorite identity, separate selection/open/removal or general compatibility. See DEVICE_VALIDATION.md. This addendum changes no executable and implies no new CI run.
