@@ -231,6 +231,25 @@ jobs:
             -framework Foundation -framework CoreFoundation tests/OwnedAdmissionTests.mm \
             PPOOwnedAdmission.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-owned-admission-tests"
           "$RUNNER_TEMP/ppo-owned-admission-tests" | tee diagnostics/owned-admission-tests.log
+      - name: Analyze and test edge UI and shared preferences
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/EdgeDrawerGeometryTests.cpp -o "$RUNNER_TEMP/ppo-edge-drawer-tests"
+          "$RUNNER_TEMP/ppo-edge-drawer-tests" | tee diagnostics/edge-drawer-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/InteractionIntentTests.cpp -o "$RUNNER_TEMP/ppo-interaction-intent-tests"
+          "$RUNNER_TEMP/ppo-interaction-intent-tests" | tee diagnostics/interaction-intent-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            PPOUserPreferences.mm tests/UserPreferencesTests.mm -framework Foundation -framework CoreFoundation \
+            -o "$RUNNER_TEMP/ppo-user-preferences-tests"
+          "$RUNNER_TEMP/ppo-user-preferences-tests" | tee diagnostics/user-preferences-tests.log
+          for source in PPOUserPreferences.mm preferences/PPOSettingsController.mm; do
+            xcrun clang++ --analyze -std=c++17 -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+              -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -I . \
+              -Xanalyzer -analyzer-output=text "$source"
+          done
       - name: Compile and package
         shell: bash
         run: |
@@ -270,13 +289,17 @@ jobs:
           xcrun lipo "$bridge" -verify_arch arm64 arm64e
           xcrun otool -L "$bridge" | tee diagnostics/bridge-dependencies.txt
           xcrun dwarfdump --uuid "$bridge" | tee diagnostics/bridge-uuids.txt
+          settings="$RUNNER_TEMP/ppo-package/var/jb/Library/PreferenceBundles/PullOverProPortPreferences.bundle/PullOverProPortPreferences"
+          xcrun lipo "$settings" -verify_arch arm64 arm64e
+          xcrun otool -L "$settings" | tee diagnostics/settings-dependencies.txt
+          xcrun dwarfdump --uuid "$settings" | tee diagnostics/settings-uuids.txt
           shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
       - name: Write validation report
         run: python3 scripts/write-validation-report.py diagnostics "${{ github.sha }}"
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-0.17.0-namedconfigs-${{ github.sha }}
+          name: PullOverPro-1.0.0-rc1-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

@@ -13,22 +13,73 @@
 #import "PPOOwnedApplicationPolicy.h"
 #import "PPOOwnedAdmission.h"
 #import "PPOSceneCapability.h"
+#import "PPOUserPreferences.h"
+#import "PPOScreenLockState.h"
+#include "PPOEdgeDrawerGeometry.h"
+#include "PPOInteractionIntent.h"
+#include <sys/stat.h>
 #include <errno.h>
 
-// Public UIKit overlay. Read-only scene inspection requires an explicit diagnostic tap.
-// Overlay requires .ppo_enable_overlay; .ppo_disable takes precedence.
+// Public edge UI. Scene creation stays in the existing guarded owner adapter.
 static UIWindow *ppoWindow;
 static UIViewController *ppoController;
 static UIButton *ppoHandle;
+static UIView *ppoHandlePill;
+static UIVisualEffectView *ppoHandleBlur;
+static UIImageView *ppoHandleIcon;
+static NSInteger ppoRenderedTheme = -1;
+static NSString *ppoRenderedSymbol;
 static UIView *ppoPanel;
 static BOOL ppoExpanded = NO;
 static BOOL ppoLightTheme = NO;
 static UILabel *ppoStatus;
-static const CGFloat PPOClosedWidth = 78;
-static const CGFloat PPOOpenWidth = 218;
-static const CGFloat PPOPanelHeight = 390;
+static CGFloat PPOOpenWidth = 320;
+static NSDictionary *ppoPreferences;
+static PPOEdgeDrawerLayout ppoEdgeLayout;
+static double ppoChooserProgress;
+static BOOL ppoHandleNubbed;
+static NSTimeInterval ppoLastInteraction;
+static BOOL ppoFirmwareMatches;
+static dispatch_source_t ppoVisibilityTimer;
 static BOOL PPOOverlayAllowed(void);
+static void PPOScheduleOverlay(void);
+static void PPOApplyOverlayLayout(void);
+static void PPORefreshOverlayVisibility(void);
+static void PPORequestPreferences(void);
+static CGRect PPOCGRect(PPOHostRect r) { return CGRectMake(r.x, r.y, r.width, r.height); }
+static PPOEdgeDrawerSide PPOChosenEdge(void) {
+    return [ppoPreferences[@"edge"] isEqual:@"left"] ? PPOEdgeDrawerSide::Left : PPOEdgeDrawerSide::Right;
+}
 
+@interface PPOEdgeStatusLabel : UILabel
+@property(nonatomic) NSUInteger messageGeneration;
+@end
+@implementation PPOEdgeStatusLabel
+- (void)setText:(NSString *)text {
+    [super setText:text];
+    if (!NSThread.isMainThread || !ppoWindow || !text.length) return;
+    NSUInteger generation = ++self.messageGeneration;
+    CGRect screen = ppoWindow.bounds;
+    self.frame = CGRectMake(MAX(8,(screen.size.width-300)/2), MAX(48,MIN(screen.size.height-110,CGRectGetMidY(ppoHandle.frame)-70)), MIN(300,screen.size.width-16),60);
+    self.hidden = NO;
+    __weak PPOEdgeStatusLabel *weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,4*NSEC_PER_SEC),dispatch_get_main_queue(), ^{
+        if (weakSelf.messageGeneration == generation) weakSelf.hidden = YES;
+    });
+}
+@end
+
+@interface PPOEdgeOverlayWindow : UIWindow
+@end
+@implementation PPOEdgeOverlayWindow
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    // A transparent full-scene window must never consume the surrounding app.
+    if (hit && ((ppoHandle && [hit isDescendantOfView:ppoHandle]) ||
+        (ppoPanel && !ppoPanel.hidden && [hit isDescendantOfView:ppoPanel]))) return hit;
+    return nil;
+}
+@end
 
 // Metadata only: never send messages to these private classes or instantiate them.
 static NSString *PPOAPIMetadata(void) {
@@ -77,6 +128,13 @@ static dispatch_queue_t PPOFileQueue(void) {
 }
 
 
+static dispatch_queue_t PPOPreferenceQueue(void) {
+    static dispatch_queue_t queue;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ queue = dispatch_queue_create("com.renatasy83.ppo.presentation-preferences", DISPATCH_QUEUE_SERIAL); });
+    return queue;
+}
+
 static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
     NSString *detail = response[@"detail"];
     if ([detail isEqual:@"feature-disabled"]) return @"PPO este dezactivat";
@@ -91,7 +149,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 // plist/user contents. The bridge response has already passed nonce validation.
 static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *response, NSError *error) {
     NSDictionary *capability = PPOSceneCapabilityNormalize(response[@"sceneCapability"]);
-    NSDictionary *report = @{@"schema": @1, @"version": @"0.17.0~dev.namedconfigs1",
+    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.0~rc1",
         @"bundleIdentifier": identifier, @"responseStatus": response[@"status"] ?: @"unavailable",
         @"sceneCapability": capability ?: (id)NSNull.null, @"errorCode": @(error.code),
         @"observedUptime": @(NSProcessInfo.processInfo.systemUptime), @"runtimeCompatibilityConfirmed": @NO};
@@ -99,20 +157,20 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
         withIntermediateDirectories:YES attributes:nil error:NULL])
-        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-0.17.0.json"]
+        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-1.0.0.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
 // Worker-only bounded diagnostics: counts/outcome, never the favorite IDs or names.
 static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL readable, NSError *error) {
-    NSDictionary *report = @{@"schema": @1, @"version": @"0.17.0~dev.namedconfigs1", @"event": event,
+    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.0~rc1", @"event": event,
         @"favoriteCount": @(MIN(count, PPOFavoriteIdentifiersLimit)), @"readable": @(readable),
         @"errorCode": @(error.code), @"errorDomain": error ? ([error.domain isEqual:NSPOSIXErrorDomain] ? @"posix" : @"data") : @"none",
         @"runtimeCompatibilityConfirmed": @NO};
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES
-        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-0.17.0.json"]
+        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-1.0.0.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
@@ -121,6 +179,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 @interface PPOPickerRowButton : UIButton
 @property(nonatomic,copy) NSString *boundIdentifier;
 @property(nonatomic) NSUInteger boundGeneration;
+@property(nonatomic) CGRect restingFrame;
 @end
 @implementation PPOPickerRowButton
 @end
@@ -128,11 +187,27 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 @interface PPOHandleTarget : NSObject
 - (void)tapped:(id)sender;
 - (void)panned:(UIPanGestureRecognizer *)recognizer;
-- (void)toggleTheme:(id)sender;
-- (void)resetPosition:(id)sender;
 @property(nonatomic,strong) PPOHostSessionSlot *hostSessions;
+@property(nonatomic) double panStartProgress;
+@property(nonatomic) BOOL verticalPan;
+@property(nonatomic) BOOL panTargetsHost;
+@property(nonatomic) BOOL quickChoosing;
+@property(nonatomic) NSInteger pickerMode;
+@property(nonatomic,strong) PPOPickerRowButton *hoveredButton;
+@property(nonatomic,strong) UISelectionFeedbackGenerator *feedback;
+- (PPOOwnedSafariTrial *)activeDrawer;
+- (void)showChooser:(NSInteger)mode;
+- (void)layoutPicker;
+- (void)closeChooser;
+- (void)touchHandle;
+- (void)inspectSelectedForIntent:(uint64_t)intent;
+- (void)cancelOpening;
+- (void)hideChooser;
+@property(nonatomic,copy) NSDictionary *pendingApplication;
+@property(nonatomic,copy) NSDictionary *pendingCapability;
+
 - (void)openFloatingApp:(UIButton *)sender;
-- (void)openPreparedApplication:(NSDictionary *)selected capability:(NSDictionary *)capability;
+- (void)openPreparedApplication:(NSDictionary *)selected capability:(NSDictionary *)capability intent:(uint64_t)intent;
 @property(nonatomic,strong) PPOPickerState *picker;
 @property(nonatomic,copy,readonly) NSArray<NSDictionary *> *apps;
 @property(nonatomic,copy,readonly) NSString *selectedIdentifier;
@@ -147,6 +222,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 @property(nonatomic) BOOL launchInProgress;
 @property(nonatomic) BOOL launchStopped;
 @property(nonatomic) BOOL hostInspectionPending;
+@property(nonatomic) BOOL hostInspectionInFlight;
 @property(nonatomic,strong) UIButton *launchButton;
 @property(nonatomic,strong) UIView *listView;
 @property(nonatomic,strong) UIScrollView *listScroll;
@@ -160,6 +236,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 - (void)toggleFavorite:(PPOPickerRowButton *)sender;
 - (NSDictionary *)rowForButton:(PPOPickerRowButton *)sender;
 - (void)launchSelected:(UIButton *)sender;
+- (void)launchNormalFromRow:(PPOPickerRowButton *)sender;
 - (void)updateLaunchButton;
 - (void)renderApps;
 - (void)closeApps:(id)sender;
@@ -168,13 +245,28 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 - (void)inspectAPI:(UIButton *)sender;
 @end
 
-@implementation PPOHandleTarget
+@implementation PPOHandleTarget {
+    PPOInteractionIntent _intent;
+    uint64_t _panIntent;
+}
 - (NSArray<NSDictionary *> *)apps { return self.picker.apps; }
 - (NSString *)selectedIdentifier { return self.picker.selectedIdentifier; }
 - (NSUInteger)saveEpoch { return self.picker.selectionGeneration; }
 - (BOOL)selectionSaving { return self.picker.selectionSaving; }
+- (void)cancelOpening {
+    _intent.cancel(); self.pendingApplication = nil; self.pendingCapability = nil;
+    self.hostInspectionPending = NO;
+}
 - (void)openFloatingApp:(UIButton *)sender {
     (void)sender;
+    if (self.hostInspectionInFlight) { ppoStatus.text = @"Se finalizează cererea anterioară…"; return; }
+    [self cancelOpening];
+    uint64_t intent = _intent.begin(false);
+    [self inspectSelectedForIntent:intent];
+}
+- (void)inspectSelectedForIntent:(uint64_t)intent {
+    if (!_intent.current(intent)) return;
+    if (self.hostInspectionInFlight) { _intent.cancel(); ppoStatus.text = @"Se finalizează cererea anterioară…"; return; }
     if (self.launchInProgress || self.selectionSaving || self.hostInspectionPending) return;
     NSDictionary *selected = nil;
     for (NSDictionary *app in self.apps) {
@@ -190,8 +282,8 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     NSString *identifier = [self.selectedIdentifier copy];
     NSUInteger epoch = self.saveEpoch;
     NSDictionary *chosen = [selected copy];
-    self.hostInspectionPending = YES; [self updateLaunchButton];
-    ppoStatus.text = @"Se verifică suportul pentru fereastră…";
+    self.hostInspectionPending = YES; self.hostInspectionInFlight = YES; [self updateLaunchButton];
+    ppoStatus.text = @"Se deschide aplicația…";
     dispatch_async(PPOFileQueue(), ^{
         @autoreleasepool {
             NSError *error = nil;
@@ -203,6 +295,8 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                 (void)exception; response = nil;
             }
             dispatch_async(dispatch_get_main_queue(), ^{
+                self.hostInspectionInFlight = NO;
+                if (!_intent.current(intent)) return;
                 self.hostInspectionPending = NO; [self updateLaunchButton];
                 if (epoch != self.saveEpoch || ![identifier isEqual:self.selectedIdentifier] || !PPOOverlayAllowed()) return;
                 if (![response[@"status"] isEqual:@"inspected"]) {
@@ -211,7 +305,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                     // unsupported response; never infer permission from timeout.
                     if (PPOOwnedApplicationAllowed(identifier) &&
                         [response[@"status"] isEqual:@"unsupported"]) {
-                        [self openPreparedApplication:chosen capability:nil]; return;
+                        [self openPreparedApplication:chosen capability:nil intent:intent]; return;
                     }
                     ppoStatus.text = response ? PPOBridgeFailureMessage(response) : @"Verificarea ferestrei nu este disponibilă";
                     return;
@@ -223,20 +317,27 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                         : @"Suportul pentru fereastră nu poate fi verificat";
                     return;
                 }
-                [self openPreparedApplication:chosen capability:capability];
+                [self openPreparedApplication:chosen capability:capability intent:intent];
             });
         }
     });
 }
-- (void)openPreparedApplication:(NSDictionary *)selected capability:(NSDictionary *)capability {
+- (void)openPreparedApplication:(NSDictionary *)selected capability:(NSDictionary *)capability intent:(uint64_t)intent {
+    if (!_intent.current(intent)) return;
     if (!PPOOverlayAllowed() || self.launchInProgress || self.selectionSaving) return;
     NSString *identifier = [selected[@"bundleIdentifier"] copy];
     if (![identifier isEqual:self.selectedIdentifier]) return;
     if (!PPOOwnedAdmissionSnapshot(identifier, capability, NSProcessInfo.processInfo.systemUptime)) {
         ppoStatus.text = @"Datele ferestrei nu pot fi validate"; return;
     }
+    if (_intent.held(intent)) {
+        self.pendingApplication = [selected copy]; self.pendingCapability = [capability copy];
+        return; // Gesture cancellation must discard this before any private scene creation.
+    }
+    if (!_intent.consume(intent)) return;
     if (!self.hostSessions) self.hostSessions = [PPOHostSessionSlot new];
     PPOOwnedSafariTrial *candidate = [PPOOwnedSafariTrial new];
+    [candidate configurePresentationWithPreferences:ppoPreferences];
     NSError *error = nil;
     if (![self.hostSessions adopt:candidate error:&error]) {
         ppoStatus.text = error.code == EBUSY ? @"Închide întâi fereastra activă"
@@ -245,6 +346,10 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     }
     ppoStatus.text = [candidate openInScene:ppoWindow.windowScene
         bundleIdentifier:identifier displayName:selected[@"name"] capability:capability];
+    if (!candidate.finished) {
+        [self hideChooser];
+    }
+    [self touchHandle];
 }
 
 - (void)updateLaunchButton {
@@ -280,6 +385,21 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
         }
     });
 }
+- (void)launchNormalFromRow:(PPOPickerRowButton *)sender {
+    NSDictionary *row = [self rowForButton:sender];
+    if (!row || ![row[@"available"] boolValue] || !PPOOverlayAllowed() || self.launchInProgress || self.launchStopped) return;
+    NSString *identifier = [row[@"bundleIdentifier"] copy];
+    if (!PPOSceneApplicationIdentifierAllowed(identifier)) return;
+    self.launchInProgress = YES; [self closeChooser]; ppoStatus.text = @"Se deschide pe tot ecranul…";
+    dispatch_async(PPOFileQueue(), ^{
+        NSDictionary *response = PPOBridgeSend(@"launch", identifier, NULL);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.launchInProgress = NO; self.launchStopped = !response;
+            ppoStatus.text = [response[@"status"] isEqual:@"accepted"] ? @"Aplicație deschisă"
+                : (response ? PPOBridgeFailureMessage(response) : @"Serviciu indisponibil; rezultat necunoscut");
+        });
+    });
+}
 - (void)inspectAPI:(UIButton *)sender {
     static BOOL requested = NO; // One bounded report per SpringBoard process.
     if (requested) { ppoStatus.text = @"Raport deja solicitat"; return; }
@@ -306,9 +426,9 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 0.17.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 1.0.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 0.17.0] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 1.0.0] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport scenă salvat (Filza)" : @"Raport API: eroare";
@@ -316,64 +436,146 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
         }
     });
 }
-- (void)tapped:(id)sender {
-    if (!ppoWindow || !ppoHandle || !ppoPanel) return;
-    ppoExpanded = !ppoExpanded;
-    [ppoHandle setTitle:(ppoExpanded ? @"PPO ✕" : @"PPO ▶") forState:UIControlStateNormal];
-    CGRect frame = ppoWindow.frame;
-    frame.size.width = ppoExpanded ? PPOOpenWidth : PPOClosedWidth;
-    frame.size.height = ppoExpanded ? PPOPanelHeight : 44;
-    CGFloat maxY = MAX(0, CGRectGetHeight(ppoWindow.windowScene.coordinateSpace.bounds) - CGRectGetHeight(frame));
-    frame.origin.y = MAX(0, MIN(maxY, frame.origin.y));
-    ppoWindow.frame = frame;
-    ppoController.view.frame = CGRectMake(0, 0, frame.size.width, frame.size.height);
-    [self.picker closeList];
+- (PPOOwnedSafariTrial *)activeDrawer {
+    id session = self.hostSessions.session;
+    if (![session isKindOfClass:PPOOwnedSafariTrial.class] || [session isFinished]) return nil;
+    return session;
+}
+- (void)touchHandle {
+    ppoLastInteraction = NSProcessInfo.processInfo.systemUptime;
+    ppoHandleNubbed = NO;
+    PPOApplyOverlayLayout();
+}
+- (void)closeChooser { [self cancelOpening]; [self hideChooser]; }
+- (void)hideChooser {
+    [self.picker closeList]; self.renderGeneration++;
     self.listView.hidden = YES;
-    ppoPanel.hidden = !ppoExpanded;
-    ppoStatus.text = @"Selectează o aplicație";
-    NSLog(@"[PPO 0.17.0] panel %@", ppoExpanded ? @"open" : @"closed");
+    ppoExpanded = NO; ppoChooserProgress = 0; ppoPanel.hidden = YES;
+    PPOApplyOverlayLayout();
+}
+- (void)showChooser:(NSInteger)mode {
+    if (!PPOOverlayAllowed()) return;
+    [self cancelOpening];
+    [self touchHandle];
+    self.pickerMode = MAX(0, MIN(2, mode));
+    ppoExpanded = YES; ppoChooserProgress = 1;
+    [self.picker requestListFavoritesOnly:self.pickerMode == 2]; self.page = 0;
+    PPOApplyOverlayLayout();
+    [self loadPicker];
+}
+- (void)tapped:(id)sender {
+    (void)sender;
+    if (!PPOOverlayAllowed()) return;
+    [self touchHandle];
+    if (ppoExpanded) { [self closeChooser]; return; }
+    PPOOwnedSafariTrial *active = [self activeDrawer];
+    if (active) { [active finishDrawerOpen:active.drawerProgress < 0.5]; return; }
+    if (self.selectedIdentifier && self.apps.count) { [self openFloatingApp:nil]; return; }
+    [self showChooser:0];
 }
 - (void)panned:(UIPanGestureRecognizer *)recognizer {
-    if (!ppoWindow) return;
+    if (!ppoWindow || !PPOOverlayAllowed()) return;
     CGPoint delta = [recognizer translationInView:ppoWindow];
-    CGRect frame = ppoWindow.frame;
-    frame.origin.y += delta.y;
-    CGFloat maxY = MAX(0, CGRectGetHeight(ppoWindow.windowScene.coordinateSpace.bounds) - CGRectGetHeight(frame));
-    frame.origin.y = MAX(0, MIN(maxY, frame.origin.y));
-    ppoWindow.frame = frame;
-    [recognizer setTranslation:CGPointZero inView:ppoWindow];
-}
-- (void)toggleTheme:(id)sender {
-    ppoLightTheme = !ppoLightTheme;
-    UIColor *background = ppoLightTheme ? [UIColor colorWithWhite:0.94 alpha:0.96] : [[UIColor blackColor] colorWithAlphaComponent:0.88];
-    UIColor *foreground = ppoLightTheme ? UIColor.blackColor : UIColor.whiteColor;
-    ppoPanel.backgroundColor = background;
-    ppoHandle.backgroundColor = background;
-    [ppoHandle setTitleColor:foreground forState:UIControlStateNormal];
-    for (UIView *v in ppoPanel.subviews) {
-        if ([v isKindOfClass:UILabel.class]) ((UILabel *)v).textColor = foreground;
-        if ([v isKindOfClass:UIButton.class]) [(UIButton *)v setTitleColor:foreground forState:UIControlStateNormal];
+    PPOOwnedSafariTrial *active = ppoExpanded ? nil : [self activeDrawer];
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        [self touchHandle];
+        CGPoint velocity = [recognizer velocityInView:ppoWindow];
+        self.verticalPan = fabs(velocity.y) > fabs(velocity.x);
+        self.panTargetsHost = active != nil;
+        self.panStartProgress = active ? active.drawerProgress : ppoChooserProgress;
+        [self cancelOpening]; _panIntent = 0;
+        if (!self.verticalPan && !active && !ppoExpanded) {
+            if (self.selectedIdentifier && self.apps.count) {
+                _panIntent = _intent.begin(true); [self inspectSelectedForIntent:_panIntent];
+                self.panTargetsHost = YES; self.panStartProgress = 0;
+            } else { [self showChooser:0]; ppoChooserProgress = 0; self.panStartProgress = 0; }
+        }
     }
-    ppoStatus.text = ppoLightTheme ? @"Temă: deschisă" : @"Temă: închisă";
+    if (self.verticalPan) {
+        if (recognizer.state == UIGestureRecognizerStateChanged || recognizer.state == UIGestureRecognizerStateEnded) {
+            double ratio = 0;
+            CGRect screen = ppoWindow.windowScene.coordinateSpace.bounds;
+            if (PPOEdgeDrawerYRatio({screen.origin.x,screen.origin.y,screen.size.width,screen.size.height},
+                {ppoEdgeLayout.usable.y-screen.origin.y,ppoEdgeLayout.usable.x-screen.origin.x,
+                CGRectGetMaxY(screen)-(ppoEdgeLayout.usable.y+ppoEdgeLayout.usable.height),
+                CGRectGetMaxX(screen)-(ppoEdgeLayout.usable.x+ppoEdgeLayout.usable.width)},
+                [ppoPreferences[@"handleSize"] doubleValue], screen.origin.y+CGRectGetMidY(ppoHandle.frame)+delta.y, &ratio)) {
+                NSMutableDictionary *updated = [ppoPreferences mutableCopy]; updated[@"handleYRatio"] = @(ratio);
+                ppoPreferences = [updated copy]; PPOApplyOverlayLayout();
+                [recognizer setTranslation:CGPointZero inView:ppoWindow];
+                if (recognizer.state == UIGestureRecognizerStateEnded && [ppoPreferences[@"rememberPosition"] boolValue])
+                    dispatch_async(PPOPreferenceQueue(), ^{ PPOUserPreferencesWriteChanges(@{@"handleYRatio": @(ratio)}, NULL); });
+            }
+        }
+        return;
+    }
+    active = [self activeDrawer];
+    double travel = self.panTargetsHost && active ? active.drawerTravel : ppoEdgeLayout.travel;
+    double progress = self.panStartProgress;
+    if (PPOEdgeDrawerProgress(PPOChosenEdge(), self.panStartProgress, delta.x, travel, &progress)) {
+        if (self.panTargetsHost) { if (active) [active setDrawerProgress:progress]; }
+        else { ppoChooserProgress = progress; PPOApplyOverlayLayout(); }
+    }
+    if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled ||
+        recognizer.state == UIGestureRecognizerStateFailed) {
+        bool open = false;
+        double velocity = [recognizer velocityInView:ppoWindow].x;
+        if (recognizer.state == UIGestureRecognizerStateEnded)
+            PPOEdgeDrawerFinish(PPOChosenEdge(), progress, velocity, &open);
+        if (self.panTargetsHost && active) [active finishDrawerOpen:open];
+        else if (self.panTargetsHost) {
+            if (open && _intent.commit(_panIntent)) {
+                NSDictionary *prepared = self.pendingApplication, *capability = self.pendingCapability;
+                self.pendingApplication = nil; self.pendingCapability = nil;
+                if (prepared) [self openPreparedApplication:prepared capability:capability intent:_panIntent];
+                // Otherwise the current metadata response may commit the one request later.
+            } else [self cancelOpening];
+        } else if (!open) [self closeChooser];
+        else { ppoChooserProgress = 1; PPOApplyOverlayLayout(); }
+        [self touchHandle];
+    }
 }
-- (void)showApps:(UIButton *)sender {
-    (void)sender;
-    if (!ppoExpanded) return;
-    [self.picker requestListFavoritesOnly:NO]; self.page = 0;
-    [self loadPicker];
-}
+- (void)showApps:(UIButton *)sender { (void)sender; [self showChooser:0]; }
 - (void)quickFavorites:(UILongPressGestureRecognizer *)recognizer {
-    if (recognizer.state != UIGestureRecognizerStateBegan) return;
-    if (!ppoExpanded) [self tapped:nil];
-    [self.picker requestListFavoritesOnly:YES]; self.page = 0;
-    [self loadPicker];
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        self.quickChoosing = YES;
+        [self showChooser:[ppoPreferences[@"quickSwitchMode"] isEqual:@"favorites"] ? 2 : 1];
+        if ([ppoPreferences[@"hapticFeedback"] boolValue]) {
+            self.feedback = [UISelectionFeedbackGenerator new]; [self.feedback prepare];
+        }
+    }
+    if (!self.quickChoosing) return;
+    CGPoint location = [recognizer locationInView:self.listScroll];
+    PPOPickerRowButton *found = nil;
+    for (UIView *view in self.listScroll.subviews) {
+        if (![view isKindOfClass:PPOPickerRowButton.class] || view.bounds.size.width <= 44) continue;
+        PPOPickerRowButton *row = (PPOPickerRowButton *)view;
+        if (CGRectContainsPoint(row.restingFrame, location) && row.enabled) { found = row; break; }
+    }
+    if (found != self.hoveredButton) {
+        self.hoveredButton.transform = CGAffineTransformIdentity;
+        self.hoveredButton = found;
+        if (found) {
+            CGFloat scale = MIN([ppoPreferences[@"quickSwitchScale"] doubleValue], 3);
+            found.transform = CGAffineTransformMakeScale(1, scale);
+            [self.listScroll bringSubviewToFront:found];
+            [self.feedback selectionChanged];
+        }
+    }
+    if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled ||
+        recognizer.state == UIGestureRecognizerStateFailed) {
+        PPOPickerRowButton *chosen = self.hoveredButton;
+        chosen.transform = CGAffineTransformIdentity; self.hoveredButton = nil; self.feedback = nil;
+        self.quickChoosing = NO;
+        if (recognizer.state == UIGestureRecognizerStateEnded && chosen) [self selectApp:chosen];
+    }
 }
 - (void)loadPicker {
     if (!ppoExpanded || !self.picker.listRequested) return;
     PPOPickerTicket *ticket = [self.picker beginLoad];
     self.pickerMessage = nil;
     [self renderApps];
-    if (self.picker.listRequested) { self.listView.hidden = NO; ppoPanel.hidden = YES; }
+    if (self.picker.listRequested) { self.listView.hidden = NO; ppoPanel.hidden = NO; }
     if (!ticket) return; // Coalesce an in-flight load; its result uses current mode/visibility.
     dispatch_async(PPOFileQueue(), ^{
         @autoreleasepool {
@@ -402,7 +604,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                 [self updateLaunchButton];
                 if (!ppoExpanded || !self.picker.listRequested) return;
                 [self renderApps];
-                if (self.picker.listRequested) { self.listView.hidden = NO; ppoPanel.hidden = YES; }
+                if (self.picker.listRequested) { self.listView.hidden = NO; ppoPanel.hidden = NO; }
             });
         }
     });
@@ -410,17 +612,17 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 - (void)renderApps {
     @try {
     if (!self.listView) {
-        UIView *panel = [[UIView alloc] initWithFrame:ppoPanel.frame];
+        UIView *panel = [[UIView alloc] initWithFrame:ppoPanel.bounds];
         panel.layer.cornerRadius = 12; panel.clipsToBounds = YES;
         UIButton *back = [UIButton buttonWithType:UIButtonTypeSystem];
-        back.frame = CGRectMake(8, 4, 94, 32);
-        [back setTitle:@"◀ Înapoi" forState:UIControlStateNormal];
+        back.frame = CGRectMake(8, 4, 104, 44);
+        [back setTitle:@"✕ Închide" forState:UIControlStateNormal];
         [back addTarget:self action:@selector(closeApps:) forControlEvents:UIControlEventTouchUpInside];
         [panel addSubview:back];
         UILabel *pageLabel = [[UILabel alloc] initWithFrame:CGRectMake(104, 4, 106, 32)];
         pageLabel.font = [UIFont systemFontOfSize:11]; pageLabel.textAlignment = NSTextAlignmentRight;
         [panel addSubview:pageLabel];
-        UISegmentedControl *modes = [[UISegmentedControl alloc] initWithItems:@[@"Toate", @"★ Preferate"]];
+        UISegmentedControl *modes = [[UISegmentedControl alloc] initWithItems:@[@"Toate", @"Recente", @"★"]];
         modes.frame = CGRectMake(8, 40, PPOOpenWidth - 16, 32);
         [modes addTarget:self action:@selector(pickerModeChanged:) forControlEvents:UIControlEventValueChanged];
         [panel addSubview:modes]; self.pickerModes = modes;
@@ -439,15 +641,27 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
         [next setTitle:@"Următor ▶" forState:UIControlStateNormal];
         [next addTarget:self action:@selector(changePage:) forControlEvents:UIControlEventTouchUpInside];
         [panel addSubview:next];
-        [ppoController.view addSubview:panel];
+        [ppoPanel addSubview:panel];
         self.listView = panel; self.listScroll = scroll; self.pageLabel = pageLabel;
         self.previousButton = previous; self.nextButton = next;
     }
-    self.listRows = self.picker.rows; self.renderGeneration++;
+    NSArray *rows = self.picker.rows;
+    if (self.pickerMode == 1) {
+        NSMutableArray *recent = [NSMutableArray array];
+        NSMutableArray *identifiers = [NSMutableArray arrayWithArray:ppoPreferences[@"recentIdentifiers"] ?: @[]];
+        if (self.selectedIdentifier && ![identifiers containsObject:self.selectedIdentifier]) [identifiers insertObject:self.selectedIdentifier atIndex:0];
+        for (NSString *identifier in identifiers) {
+            for (NSDictionary *row in rows) if ([row[@"bundleIdentifier"] isEqual:identifier]) { [recent addObject:row]; break; }
+            if (recent.count >= [ppoPreferences[@"recentAppsCount"] unsignedIntegerValue]) break;
+        }
+        rows = recent;
+    }
+    self.listRows = rows; self.renderGeneration++;
+    [self layoutPicker];
     UIColor *foreground = ppoLightTheme ? UIColor.blackColor : UIColor.whiteColor;
     self.listView.backgroundColor = ppoPanel.backgroundColor;
     self.pageLabel.textColor = foreground; self.pickerStatus.textColor = foreground;
-    self.pickerModes.selectedSegmentIndex = self.picker.favoritesOnly ? 1 : 0;
+    self.pickerModes.selectedSegmentIndex = self.pickerMode;
     self.pickerModes.overrideUserInterfaceStyle = ppoLightTheme ? UIUserInterfaceStyleLight : UIUserInterfaceStyleDark;
     self.pickerStatus.text = self.picker.loading ? @"Se încarcă aplicațiile…"
         : (self.picker.favoritesSaving ? @"Se salvează preferatele…"
@@ -465,20 +679,28 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     for (NSUInteger i = self.page * 25; i < MIN(self.page * 25 + 25, self.listRows.count); i++) {
         NSDictionary *app = self.listRows[i]; NSString *identifier = app[@"bundleIdentifier"];
         PPOPickerRowButton *button = [PPOPickerRowButton new];
-        button.frame = CGRectMake(2, y, PPOOpenWidth - 62, 46);
+        button.frame = CGRectMake(2, y, PPOOpenWidth - 70, 46); button.restingFrame = button.frame;
         button.boundIdentifier = identifier; button.boundGeneration = self.renderGeneration;
         button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-        button.titleLabel.numberOfLines = 2; button.titleLabel.font = [UIFont systemFontOfSize:11];
+        button.titleLabel.numberOfLines = 2; button.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
         button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         NSString *mark = [identifier isEqual:self.selectedIdentifier] ? @"✓ " : @"";
-        [button setTitle:[NSString stringWithFormat:@"%@%@\n%@", mark, app[@"name"],
-            [app[@"available"] boolValue] ? identifier : @"Indisponibilă"] forState:UIControlStateNormal];
+        NSString *label = self.quickChoosing && [ppoPreferences[@"hideLabels"] boolValue]
+            ? @"◉" : app[@"name"];
+        [button setTitle:[NSString stringWithFormat:@"%@%@%@", mark, label,
+            [app[@"available"] boolValue] ? @"" : @" · indisponibilă"] forState:UIControlStateNormal];
+        button.accessibilityLabel = app[@"name"];
         [button setTitleColor:foreground forState:UIControlStateNormal];
         button.enabled = [app[@"available"] boolValue] && PPOSceneApplicationIdentifierAllowed(identifier);
         [button addTarget:self action:@selector(selectApp:) forControlEvents:UIControlEventTouchUpInside];
+        __weak PPOHandleTarget *weakTarget = self;
+        __weak PPOPickerRowButton *weakButton = button;
+        UIAction *normal = [UIAction actionWithTitle:@"Deschide pe tot ecranul" image:nil identifier:nil
+            handler:^(__kindof UIAction *action) { (void)action; [weakTarget launchNormalFromRow:weakButton]; }];
+        button.menu = [UIMenu menuWithChildren:@[normal]];
         [self.listScroll addSubview:button];
         PPOPickerRowButton *star = [PPOPickerRowButton new];
-        star.frame = CGRectMake(PPOOpenWidth - 58, y, 44, 46);
+        star.frame = CGRectMake(PPOOpenWidth - 64, y, 44, 46);
         star.boundIdentifier = identifier; star.boundGeneration = self.renderGeneration;
         BOOL favorite = [app[@"favorite"] boolValue];
         [star setTitle:favorite ? @"★" : @"☆" forState:UIControlStateNormal];
@@ -489,7 +711,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
         [star addTarget:self action:@selector(toggleFavorite:) forControlEvents:UIControlEventTouchUpInside];
         [self.listScroll addSubview:star]; y += 48;
     }
-    self.listScroll.contentSize = CGSizeMake(PPOOpenWidth - 12, y); self.listScroll.contentOffset = CGPointZero;
+    self.listScroll.contentSize = CGSizeMake(PPOOpenWidth - 16, y); self.listScroll.contentOffset = CGPointZero;
     } @catch (NSException *exception) {
         (void)exception; [self.picker closeList]; self.renderGeneration++;
         self.listView.hidden = YES; ppoPanel.hidden = !ppoExpanded;
@@ -505,13 +727,11 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 }
 - (void)pickerModeChanged:(UISegmentedControl *)sender {
     if (!ppoExpanded || !self.picker.listRequested || self.listView.hidden) return;
-    [self.picker requestListFavoritesOnly:sender.selectedSegmentIndex == 1]; self.page = 0;
+    self.pickerMode = sender.selectedSegmentIndex;
+    [self.picker requestListFavoritesOnly:self.pickerMode == 2]; self.page = 0;
     [self renderApps];
 }
-- (void)closeApps:(id)sender {
-    (void)sender; [self.picker closeList]; self.renderGeneration++;
-    self.listView.hidden = YES; ppoPanel.hidden = !ppoExpanded;
-}
+- (void)closeApps:(id)sender { (void)sender; [self closeChooser]; }
 - (void)changePage:(UIButton *)sender {
     if (!self.picker.listRequested || self.listView.hidden) return;
     NSInteger next = (NSInteger)self.page + sender.tag;
@@ -544,7 +764,8 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 - (void)selectApp:(PPOPickerRowButton *)sender {
     NSDictionary *row = [self rowForButton:sender]; if (!row || ![row[@"available"] boolValue]) return;
     PPOPickerTicket *ticket = [self.picker beginSelection:row[@"bundleIdentifier"]]; if (!ticket) return;
-    [self updateLaunchButton]; [self closeApps:nil]; ppoStatus.text = @"Se salvează selecția…";
+    [self cancelOpening]; uint64_t intent = _intent.begin(false);
+    [self updateLaunchButton]; [self hideChooser]; ppoStatus.text = @"Se salvează selecția…";
     dispatch_async(PPOFileQueue(), ^{
         @autoreleasepool {
             BOOL saved = NO;
@@ -559,128 +780,161 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                 if (![self.picker finishSelection:ticket saved:saved]) return;
                 ppoStatus.text = saved ? [NSString stringWithFormat:@"Selectat: %@", ticket.selection[@"name"]] : @"Selecție nesalvată";
                 [self updateLaunchButton];
+                if (saved && _intent.ready(intent) && PPOOverlayAllowed()) {
+                    NSMutableArray *recent = [NSMutableArray arrayWithArray:ppoPreferences[@"recentIdentifiers"] ?: @[]];
+                    [recent removeObject:ticket.selection[@"bundleIdentifier"]];
+                    [recent insertObject:ticket.selection[@"bundleIdentifier"] atIndex:0];
+                    if (recent.count > 16) [recent removeObjectsInRange:NSMakeRange(16, recent.count - 16)];
+                    NSArray *snapshot = [recent copy];
+                    NSMutableDictionary *updated = [ppoPreferences mutableCopy]; updated[@"recentIdentifiers"] = snapshot;
+                    ppoPreferences = [updated copy];
+                    dispatch_async(PPOPreferenceQueue(), ^{ PPOUserPreferencesWriteChanges(@{@"recentIdentifiers":snapshot}, NULL); });
+                    PPOOwnedSafariTrial *active = [self activeDrawer];
+                    if (active) [active close];
+                    if (!self.hostSessions.session || self.hostSessions.session.replacementAllowed) [self inspectSelectedForIntent:intent];
+                    else { [self showChooser:self.pickerMode]; ppoStatus.text = @"Așteaptă închiderea ferestrei; apoi atinge aplicația"; }
+                }
             });
         }
     });
 }
-- (void)resetPosition:(id)sender {
-    if (!ppoWindow) return;
-    CGRect frame = ppoWindow.frame;
-    frame.origin.y = 170;
-    CGFloat maxY = MAX(0, CGRectGetHeight(ppoWindow.windowScene.coordinateSpace.bounds) - CGRectGetHeight(frame));
-    frame.origin.y = MIN(frame.origin.y, maxY);
-    ppoWindow.frame = frame;
-    ppoStatus.text = @"Poziție resetată";
+- (void)layoutPicker {
+    if (!self.listView) return;
+    CGFloat width = ppoPanel.bounds.size.width, height = ppoPanel.bounds.size.height;
+    self.listView.frame = ppoPanel.bounds;
+    self.pickerModes.frame = CGRectMake(8, 48, width - 16, 36);
+    self.pageLabel.frame = CGRectMake(width - 130, 4, 120, 40);
+    self.pickerStatus.frame = CGRectMake(10, 88, width - 20, 36);
+    self.listScroll.frame = CGRectMake(8, 128, width - 16, MAX(44, height - 190));
+    self.previousButton.frame = CGRectMake(8, height - 54, (width - 24)/2, 46);
+    self.nextButton.frame = CGRectMake(width/2 + 4, height - 54, (width - 24)/2, 46);
 }
 @end
 
 static PPOHandleTarget *ppoTarget;
 
-static UILabel *PPOLabel(NSString *text, CGFloat y) {
-    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(12, y, PPOOpenWidth - 24, 28)];
-    label.text = text;
-    label.textColor = UIColor.whiteColor;
-    label.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-    label.textAlignment = NSTextAlignmentLeft;
-    return label;
+static void PPOApplyOverlayLayout(void) {
+    if (!ppoWindow || !ppoPreferences) return;
+    CGRect screen = ppoWindow.windowScene.coordinateSpace.bounds;
+    UIEdgeInsets insets = ppoController.view.safeAreaInsets;
+    CGRect status = ppoWindow.windowScene.statusBarManager.statusBarFrame;
+    insets.top = MAX(insets.top, status.size.height);
+    // Full-scene public safe area has no floating-window feedback.
+    if (!PPOEdgeDrawerMakeLayout({screen.origin.x,screen.origin.y,screen.size.width,screen.size.height},
+        {insets.top,insets.left,insets.bottom,insets.right}, PPOChosenEdge(),
+        [ppoPreferences[@"handleYRatio"] doubleValue], [ppoPreferences[@"handleSize"] doubleValue],
+        ppoChooserProgress, &ppoEdgeLayout)) { ppoWindow.hidden = YES; return; }
+    ppoWindow.frame = screen; ppoController.view.frame = CGRectMake(0,0,screen.size.width,screen.size.height);
+    PPOOpenWidth = ppoEdgeLayout.openDrawer.width;
+    CGRect drawer = PPOCGRect(ppoEdgeLayout.drawer); drawer.origin.x -= screen.origin.x; drawer.origin.y -= screen.origin.y;
+    ppoPanel.frame = drawer; ppoPanel.hidden = !ppoExpanded;
+    CGRect touch = PPOCGRect(ppoEdgeLayout.touchHandle); touch.origin.x -= screen.origin.x; touch.origin.y -= screen.origin.y;
+    BOOL left = PPOChosenEdge() == PPOEdgeDrawerSide::Left;
+    // Original-style 80-point capsule protrudes beyond a 50-point edge strip.
+    // The actual touch width remains at least the geometry policy's44 points.
+    touch.size.width = 50;
+    touch.origin.x = left ? 0 : screen.size.width - 50;
+    ppoHandle.frame = touch;
+    CGFloat height = [ppoPreferences[@"handleSize"] doubleValue];
+    CGRect pill = CGRectMake(left ? -30 : 0, (touch.size.height-height)/2, 80, height);
+    if (ppoHandleNubbed) pill.origin.x += left ? -40 : 40;
+    ppoHandlePill.frame = pill;
+    ppoHandlePill.layer.cornerRadius = ppoHandleNubbed ? 6 : MIN(17,height/2);
+    ppoHandleBlur.frame = ppoHandlePill.bounds;
+    ppoHandleIcon.frame = CGRectMake(left ? 46 : 14, (height-24)/2,24,24);
+    NSDictionary *symbols = @{@"com.apple.mobilesafari":@"safari", @"com.apple.DocumentsApp":@"folder",
+        @"com.apple.mobilecal":@"calendar", @"com.apple.reminders":@"checklist", @"com.apple.MobileAddressBook":@"person.crop.circle"};
+    NSString *symbol = symbols[ppoTarget.selectedIdentifier ?: @""] ?: @"app.fill";
+    if (!ppoHandleIcon.image || ![symbol isEqual:ppoRenderedSymbol]) {
+        ppoHandleIcon.image = [UIImage systemImageNamed:symbol]; ppoRenderedSymbol = symbol;
+    }
+    ppoHandleIcon.tintColor = UIColor.labelColor;
+    ppoHandlePill.alpha = [ppoPreferences[@"handleOpacity"] doubleValue];
+    ppoHandle.titleLabel.alpha = ppoHandleNubbed ? 0 : 1;
+    NSString *appearance = ppoPreferences[@"appearance"];
+    ppoLightTheme = [appearance isEqual:@"light"] || ([appearance isEqual:@"system"] &&
+        ppoController.traitCollection.userInterfaceStyle != UIUserInterfaceStyleDark);
+    UIUserInterfaceStyle style = [appearance isEqual:@"system"] ? UIUserInterfaceStyleUnspecified :
+        (ppoLightTheme ? UIUserInterfaceStyleLight : UIUserInterfaceStyleDark);
+    ppoController.overrideUserInterfaceStyle = style;
+    UIColor *background = ppoLightTheme ? [UIColor colorWithWhite:0.96 alpha:0.96] : [UIColor colorWithWhite:0.08 alpha:0.96];
+    ppoPanel.backgroundColor = background; ppoHandlePill.backgroundColor = UIColor.clearColor;
+    if (ppoRenderedTheme != (NSInteger)ppoLightTheme) {
+        ppoHandleBlur.effect = [UIBlurEffect effectWithStyle:ppoLightTheme ? UIBlurEffectStyleSystemMaterialLight : UIBlurEffectStyleSystemMaterialDark];
+        ppoRenderedTheme = (NSInteger)ppoLightTheme;
+    }
+    [ppoHandle setTitle:@"" forState:UIControlStateNormal];
+    [ppoHandle setTitleColor:ppoLightTheme ? UIColor.blackColor : UIColor.whiteColor forState:UIControlStateNormal];
+    [ppoTarget layoutPicker];
 }
-
-static void PPOCommitOverlay(UIWindow *window, UIViewController *controller,
-                             PPOHandleTarget *target, UIView *panel,
-                             UILabel *status, UIButton *handle) {
-    ppoWindow = window;
-    ppoController = controller;
-    ppoTarget = target; // UIControl does not retain its action target.
-    ppoPanel = panel;
-    ppoStatus = status;
-    ppoHandle = handle;
+static void PPORefreshOverlayVisibility(void) {
+    if (!ppoWindow) return;
+    @try {
+        BOOL allowed = PPOOverlayAllowed() && UIApplication.sharedApplication.protectedDataAvailable &&
+            ppoWindow.windowScene.activationState == UISceneActivationStateForegroundActive;
+        NSDictionary *lock = PPOReadScreenLockState(objc_lookUpClass("SBLockScreenManager"), ppoFirmwareMatches);
+        allowed = allowed && [lock[@"status"] isEqual:@"sampled"] && ![lock[@"locked"] boolValue] &&
+            ![lock[@"waitingToLock"] boolValue];
+        CGRect screen = ppoWindow.windowScene.coordinateSpace.bounds;
+        if ([ppoPreferences[@"hideInLandscape"] boolValue] && screen.size.width > screen.size.height) allowed = NO;
+        ppoWindow.hidden = !allowed;
+        if (!allowed) [ppoTarget closeChooser];
+        if (allowed && [ppoPreferences[@"autoHideHandle"] boolValue] && !ppoExpanded &&
+            NSProcessInfo.processInfo.systemUptime - ppoLastInteraction >= [ppoPreferences[@"autoHideDelay"] doubleValue])
+            ppoHandleNubbed = YES;
+        PPOApplyOverlayLayout();
+    } @catch (NSException *exception) { (void)exception; ppoWindow.hidden = YES; }
 }
-
 static void PPOBuildOverlay(UIWindowScene *scene) {
-    NSLog(@"[PPO 0.17.0] ui-build-begin");
-    UIWindow *ppoWindow = [[UIWindow alloc] initWithWindowScene:scene];
-    ppoWindow.frame = CGRectMake(0, 170, PPOClosedWidth, 44);
-    ppoWindow.windowLevel = UIWindowLevelStatusBar + 1;
-    ppoWindow.backgroundColor = UIColor.clearColor;
-    UIViewController *ppoController = [UIViewController new];
-    ppoController.view.backgroundColor = UIColor.clearColor;
-    ppoWindow.rootViewController = ppoController;
-    // Initialize the action target before attaching any favorite buttons.
-    PPOHandleTarget *ppoTarget = [PPOHandleTarget new];
-    ppoTarget.picker = [PPOPickerState new];
-
-    UIView *ppoPanel = [[UIView alloc] initWithFrame:CGRectMake(0, 44, PPOOpenWidth, PPOPanelHeight - 44)];
-    ppoPanel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
-    ppoPanel.layer.cornerRadius = 12;
-    ppoPanel.layer.masksToBounds = YES;
-    [ppoPanel addSubview:PPOLabel(@"PullOver Pro • 0.17.0-dev", 8)];
-    [ppoPanel addSubview:PPOLabel(@"Aplicații", 43)];
-    UIButton *apps = [UIButton buttonWithType:UIButtonTypeSystem];
-    apps.frame = CGRectMake(10, 72, PPOOpenWidth - 20, 32);
-    [apps setTitle:@"Deschide lista" forState:UIControlStateNormal];
-    [apps setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [apps addTarget:ppoTarget action:@selector(showApps:) forControlEvents:UIControlEventTouchUpInside];
-    [ppoPanel addSubview:apps];
-    [ppoPanel addSubview:PPOLabel(@"Alege aplicația pentru PPO", 110)];
-    UIButton *launch = [UIButton buttonWithType:UIButtonTypeSystem];
-    launch.frame = CGRectMake(10, 143, PPOOpenWidth - 20, 32);
-    [launch setTitle:@"Deschide aplicația" forState:UIControlStateNormal];
-    [launch setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [launch addTarget:ppoTarget action:@selector(launchSelected:) forControlEvents:UIControlEventTouchUpInside];
-    ppoTarget.launchButton = launch;
-    [ppoTarget updateLaunchButton];
-    [ppoPanel addSubview:launch];
-    UILabel *ppoStatus = PPOLabel(@"Nicio aplicație selectată", 182);
-    ppoStatus.numberOfLines = 2;
-    ppoStatus.font = [UIFont systemFontOfSize:11];
-    ppoStatus.frame = CGRectMake(12, 182, PPOOpenWidth - 24, 32);
-    [ppoPanel addSubview:ppoStatus];
-    UIButton *theme = [UIButton buttonWithType:UIButtonTypeSystem];
-    theme.frame = CGRectMake(10, 218, 92, 32);
-    [theme setTitle:@"Temă" forState:UIControlStateNormal];
-    [theme setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [theme addTarget:ppoTarget action:@selector(toggleTheme:) forControlEvents:UIControlEventTouchUpInside];
-    [ppoPanel addSubview:theme];
-    UIButton *reset = [UIButton buttonWithType:UIButtonTypeSystem];
-    reset.frame = CGRectMake(110, 218, 98, 32);
-    [reset setTitle:@"Recentrare" forState:UIControlStateNormal];
-    [reset setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [reset addTarget:ppoTarget action:@selector(resetPosition:) forControlEvents:UIControlEventTouchUpInside];
-    [ppoPanel addSubview:reset];
-    UIButton *inspect = [UIButton buttonWithType:UIButtonTypeSystem];
-    inspect.frame = CGRectMake(10, 258, PPOOpenWidth - 20, 32);
-    [inspect setTitle:@"Diagnostic API" forState:UIControlStateNormal];
-    [inspect setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [inspect addTarget:ppoTarget action:@selector(inspectAPI:) forControlEvents:UIControlEventTouchUpInside];
-    [ppoPanel addSubview:inspect];
-    UIButton *trial = [UIButton buttonWithType:UIButtonTypeSystem];
-    trial.frame = CGRectMake(10, 298, PPOOpenWidth - 20, 32);
-    [trial setTitle:@"Deschide în fereastră" forState:UIControlStateNormal];
-    [trial setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [trial addTarget:ppoTarget action:@selector(openFloatingApp:) forControlEvents:UIControlEventTouchUpInside];
-    [ppoPanel addSubview:trial];
-    ppoPanel.hidden = YES;
-    [ppoController.view addSubview:ppoPanel];
-
-    UIButton *ppoHandle = [UIButton buttonWithType:UIButtonTypeSystem];
-    ppoHandle.frame = CGRectMake(0, 0, PPOClosedWidth, 44);
-    ppoHandle.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
-    ppoHandle.layer.cornerRadius = 12;
-    [ppoHandle setTitle:@"PPO ▶" forState:UIControlStateNormal];
-    [ppoHandle setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    ppoHandle.titleLabel.font = [UIFont boldSystemFontOfSize:13];
-    [ppoHandle addTarget:ppoTarget action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
-    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:ppoTarget action:@selector(panned:)];
-    [ppoHandle addGestureRecognizer:pan];
-    UILongPressGestureRecognizer *favorites = [[UILongPressGestureRecognizer alloc]
-        initWithTarget:ppoTarget action:@selector(quickFavorites:)];
-    [ppoHandle addGestureRecognizer:favorites];
-    [ppoController.view addSubview:ppoHandle];
-
-    NSLog(@"[PPO 0.17.0] ui-built; showing");
-    ppoWindow.hidden = NO;
-    PPOCommitOverlay(ppoWindow, ppoController, ppoTarget, ppoPanel, ppoStatus, ppoHandle);
-    NSLog(@"[PPO 0.17.0] ui-visible");
+    UIWindow *window = [[PPOEdgeOverlayWindow alloc] initWithWindowScene:scene];
+    window.frame = scene.coordinateSpace.bounds; window.windowLevel = UIWindowLevelStatusBar + 3;
+    window.backgroundColor = UIColor.clearColor;
+    UIViewController *controller = [UIViewController new];
+    controller.view.backgroundColor = UIColor.clearColor; controller.view.clipsToBounds = YES;
+    window.rootViewController = controller;
+    // Allocate and retain our action target before any UIControl target is attached.
+    PPOHandleTarget *target = [PPOHandleTarget new]; target.picker = [PPOPickerState new];
+    UIView *panel = [[UIView alloc] initWithFrame:CGRectZero];
+    panel.layer.cornerRadius = 18; panel.clipsToBounds = YES; panel.hidden = YES;
+    [controller.view addSubview:panel];
+    UILabel *status = [[PPOEdgeStatusLabel alloc] initWithFrame:CGRectZero];
+    status.numberOfLines = 2; status.font = [UIFont systemFontOfSize:13]; status.textAlignment = NSTextAlignmentCenter;
+    status.textColor = UIColor.labelColor; status.backgroundColor = UIColor.secondarySystemBackgroundColor;
+    status.layer.cornerRadius = 12; status.clipsToBounds = YES; status.hidden = YES;
+    status.userInteractionEnabled = NO; [controller.view addSubview:status];
+    // Hidden status data is reused by picker errors; no diagnostic controls in the user flow.
+    UIButton *handle = [UIButton buttonWithType:UIButtonTypeCustom];
+    UIView *pill = [UIView new]; pill.userInteractionEnabled = NO; pill.layer.cornerRadius = 17; pill.clipsToBounds = YES;
+    UIVisualEffectView *blur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+    blur.userInteractionEnabled = NO; [pill addSubview:blur];
+    UIImageView *icon = [UIImageView new]; icon.contentMode = UIViewContentModeScaleAspectFit;
+    [blur.contentView addSubview:icon]; [handle addSubview:pill];
+    handle.titleLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightSemibold];
+    handle.accessibilityLabel = @"PullOver Pro; glisează spre interior sau ține apăsat pentru aplicații";
+    [handle addTarget:target action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:target action:@selector(panned:)];
+    [handle addGestureRecognizer:pan];
+    UILongPressGestureRecognizer *quick = [[UILongPressGestureRecognizer alloc] initWithTarget:target action:@selector(quickFavorites:)];
+    quick.minimumPressDuration = 0.3; [handle addGestureRecognizer:quick];
+    [pan requireGestureRecognizerToFail:quick];
+    [controller.view addSubview:handle];
+    dispatch_source_t visibilityTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_get_main_queue());
+    if (!visibilityTimer) { window.hidden = YES; return; }
+    ppoVisibilityTimer = visibilityTimer;
+    ppoWindow = window; ppoController = controller; ppoTarget = target; ppoPanel = panel;
+    ppoStatus = status; ppoHandle = handle; ppoHandlePill = pill; ppoHandleBlur = blur; ppoHandleIcon = icon;
+    ppoRenderedTheme = -1; ppoRenderedSymbol = nil;
+    ppoFirmwareMatches = [PPOSceneFrameworkIdentity()[@"matches"] boolValue];
+    ppoLastInteraction = NSProcessInfo.processInfo.systemUptime;
+    PPOApplyOverlayLayout(); PPORefreshOverlayVisibility();
+    dispatch_source_set_timer(ppoVisibilityTimer, dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC), NSEC_PER_SEC,NSEC_PER_MSEC*100);
+    dispatch_source_set_event_handler(ppoVisibilityTimer, ^{ PPORefreshOverlayVisibility(); });
+    dispatch_resume(ppoVisibilityTimer);
+    [NSNotificationCenter.defaultCenter addObserverForName:@"SBDeviceLockStateChangedNotification" object:nil
+        queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+            (void)note; ppoWindow.hidden = YES; [ppoTarget closeChooser];
+            dispatch_async(dispatch_get_main_queue(), ^{ PPORefreshOverlayVisibility(); });
+        }];
 }
 
 static BOOL ppoScheduled;
@@ -689,9 +943,36 @@ static NSUInteger ppoAttempts;
 static id ppoSceneObserver;
 
 static BOOL PPOOverlayAllowed(void) {
-    NSFileManager *files = NSFileManager.defaultManager;
-    return ![files fileExistsAtPath:@"/var/mobile/.ppo_disable"] &&
-           [files fileExistsAtPath:@"/var/mobile/.ppo_enable_overlay"];
+    struct stat marker = {};
+    return ppoPreferences && [ppoPreferences[@"enabled"] boolValue] &&
+        lstat("/var/mobile/.ppo_disable", &marker) != 0 && errno == ENOENT;
+}
+static BOOL ppoPreferencesLoading, ppoPreferencesPending;
+static void PPORequestPreferences(void) {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ PPORequestPreferences(); }); return; }
+    if (ppoPreferencesLoading) { ppoPreferencesPending = YES; return; }
+    ppoPreferencesLoading = YES;
+    dispatch_async(PPOPreferenceQueue(), ^{
+        NSError *error = nil;
+        NSDictionary *snapshot = PPOUserPreferencesRead(&error);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            ppoPreferencesLoading = NO;
+            if (ppoPreferencesPending) { ppoPreferencesPending = NO; PPORequestPreferences(); return; }
+            if (error) return; // Preserve a known disabled/cache state on a storage error.
+            BOOL edgeChanged = ppoPreferences && ![snapshot[@"edge"] isEqual:ppoPreferences[@"edge"]];
+            ppoPreferences = snapshot;
+            if (!PPOOverlayAllowed() || edgeChanged) {
+                [[ppoTarget activeDrawer] close]; [ppoTarget closeChooser];
+            }
+            if (ppoWindow) { PPOApplyOverlayLayout(); if (ppoExpanded) [ppoTarget loadPicker]; PPORefreshOverlayVisibility(); }
+            else { ppoStopped = NO; ppoAttempts = 0; PPOScheduleOverlay(); }
+        });
+    });
+}
+static void PPOPreferencesChanged(CFNotificationCenterRef center, void *observer, CFStringRef name,
+    const void *object, CFDictionaryRef userInfo) {
+    (void)center; (void)observer; (void)name; (void)object; (void)userInfo;
+    dispatch_async(dispatch_get_main_queue(), ^{ PPORequestPreferences(); });
 }
 
 // Main queue only, at most three attempts per process; never wait for a scene.
@@ -719,12 +1000,16 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 0.17.0] no-active-scene; stopped");
+                NSLog(@"[PPO 1.0.0] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 0.17.0] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 1.0.0] ui-exception=%@; stopped", exception.name);
+            ppoWindow.hidden = YES; [ppoTarget cancelOpening];
+            if (ppoVisibilityTimer) { dispatch_source_cancel(ppoVisibilityTimer); ppoVisibilityTimer = nil; }
+            ppoWindow = nil; ppoController = nil; ppoTarget = nil;
+            ppoPanel = nil; ppoStatus = nil; ppoHandle = nil; ppoHandlePill = nil; ppoHandleBlur = nil; ppoHandleIcon = nil;
             ppoStopped = YES;
         }
         if (ppoStopped && ppoSceneObserver) {
@@ -736,23 +1021,16 @@ static void PPOScheduleOverlay(void) {
 
 %ctor {
     @autoreleasepool {
-        NSLog(@"[PPO 0.17.0] loaded; os=%@",
-              NSProcessInfo.processInfo.operatingSystemVersionString);
-        if (!PPOOverlayAllowed()) {
-            NSLog(@"[PPO 0.17.0] overlay-disabled; no hooks installed");
-            return;
-        }
-        // No UIKit objects or private SpringBoard methods touched in the ctor.
+        // Public preference I/O is deferred; no UIKit or private scene method in ctor.
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+            PPOPreferencesChanged, (__bridge CFStringRef)PPOUserPreferencesChangedNotification,
+            NULL, CFNotificationSuspensionBehaviorCoalesce);
         dispatch_async(dispatch_get_main_queue(), ^{
-            ppoSceneObserver = [NSNotificationCenter.defaultCenter
-                addObserverForName:UISceneDidActivateNotification object:nil
-                queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
-                    PPOScheduleOverlay();
+            ppoSceneObserver = [NSNotificationCenter.defaultCenter addObserverForName:UISceneDidActivateNotification
+                object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+                    (void)note; PPOScheduleOverlay(); PPORefreshOverlayVisibility();
                 }];
-            NSLog(@"[PPO 0.17.0] overlay-armed");
-            PPOScheduleOverlay();
+            PPORequestPreferences();
         });
     }
 }
-
-

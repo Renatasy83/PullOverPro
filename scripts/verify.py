@@ -287,6 +287,24 @@ require(re.sub(r'\s+', '', filter_path.read_text()) == expected_filter,
         'Injection must target SpringBoard only')
 duplicate = ROOT / 'layout/Library/MobileSubstrate/DynamicLibraries/PullOverProDiagnostic.plist'
 require(not duplicate.exists(), 'Duplicate injection filter in layout')
+prefs_source = (ROOT / 'PPOUserPreferences.mm').read_text()
+settings_source = (ROOT / 'preferences/PPOSettingsController.mm').read_text()
+require('PPOUserPreferences.mm' in production_sources and 'preferences' in (ROOT / 'Makefile').read_text(),
+        'Shared preferences and Settings bundle must build with production')
+require('CFPreferencesSetMultiple' in prefs_source and 'CFPreferencesSetAppValue' not in prefs_source and
+        'PPOUserPreferencesChangedNotification' in prefs_source,
+        'Preferences must update only validated keys in their own domain')
+require('PPOInteractionIntent _intent' in picker_source and '_intent.current(intent)' in picker_source and
+        '_intent.held(intent)' in picker_source and '_intent.consume(intent)' in picker_source and
+        '_intent.commit(_panIntent)' in picker_source,
+        'Cancelled or held user gestures must not construct an owned scene')
+require('PPOEdgeOverlayWindow' in picker_source and 'PPOOwnedPassthroughWindow' in owned_trial and
+        'PPOEdgeDrawerPanelTranslation' in owned_trial and 'self.panelBaseFrame' in owned_trial,
+        'Public fullscreen overlays must pass through and retain untransformed panel geometry')
+require('PSViewController : UIViewController' in settings_source and 'PPOSettingsController : PSViewController' in settings_source,
+        'Settings must use the verified base class with its own public controls')
+for pattern in ('objc_msgSend', 'valueForKey:', 'performSelector', 'makeKeyAndVisible', 'becomeFirstResponder'):
+    require(pattern not in settings_source, 'Unexpected Settings runtime operation: ' + pattern)
 print('Source policy OK (not a runtime test)')
 
 for arg in sys.argv[1:]:
@@ -295,15 +313,19 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version').startswith('0.17.0~dev.namedconfigs1'), 'Unexpected version')
+    require(field('Version') == '1.0.0~rc1', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
+    require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
     base = 'var/jb/Library/MobileSubstrate/DynamicLibraries/'
     required = {base + 'PullOverProDiagnostic.dylib', base + 'PullOverProDiagnostic.plist',
                 'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open', 'var/jb/usr/bin/ppo-bridge',
                 'var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist',
-                'var/jb/usr/share/doc/com.renatasy83.pulloverpro.diagnostic/copyright'}
+                'var/jb/usr/share/doc/com.renatasy83.pulloverpro.diagnostic/copyright',
+                'var/jb/Library/PreferenceBundles/PullOverProPortPreferences.bundle/PullOverProPortPreferences',
+                'var/jb/Library/PreferenceBundles/PullOverProPortPreferences.bundle/Info.plist',
+                'var/jb/Library/PreferenceLoader/Preferences/PullOverPro.plist'}
     found = set()
     with tarfile.open(fileobj=io.BytesIO(payload)) as archive:
         for member in archive:
@@ -324,6 +346,11 @@ for arg in sys.argv[1:]:
             if name.endswith('com.renatasy83.ppo.bridge.plist'):
                 raw = archive.extractfile(member).read()
                 require(plistlib.loads(raw) == plistlib.loads((ROOT / 'layout/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist').read_bytes()), 'Bridge service plist mismatch')
+            elif name.endswith('PullOverProPortPreferences.bundle/Info.plist'):
+                info = plistlib.loads(archive.extractfile(member).read())
+                require(info['CFBundleExecutable'] == 'PullOverProPortPreferences' and info['NSPrincipalClass'] == 'PPOSettingsController', 'Settings executable/controller mismatch')
+            elif name.endswith('PreferenceLoader/Preferences/PullOverPro.plist'):
+                require(plistlib.loads(archive.extractfile(member).read()) == plistlib.loads((ROOT / 'layout/Library/PreferenceLoader/Preferences/PullOverPro.plist').read_bytes()), 'Settings loader entry mismatch')
             elif name.endswith('.plist'):
                 raw = archive.extractfile(member).read()
                 if raw.startswith(b'bplist') or raw.lstrip().startswith(b'<?xml'):

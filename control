@@ -1,11 +1,11 @@
 Package: com.renatasy83.pulloverpro.diagnostic
-Name: PullOver Pro Development
-Version: 0.17.0~dev.namedconfigs1
+Name: PullOver Pro
+Version: 1.0.0~rc1
 Architecture: iphoneos-arm64
-Description: Rootless app picker, mobile launch service and guarded owned app windows with bounded named and programmatic multiscene eligibility. New client types require device validation.
+Description: Rootless PullOver Pro release candidate with a left/right edge drawer, live Settings preferences, quick switching and independently owned app windows.
 Maintainer: Renatasy83
 Author: Renatasy83; original PullOver Pro by c1d3r / Will Smillie
 Section: Tweaks
-Depends: firmware (>= 15.0), ellekit, bash
+Depends: firmware (>= 15.0), ellekit, bash, preferenceloader
 
 

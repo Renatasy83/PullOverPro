@@ -7,6 +7,9 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'edge-drawer-tests.log': 'Edge drawer geometry tests passed:',
+    'interaction-intent-tests.log': 'Interaction intent tests passed:',
+    'user-preferences-tests.log': 'User preferences tests passed:',
     'favorite-apps-tests.log': 'Favorite apps tests passed:',
     'favorites-store-tests.log': 'Favorites store tests passed:',
     'picker-state-tests.log': 'Picker state tests passed:',
@@ -44,7 +47,7 @@ not_run = [
     'Application scene rendering, touch/keyboard routing and teardown',
     'Lock/unlock, orientation, process death and watchdog integration',
     'Keep mode beyond fifteen seconds and lock-transition frame exposure',
-    'Multiple named-configuration client selection, admission/rendering/input and own-scene cleanup on iOS',
+    'New full-scene passthrough drawer pixels/input, left/right gestures and Settings PreferenceLoader discovery/live controls/favorite editor on iOS',
     'Dopamine and ElleKit runtime compatibility',
     'vphone-cli: no compatible physical Apple Silicon Mac is accessible',
 ]
@@ -56,8 +59,8 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'Owned scenes with bounded single, programmatic or multiple-named configuration metadata. New multiple-named clients remain runtime-unverified.',
-    'prior_device_baseline': '0.16.0 Calendar programmatic owned-window/kept/minimize/restore/resize/manual/default-timeout;0.15.0 own favorites store read/long-press access with1favorite;0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
+    'floating_application_hosting_implemented': 'Release candidate: left/right public edge drawer, Settings preferences/favorites and owned app scenes. New UI/input/Settings integration remains runtime-unverified.',
+    'prior_device_baseline': '0.17.0 Files named-configuration admission/rendering with two clean default-timeout sessions;0.16.0 Calendar programmatic owned-window/kept/minimize/restore/resize/manual/default-timeout;0.15.0 own favorites store read/long-press access with1favorite;0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -66,7 +69,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Not a final candidate. Dynamic candidate apps require fresh selected-app manifest inspection through the mobile service. Metadata is eligibility evidence, not authenticated permission or runtime compatibility. Baseline Safari/Reminders/Contacts observations remain version-specific. Calendar programmatic admission is observed on0.16.0. Multiple-named configuration clients require actual device validation. No original source scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
+    '**Release candidate; not a completed/fully runtime-validated port. Files named-configuration admission is observed on0.17.0. The new edge interface/full-scene passthrough input/Settings discovery and live controls require actual device validation. Metadata remains advisory; no original scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)
