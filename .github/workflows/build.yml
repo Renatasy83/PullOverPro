@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           mkdir -p diagnostics
           perl "$THEOS/vendor/logos/bin/logos.pl" Tweak.xm > diagnostics/Tweak.mm
-          xcrun clang++ --analyze -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+          xcrun clang++ --analyze -std=c++17 -Werror -fobjc-arc -target arm64-apple-ios15.0 \
             -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
             -I "$THEOS/vendor/include" -I "$THEOS/include" -I . \
             -Xanalyzer -analyzer-output=text diagnostics/Tweak.mm \
@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          xcrun clang++ --analyze -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+          xcrun clang++ --analyze -std=c++17 -Werror -fobjc-arc -target arm64-apple-ios15.0 \
             -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" \
             -Xanalyzer -analyzer-output=text PPOAppData.mm \
             2>&1 | tee diagnostics/appdata-analysis.log

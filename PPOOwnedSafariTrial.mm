@@ -23,7 +23,6 @@
 @property(nonatomic,weak) UIView *interactivePanel;
 @end
 @implementation PPOOwnedPassthroughWindow
-- (BOOL)canBecomeKeyWindow { return NO; }
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *panel = self.interactivePanel;
     if (self.hidden || self.alpha <= 0 || !panel || panel.hidden || panel.alpha <= 0 ||
