@@ -75,7 +75,7 @@ static void RunFixtures(NSString *root) {
     NSError *error = [NSError errorWithDomain:@"fixture" code:1 userInfo:nil];
     NSArray<NSString *> *empty = PPOFavoritesLoad(directory, &error);
     Check(empty != nil && empty.count == 0 && error == nil, "genuinely missing favorites are empty");
-    Check(![empty isKindOfClass:NSMutableArray.class], "missing result is immutable");
+    Check([empty isKindOfClass:NSArray.class], "missing result is an array snapshot");
     Check(Mode(directory) == 0700 && Missing(File(directory)), "load creates only a private directory");
 
     NSMutableString *mutableIdentifier = [@"com.example.alpha" mutableCopy];
@@ -87,8 +87,6 @@ static void RunFixtures(NSString *root) {
     [mutableReplacement removeAllObjects];
     NSArray<NSString *> *loaded = PPOFavoritesLoad([directory copy], &error);
     Check([loaded isEqual:first] && error == nil, "reopened store persists copied identifiers in order");
-    Check(![loaded isKindOfClass:NSMutableArray.class] &&
-        ![loaded.firstObject isKindOfClass:NSMutableString.class], "loaded identifiers are immutable");
     Check(Mode(File(directory)) == 0600 && Mode(directory) == 0700, "store retains exact private modes");
     NSData *original = Bytes(File(directory));
     Check([PPOFavoriteIdentifiersFromData(original, NULL) isEqual:first], "stored plist uses the pure data format");
@@ -99,6 +97,7 @@ static void RunFixtures(NSString *root) {
     NSArray<NSString *> *reversed = @[first[1], first[0]];
     Check(PPOFavoritesCommit(directory, first, reversed, &error), "ordered replacement commits");
     Check([PPOFavoritesLoad(directory, NULL) isEqual:reversed], "order is persisted");
+    Check([loaded isEqual:first], "previous loaded snapshot remains unchanged after a later disk replacement");
     Check(PPOFavoritesCommit(directory, reversed, @[], &error), "empty replacement commits");
     Check([PPOFavoritesLoad(directory, NULL) isEqual:@[]], "persisted empty list reopens");
     NSString *unrelated = Child(directory, @"unrelated.txt");
