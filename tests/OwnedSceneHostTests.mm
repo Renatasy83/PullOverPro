@@ -351,7 +351,7 @@ static void ResetForApplication(NSString *application) {
     [(OwnedFixtureClient *)definition.clientIdentity setBundleIdentifier:originalApplication];
 }
 static NSDictionary *DynamicCapability(NSString *application, NSString *status = @"eligible") {
-    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v1",
+    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v2",
         @"bundleIdentifier": application, @"status": status,
         @"eligible": [status isEqual:@"eligible"] ? @YES : @NO,
         @"reason": [status isEqual:@"eligible"] ? @"declared-single-application-scene" :
@@ -675,6 +675,16 @@ int main(void) {
               "a fresh bound capability admits a dynamic app under the same ownership proof");
         Check([current close] && current.closed && controllerInvalidations == 1 && workspaceInvalidations == 1,
               "dynamic scene releases only its verified controller and empty workspace");
+        SourceUnchanged();
+        ResetDynamic();
+        NSMutableDictionary *programmaticProof = [DynamicCapability(originalApplication) mutableCopy];
+        programmaticProof[@"reason"] = @"declared-programmatic-application-scenes";
+        requestedCapability = programmaticProof;
+        Check(Prepare(sourceScene) &&
+              [current.snapshot[@"admission"][@"sceneCapability"][@"reason"] isEqual:@"declared-programmatic-application-scenes"],
+              "programmatic eligibility enters the unchanged independently owned scene path");
+        Check([current close] && current.closed && !current.poisoned && controllerInvalidations == 1 && workspaceInvalidations == 1,
+              "programmatic proof does not change verified controller/workspace cleanup");
         SourceUnchanged();
         for (unsigned failure = 0; failure < 5; failure++) {
             ResetDynamic();

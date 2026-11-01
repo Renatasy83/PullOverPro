@@ -15,7 +15,7 @@ static void Check(BOOL condition, const char *message) {
 static NSDictionary *Capability(NSString *identifier, NSString *status, double observed = 100) {
     NSString *reason = [status isEqual:@"eligible"] ? @"declared-single-application-scene" :
         ([status isEqual:@"ineligible"] ? @"multiple-scenes-disabled" : @"manifest-unknown");
-    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v1",
+    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v2",
         @"bundleIdentifier": identifier, @"status": status,
         @"eligible": [status isEqual:@"eligible"] ? @YES : @NO,
         @"reason": reason, @"observedUptime": @(observed)};
@@ -54,6 +54,18 @@ int main(void) {
         Check([admitted[@"bundleIdentifier"] isEqual:dynamic] &&
               [admitted[@"basis"] isEqual:@"installed-info"] && admitted.count == 3,
               "a bound positive admits a dynamic target through the five-second endpoint");
+        NSMutableDictionary *programmatic = [Capability(dynamic, @"eligible") mutableCopy];
+        programmatic[@"reason"] = @"declared-programmatic-application-scenes";
+        NSDictionary *programmaticAdmission = PPOOwnedAdmissionSnapshot(dynamic, programmatic, 101);
+        Check([programmaticAdmission[@"basis"] isEqual:@"installed-info"] &&
+              [programmaticAdmission[@"sceneCapability"][@"reason"] isEqual:@"declared-programmatic-application-scenes"],
+              "programmatic eligibility uses the same frozen installed-info admission");
+        Check(PPOOwnedAdmissionSnapshot(@"com.example.other", programmatic, 101) == nil &&
+              PPOOwnedAdmissionSnapshot(dynamic, programmatic, 105.000001) == nil,
+              "programmatic proof cannot cross identifiers or extend freshness");
+        programmatic[@"policy"] = @"installed-basic-multiscene-v1";
+        Check(PPOOwnedAdmissionSnapshot(dynamic, programmatic, 101) == nil,
+              "a previous-policy descriptor is never upgraded into programmatic permission");
         Check(PPOOwnedAdmissionSnapshot(dynamic, Capability(dynamic, @"eligible"), 105.000001) == nil &&
               PPOOwnedAdmissionSnapshot(dynamic, Capability(dynamic, @"eligible", 100.100001), 100) == nil,
               "expired and excessively future observations cannot grant eligibility");
@@ -97,7 +109,7 @@ int main(void) {
               PPOOwnedAdmissionSnapshot(@"com.apple.mobilesafari", (id)NSNull.null, 100) == nil,
               "supplied metadata must be a valid dictionary rather than a truthy value");
         NSMutableString *request = [dynamic mutableCopy], *proofID = [dynamic mutableCopy];
-        NSMutableString *policy = [@"installed-basic-multiscene-v1" mutableCopy];
+        NSMutableString *policy = [@"installed-basic-multiscene-v2" mutableCopy];
         NSMutableString *status = [@"eligible" mutableCopy], *reason = [@"declared-single-application-scene" mutableCopy];
         NSMutableDictionary *mutableProof = [Capability(dynamic, @"eligible") mutableCopy];
         mutableProof[@"bundleIdentifier"] = proofID; mutableProof[@"policy"] = policy;
@@ -110,7 +122,7 @@ int main(void) {
         NSDictionary *frozenProof = frozen[@"sceneCapability"];
         Check([frozen[@"bundleIdentifier"] isEqual:dynamic] &&
               [frozenProof[@"bundleIdentifier"] isEqual:dynamic] &&
-              [frozenProof[@"policy"] isEqual:@"installed-basic-multiscene-v1"] &&
+              [frozenProof[@"policy"] isEqual:@"installed-basic-multiscene-v2"] &&
               [frozenProof[@"status"] isEqual:@"eligible"] &&
               [frozenProof[@"reason"] isEqual:@"declared-single-application-scene"] &&
               [frozenProof[@"observedUptime"] isEqual:@100] && [frozenProof[@"eligible"] isEqual:@YES],

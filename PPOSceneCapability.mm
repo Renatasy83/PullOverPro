@@ -2,7 +2,7 @@
 #import <CoreFoundation/CoreFoundation.h>
 #include <cmath>
 
-static NSString *const CapabilityPolicy = @"installed-basic-multiscene-v1";
+static NSString *const CapabilityPolicy = @"installed-basic-multiscene-v2";
 
 static BOOL CapabilityASCIIAlphanumeric(unichar value) {
     return (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') ||
@@ -96,7 +96,8 @@ NSDictionary *PPOSceneCapabilityNormalize(id value) {
         NSString *status = nil, *reason = nil;
         if ([raw[@"status"] isEqual:@"eligible"] && [raw[@"eligible"] boolValue]) {
             status = @"eligible";
-            reason = CapabilityCanonicalReason(raw[@"reason"], @[@"declared-single-application-scene"]);
+            reason = CapabilityCanonicalReason(raw[@"reason"], @[@"declared-single-application-scene",
+                @"declared-programmatic-application-scenes"]);
         } else if ([raw[@"status"] isEqual:@"ineligible"] && ![raw[@"eligible"] boolValue]) {
             status = @"ineligible";
             reason = CapabilityCanonicalReason(raw[@"reason"], CapabilityIneligibleReasons());
@@ -172,6 +173,13 @@ NSDictionary *PPOSceneCapabilityFromInfo(id info, NSString *identifier, NSTimeIn
         if ([(NSDictionary *)manifest count] > 2 || !CapabilityDictionaryKeys(manifest,
                 @[@"UIApplicationSupportsMultipleScenes", @"UISceneConfigurations"]))
             return PPOSceneCapabilityUnknown(identifier, @"manifest-complex", observedUptime);
+        // Exact23A355 UIKit accepts an unnamed configuration without a plist
+        // configuration dictionary, then applies app/SwiftUI overrides or the
+        // specification's minimum scene class. This shape is advisory eligibility:
+        // normal app/client admission and the exact owned-scene guards still apply.
+        // Explicit empty/null/malformed configurations are not this absent-key path.
+        if ([(NSDictionary *)manifest count] == 1 && !manifest[@"UISceneConfigurations"])
+            return CapabilityResult(identifier, @"eligible", @"declared-programmatic-application-scenes", observedUptime);
         id configurations = manifest[@"UISceneConfigurations"];
         if (![configurations isKindOfClass:NSDictionary.class])
             return PPOSceneCapabilityUnknown(identifier, @"manifest-unknown", observedUptime);

@@ -24,6 +24,11 @@ static NSMutableDictionary *Manifest(NSMutableDictionary *info) {
     info[@"UIApplicationSceneManifest"] = manifest;
     return manifest;
 }
+static NSMutableDictionary *ProgrammaticInfo(void) {
+    NSMutableDictionary *info = Info();
+    [Manifest(info) removeObjectForKey:@"UISceneConfigurations"];
+    return info;
+}
 static NSMutableDictionary *Roles(NSMutableDictionary *info) {
     NSMutableDictionary *manifest = Manifest(info);
     NSMutableDictionary *roles = [manifest[@"UISceneConfigurations"] mutableCopy];
@@ -36,7 +41,7 @@ static void Result(NSDictionary *value, NSString *status, NSString *reason) {
     Check([value[@"status"] isEqual:status] && [value[@"reason"] isEqual:reason],
           "outcome distinguishes explicit negatives from unavailable or unsupported metadata");
     Check([value[@"bundleIdentifier"] isEqual:Identifier] &&
-          [value[@"policy"] isEqual:@"installed-basic-multiscene-v1"] &&
+          [value[@"policy"] isEqual:@"installed-basic-multiscene-v2"] &&
           [value[@"schema"] isEqual:@1] && [value[@"observedUptime"] isEqual:@100],
           "result is bound to the requested app, fixed policy and injected observation time");
     Check(CFGetTypeID((__bridge CFTypeRef)value[@"eligible"]) == CFBooleanGetTypeID() &&
@@ -46,11 +51,12 @@ static void Result(NSDictionary *value, NSString *status, NSString *reason) {
     Check([NSJSONSerialization isValidJSONObject:value], "normalized diagnostics are safely serializable");
 }
 static void NormalizeField(NSString *field, NSArray *values) {
-    for (id invalid in values) {
-        NSMutableDictionary *value = [Read(Info()) mutableCopy];
-        value[field] = invalid;
-        Check(PPOSceneCapabilityNormalize(value) == nil, "malformed descriptor scalar is rejected");
-    }
+    for (NSDictionary *fixture in @[Read(Info()), Read(ProgrammaticInfo())])
+        for (id invalid in values) {
+            NSMutableDictionary *value = [fixture mutableCopy];
+            value[field] = invalid;
+            Check(PPOSceneCapabilityNormalize(value) == nil, "malformed descriptor scalar is rejected for either positive shape");
+        }
 }
 int main(void) {
     @autoreleasepool {
@@ -76,6 +82,22 @@ int main(void) {
               !PPOSceneApplicationIdentifierAllowed([limit stringByAppendingString:@"a"]), "identifier length is bounded");
 
         Result(Read(Info()), @"eligible", @"declared-single-application-scene");
+        Result(Read(ProgrammaticInfo()), @"eligible", @"declared-programmatic-application-scenes");
+        // Synthetic fixtures represent only the supported metadata shape, not installed Apple apps.
+        for (NSString *identifier in @[@"com.example.FixtureCalendar", @"com.example.FixturePreview"]) {
+            NSMutableDictionary *fixture = ProgrammaticInfo();
+            fixture[@"CFBundleIdentifier"] = identifier;
+            NSDictionary *capability = PPOSceneCapabilityFromInfo(fixture, identifier, 100);
+            Check([fixture[@"UIApplicationSceneManifest"] count] == 1 &&
+                  fixture[@"UIApplicationSceneManifest"][@"UISceneConfigurations"] == nil &&
+                  [capability[@"bundleIdentifier"] isEqual:identifier] &&
+                  [capability[@"status"] isEqual:@"eligible"] &&
+                  [capability[@"reason"] isEqual:@"declared-programmatic-application-scenes"] &&
+                  [PPOSceneCapabilityNormalize(capability) isEqual:capability],
+                  "Calendar and Preview synthetic programmatic fixtures retain their selected identifier");
+            Check([PPOSceneCapabilityFromInfo(fixture, Identifier, 100)[@"reason"] isEqual:@"identifier-mismatch"],
+                  "a programmatic manifest does not let metadata cross application identifiers");
+        }
         NSMutableDictionary *info = Info();
         info[@"UnrelatedUserInfo"] = @{@"nested": @[@{@"notForSerialization": @"private-value"}]};
         Result(Read(info), @"eligible", @"declared-single-application-scene");
@@ -110,6 +132,21 @@ int main(void) {
         info = Info(); [info removeObjectForKey:@"UIDeviceFamily"]; Result(Read(info), @"unknown", @"manifest-unknown");
         info = Info(); info[@"UIDeviceFamily"] = @[@1.0, @2]; Result(Read(info), @"eligible", @"declared-single-application-scene");
 
+        info = ProgrammaticInfo(); info[@"CFBundlePackageType"] = @"XPC!";
+        Result(Read(info), @"ineligible", @"not-application");
+        info = ProgrammaticInfo(); info[@"NSExtension"] = NSNull.null;
+        Result(Read(info), @"ineligible", @"app-extension");
+        info = ProgrammaticInfo(); info[@"UIDeviceFamily"] = @[@2];
+        Result(Read(info), @"ineligible", @"not-iphone");
+        info = ProgrammaticInfo(); info[@"UIDeviceFamily"] = @[@YES];
+        Result(Read(info), @"unknown", @"manifest-unknown");
+        for (NSString *flag in @[@"LSBackgroundOnly", @"LSUIElement", @"UIBackgroundOnly"]) {
+            info = ProgrammaticInfo(); info[flag] = @YES;
+            Result(Read(info), @"ineligible", @"not-application");
+            info = ProgrammaticInfo(); info[flag] = @1;
+            Result(Read(info), @"unknown", @"manifest-unknown");
+        }
+
         info = Info(); [info removeObjectForKey:@"UIApplicationSceneManifest"]; Result(Read(info), @"unknown", @"manifest-unknown");
         for (id malformed in @[@YES, @[], NSNull.null]) {
             info = Info(); info[@"UIApplicationSceneManifest"] = malformed; Result(Read(info), @"unknown", @"manifest-unknown");
@@ -117,21 +154,44 @@ int main(void) {
         for (id malformed in @[@1, @0, @"true", NSNull.null]) {
             info = Info(); Manifest(info)[@"UIApplicationSupportsMultipleScenes"] = malformed;
             Result(Read(info), @"unknown", @"manifest-unknown");
+            info = ProgrammaticInfo(); Manifest(info)[@"UIApplicationSupportsMultipleScenes"] = malformed;
+            Result(Read(info), @"unknown", @"manifest-unknown");
         }
         info = Info(); [Manifest(info) removeObjectForKey:@"UIApplicationSupportsMultipleScenes"];
         Result(Read(info), @"unknown", @"manifest-unknown");
+        info = ProgrammaticInfo(); [Manifest(info) removeObjectForKey:@"UIApplicationSupportsMultipleScenes"];
+        Result(Read(info), @"unknown", @"manifest-unknown");
         info = Info(); Manifest(info)[@"UIApplicationSupportsMultipleScenes"] = @NO;
         info[@"system-windows-secure"] = @YES;
+        Result(Read(info), @"ineligible", @"multiple-scenes-disabled");
+        info = ProgrammaticInfo(); Manifest(info)[@"UIApplicationSupportsMultipleScenes"] = @NO;
+        Manifest(info)[@"UnexpectedManifestOption"] = @YES;
+        info[@"UnexpectedWindowOption"] = @YES;
         Result(Read(info), @"ineligible", @"multiple-scenes-disabled");
         info = Info(); info[@"system-windows-secure"] = @NO; Result(Read(info), @"unknown", @"manifest-complex");
         info = Info(); info[@"UnexpectedSCENEOption"] = @1; Result(Read(info), @"unknown", @"manifest-complex");
         info = Info(); Manifest(info)[@"UIApplicationSupportsTabbedScenes"] = @YES;
         Result(Read(info), @"unknown", @"manifest-complex");
         info = Info(); [Manifest(info) removeObjectForKey:@"UISceneConfigurations"];
-        Result(Read(info), @"unknown", @"manifest-unknown");
-        info = Info(); Manifest(info)[@"UISceneConfigurations"] = @[]; Result(Read(info), @"unknown", @"manifest-unknown");
+        Result(Read(info), @"eligible", @"declared-programmatic-application-scenes");
+        for (NSString *key in @[@"system-windows-secure", @"UnexpectedSCENEOption", @"UIWindowOptions"])
+            for (NSNumber *value in @[@NO, @YES]) {
+                info = ProgrammaticInfo(); info[key] = value;
+                Result(Read(info), @"unknown", @"manifest-complex");
+            }
+        for (id key in @[@"UIApplicationSupportsTabbedScenes", @"UnexpectedManifestOption", @1]) {
+            info = ProgrammaticInfo(); Manifest(info)[key] = @YES;
+            Result(Read(info), @"unknown", @"manifest-complex");
+        }
+        for (id malformed in @[@[], @YES, @1, @"dynamic", NSNull.null]) {
+            info = ProgrammaticInfo(); Manifest(info)[@"UISceneConfigurations"] = malformed;
+            Result(Read(info), @"unknown", @"manifest-unknown");
+        }
         info = Info(); Manifest(info)[@"UISceneConfigurations"] = @{}; Result(Read(info), @"unknown", @"manifest-complex");
         info = Info(); Roles(info)[@"UIWindowSceneSessionRoleExternalDisplay"] = @[@{}];
+        Result(Read(info), @"unknown", @"manifest-complex");
+        info = ProgrammaticInfo(); Manifest(info)[@"UISceneConfigurations"] = @{
+            @"UIWindowSceneSessionRoleExternalDisplay": @[@{}]};
         Result(Read(info), @"unknown", @"manifest-complex");
         for (id malformed in @[@[], @[@{}, @{}], @[@{}], @[@1], @[@{@"unknown": @"value"}],
                 @[@{@"UISceneDelegateClassName": @[]}], @[@{@"UISceneClassName": @""}],
@@ -153,17 +213,34 @@ int main(void) {
         for (NSString *reason in unknownReasons)
             Result(PPOSceneCapabilityUnknown(Identifier, reason, 100), @"unknown", reason);
         Check(PPOSceneCapabilityUnknown(Identifier, @"made-up", 100) == nil, "unknown reason cannot expand the protocol");
+        for (NSString *reason in @[@"declared-single-application-scene", @"declared-programmatic-application-scenes"]) {
+            NSMutableDictionary *candidate = [Read(Info()) mutableCopy];
+            candidate[@"reason"] = reason;
+            Result(PPOSceneCapabilityNormalize(candidate), @"eligible", reason);
+            Check(PPOSceneCapabilityUnknown(Identifier, reason, 100) == nil,
+                  "eligible reasons are not members of the unknown reason enumeration");
+            for (NSString *status in @[@"unknown", @"ineligible"]) {
+                candidate[@"status"] = status; candidate[@"eligible"] = @NO;
+                Check(PPOSceneCapabilityNormalize(candidate) == nil,
+                      "each eligible reason is confined to eligible status with a genuine true Boolean");
+            }
+            candidate[@"status"] = @"eligible"; candidate[@"eligible"] = @NO;
+            Check(PPOSceneCapabilityNormalize(candidate) == nil,
+                  "an eligible reason cannot turn a false eligibility flag into an eligible proof");
+        }
         for (NSNumber *badTime in @[@(-1), @(NAN), @(INFINITY)])
             Check(PPOSceneCapabilityFromInfo(Info(), Identifier, badTime.doubleValue) == nil &&
                   PPOSceneCapabilityUnknown(Identifier, @"file-unavailable", badTime.doubleValue) == nil,
                   "invalid observation clocks never produce descriptors");
 
         NormalizeField(@"schema", @[@YES, @0, @2, @0.5, @(NAN), @(INFINITY), @"1", NSNull.null]);
-        NormalizeField(@"policy", @[@"unknown-v2", @1, NSNull.null]);
+        NormalizeField(@"policy", @[@"installed-basic-multiscene-v1", @"unknown-v2", @1, NSNull.null]);
         NormalizeField(@"bundleIdentifier", @[@"com.other..app", @"com.apple.springboard", @1, NSNull.null]);
         NormalizeField(@"status", @[@"unknown", @"ineligible", @"other", @1, NSNull.null]);
         NormalizeField(@"eligible", @[@1, @0, @NO, @"true", NSNull.null]);
-        NormalizeField(@"reason", @[@"manifest-unknown", @"not-application", @"other", @1, NSNull.null]);
+        NormalizeField(@"reason", @[@"manifest-unknown", @"not-application", @"other",
+            @"declared-programmatic-application-scene", @"Declared-programmatic-application-scenes",
+            @"declared-programmatic-application-scenes ", @1, NSNull.null]);
         NormalizeField(@"observedUptime", @[@YES, @(-1), @(NAN), @(INFINITY), @"100", NSNull.null]);
         NSDictionary *valid = Read(Info());
         for (NSString *field in valid) {
@@ -181,7 +258,7 @@ int main(void) {
         Check(PPOSceneCapabilityNormalize(contradictory) != nil, "integral numeric schema is distinct from a Boolean");
 
         NSMutableString *mutableIdentifier = [Identifier mutableCopy];
-        NSMutableString *mutablePolicy = [@"installed-basic-multiscene-v1" mutableCopy];
+        NSMutableString *mutablePolicy = [@"installed-basic-multiscene-v2" mutableCopy];
         NSMutableString *mutableStatus = [@"eligible" mutableCopy];
         NSMutableString *mutableReason = [@"declared-single-application-scene" mutableCopy];
         NSMutableDictionary *caller = [valid mutableCopy];
@@ -197,6 +274,16 @@ int main(void) {
         [(NSMutableString *)info[@"CFBundleIdentifier"] setString:@"com.example.changed"];
         Result(parsedSnapshot, @"eligible", @"declared-single-application-scene");
 
+        NSMutableString *programmaticReason = [@"declared-programmatic-application-scenes" mutableCopy];
+        caller = [Read(ProgrammaticInfo()) mutableCopy]; caller[@"reason"] = programmaticReason;
+        snapshot = PPOSceneCapabilityNormalize(caller);
+        [programmaticReason setString:@"file-unavailable"]; [caller removeAllObjects];
+        Result(snapshot, @"eligible", @"declared-programmatic-application-scenes");
+        NSDictionary *programmatic = Read(ProgrammaticInfo());
+        NSDictionary *wireCopy = [NSJSONSerialization JSONObjectWithData:
+            [NSJSONSerialization dataWithJSONObject:programmatic options:0 error:NULL] options:0 error:NULL];
+        Result(PPOSceneCapabilityNormalize(wireCopy), @"eligible", @"declared-programmatic-application-scenes");
+
         Check(PPOSceneCapabilityFresh(valid, 100) && PPOSceneCapabilityFresh(valid, 105) &&
               PPOSceneCapabilityFresh(valid, 99.9), "freshness includes exact current, deadline and skew boundaries");
         Check(!PPOSceneCapabilityFresh(valid, 105.0001) && !PPOSceneCapabilityFresh(valid, 99.8999),
@@ -205,6 +292,15 @@ int main(void) {
             Check(!PPOSceneCapabilityFresh(valid, now.doubleValue), "invalid caller clocks cannot grant freshness");
         Check(!PPOSceneCapabilityFresh(extra, 100) && !PPOSceneCapabilityFresh(nil, 100),
               "freshness never bypasses normalization");
+        Check(PPOSceneCapabilityFresh(programmatic, 100) && PPOSceneCapabilityFresh(programmatic, 105) &&
+              PPOSceneCapabilityFresh(programmatic, 99.9) && !PPOSceneCapabilityFresh(programmatic, 105.0001) &&
+              !PPOSceneCapabilityFresh(programmatic, 99.8999),
+              "programmatic eligibility uses the same freshness and future-skew limits");
+        for (NSDictionary *fixture in @[valid, programmatic]) {
+            NSMutableDictionary *legacy = [fixture mutableCopy]; legacy[@"policy"] = @"installed-basic-multiscene-v1";
+            Check(PPOSceneCapabilityNormalize(legacy) == nil && !PPOSceneCapabilityFresh(legacy, 100),
+                  "v1 proofs are rejected without translation or freshening for either eligible reason");
+        }
         printf("Scene capability tests passed: %u checks; pure metadata policy, not app admission\n", checks);
     }
     return 0;

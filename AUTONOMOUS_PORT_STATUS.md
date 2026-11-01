@@ -1,6 +1,8 @@
 # Autonomous port status — 2026-11-01
 
-Current isolated work:0.15.0~dev.favorites1 on debug/favorite-app-picker. It adds up to16 persistent favorite IDs, All/Favorites filtering and long-press quick selection. Production Foundation tickets own asynchronous generations; rows carry exact copied IDs and render generations. Executablec23360fc032479ff1052d50a216eca79d50eda35 passed all25 suites, iOS analysis, pinned Theos rootless arm64/arm64e build and downloaded artifact/package/hash inspection. Delivered candidate:Actions41256552751/artifact13063642671. See VALIDATION_0.15.0.md for evidence, exact digests and actual-device limits. See FAVORITE_APP_PICKER.md.
+Current isolated work:0.16.0~dev.programmatic1 on debug/app-client-configuration. Policyv2 adds only exact one-key true multiscene manifests without static configurations, based on exact UIKit nil-configuration/minimum-class semantics. No private runtime dispatch or baseline bypass is added. Current CI/build is pending.
+
+Previous favorite stage:0.15.0~dev.favorites1 on debug/favorite-app-picker. It adds up to16 persistent favorite IDs, All/Favorites filtering and long-press quick selection. Production Foundation tickets own asynchronous generations; rows carry exact copied IDs and render generations. Executablec23360fc032479ff1052d50a216eca79d50eda35 passed all25 suites, iOS analysis, pinned Theos rootless arm64/arm64e build and downloaded artifact/package/hash inspection. Delivered candidate:Actions41256552751/artifact13063642671. See VALIDATION_0.15.0.md for evidence, exact digests and actual-device limits. See FAVORITE_APP_PICKER.md.
 
 ## Actual preserved baselines
 

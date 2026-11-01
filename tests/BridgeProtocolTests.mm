@@ -10,13 +10,28 @@ static void Check(BOOL condition, const char *name) {
 static NSData *JSON(id value) {
     return [NSJSONSerialization dataWithJSONObject:value options:0 error:NULL];
 }
+// Synthetic metadata only: no installed application plist or private API is used.
 static NSDictionary *Capability(NSString *identifier, NSTimeInterval now) {
+    NSDictionary *info = @{@"CFBundleIdentifier": identifier, @"CFBundlePackageType": @"APPL",
+        @"UIDeviceFamily": @[@1], @"UIApplicationSceneManifest": @{
+            @"UIApplicationSupportsMultipleScenes": @YES}};
+    return PPOSceneCapabilityFromInfo(info, identifier, now);
+}
+static NSDictionary *StaticCapability(NSString *identifier, NSTimeInterval now) {
     NSDictionary *info = @{@"CFBundleIdentifier": identifier, @"CFBundlePackageType": @"APPL",
         @"UIDeviceFamily": @[@1], @"UIApplicationSceneManifest": @{
             @"UIApplicationSupportsMultipleScenes": @YES,
             @"UISceneConfigurations": @{@"UIWindowSceneSessionRoleApplication": @[
                 @{@"UISceneDelegateClassName": @"FixtureSceneDelegate"}]}}};
     return PPOSceneCapabilityFromInfo(info, identifier, now);
+}
+static void RejectCapability(NSString *nonce, NSDictionary *inspected, NSDictionary *capability) {
+    Check(PPOBridgeCapabilityResponseData(nonce, capability, 102, NULL) == nil,
+          "malformed capability cannot be encoded as a current-policy proof");
+    NSMutableDictionary *reply = [inspected mutableCopy];
+    reply[@"sceneCapability"] = capability;
+    Check(PPOBridgeResponseFromData(JSON(reply), nonce, NULL) == nil,
+          "incoming malformed capability cannot bypass current-policy normalization");
 }
 int main(void) {
     @autoreleasepool {
@@ -95,13 +110,58 @@ int main(void) {
         Check(PPOBridgeResponseFromData([NSMutableData dataWithLength:4097], nonce, NULL) == nil, "oversized response");
 
         NSDictionary *capability = Capability(@"com.example.window", 100);
-        Check([capability[@"status"] isEqual:@"eligible"], "positive capability fixture satisfies data policy");
+        Check([capability[@"status"] isEqual:@"eligible"] &&
+              [capability[@"policy"] isEqual:@"installed-basic-multiscene-v2"] &&
+              [capability[@"reason"] isEqual:@"declared-programmatic-application-scenes"] &&
+              [PPOSceneCapabilityNormalize(capability) isEqual:capability],
+              "synthetic programmatic capability satisfies the v2 data policy");
         NSData *inspectedData = PPOBridgeCapabilityResponseData(nonce, capability, 102, NULL);
         NSDictionary *inspected = PPOBridgeResponseFromData(inspectedData, nonce, NULL);
         Check(inspectedData.length <= PPOBridgeMessageLimit &&
               [inspected[@"status"] isEqual:@"inspected"] &&
               [inspected[@"sceneCapability"] isEqual:capability],
               "canonical capability is carried in a bounded nonce-bound response");
+        Check([inspected[@"detail"] isEqual:@"declared-programmatic-application-scenes"] &&
+              [inspected[@"sceneCapability"][@"bundleIdentifier"] isEqual:@"com.example.window"] &&
+              [inspected[@"sceneCapability"][@"observedUptime"] isEqual:@100],
+              "programmatic round trip preserves the exact reason, selected identifier and observation time");
+        Check(PPOSceneCapabilityFresh(inspected[@"sceneCapability"], 100) &&
+              PPOSceneCapabilityFresh(inspected[@"sceneCapability"], 105) &&
+              PPOSceneCapabilityFresh(inspected[@"sceneCapability"], 99.9) &&
+              !PPOSceneCapabilityFresh(inspected[@"sceneCapability"], 105.0001) &&
+              !PPOSceneCapabilityFresh(inspected[@"sceneCapability"], 99.8999),
+              "transport preserves the existing capability freshness boundaries");
+        NSDictionary *staticCapability = StaticCapability(@"com.example.window", 100);
+        NSDictionary *staticReply = PPOBridgeResponseFromData(
+            PPOBridgeCapabilityResponseData(nonce, staticCapability, 102, NULL), nonce, NULL);
+        Check([staticCapability[@"policy"] isEqual:@"installed-basic-multiscene-v2"] &&
+              [staticReply[@"sceneCapability"] isEqual:staticCapability] &&
+              [staticReply[@"detail"] isEqual:@"declared-single-application-scene"],
+              "the existing single static application configuration still round trips under v2");
+        for (NSDictionary *current in @[capability, staticCapability]) {
+            NSMutableDictionary *legacy = [current mutableCopy];
+            legacy[@"policy"] = @"installed-basic-multiscene-v1";
+            Check(PPOSceneCapabilityNormalize(legacy) == nil,
+                  "legacy-policy descriptors are rejected instead of translated into v2 proofs");
+            RejectCapability(nonce, inspected, legacy);
+        }
+        for (NSDictionary *fields in @[
+                @{@"status": @"eligible", @"eligible": @NO},
+                @{@"status": @"unknown", @"eligible": @NO},
+                @{@"status": @"ineligible", @"eligible": @NO},
+                @{@"status": @"unknown", @"eligible": @YES},
+                @{@"status": @"ineligible", @"eligible": @YES},
+                @{@"status": @"eligible", @"eligible": @1},
+                @{@"status": @"eligible", @"eligible": @0}]) {
+            NSMutableDictionary *bad = [capability mutableCopy];
+            [bad addEntriesFromDictionary:fields];
+            RejectCapability(nonce, inspected, bad);
+        }
+        for (NSString *reason in @[@"declared-programmatic-application-scene",
+                @"declared-programmatic-application-scenes-extra"]) {
+            NSMutableDictionary *bad = [capability mutableCopy]; bad[@"reason"] = reason;
+            RejectCapability(nonce, inspected, bad);
+        }
         Check(PPOBridgeResponseFromData(inspectedData, other, NULL) == nil,
               "inspection response still requires the caller's nonce");
         Check(PPOBridgeResponseData(nonce, @"inspected", nil, nil, 102, NULL) == nil,
