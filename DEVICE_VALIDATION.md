@@ -1,8 +1,30 @@
+## RC2 on-device source-independent Safari observations
+
+The supplied `host-1.0.1.json` (338,399 bytes, SHA256 `589004c83fc848e4433cfc83a2d046ff00f5aa7cc58d22b2193fd3a3492dde42`) contains three distinct Safari sessions; its top-level session duplicates the third history entry. All match the four expected 23A355 hosting framework identities and report version `1.0.1~rc2`.
+
+All three select `not-found` with zero source matches (among 3, 3 and 4 inspected scenes), use `fresh-application-identity` with `sourceSceneProvided=false`, observe active valid owned scenes and nonempty layers, and reach Keep. This demonstrates the new source-independent construction path on the device. It does not establish that the Safari process was terminated: scene absence and process absence are different observations.
+
+| Session | Close after preparation | First retained nonempty-layer sample | Retained drawer close/open events |
+| --- | ---: | ---: | ---: |
+| 1 | 24.928600 s | 1.559034 s | 0 / 0 |
+| 2 | 18.694687 s | 0.302386 s | 3 / 2 |
+| 3 | 3.750385 s | 0.809902 s | 0 / 0 |
+
+These timings are retained observations, not exact activation or first-pixel latency. Every terminal owner state is closed, unpinned and unpoisoned, with controller/workspace invalidations returned and replacement allowed. `external` is the close reason in all three; it does not identify X separately from another root caller. Final live/layer fields are cached pre-close observations, not proof that a scene remained active after invalidation.
+
+All 30 retained visible geometry samples show classic layout with zero header, a 364×787.787-point panel at (50, 54.106), and the native hosting view still 414×896. Session 2 records three drawer retractions and two reopenings, with +364-point translation while closed and identity transform while open. A retracted drawer's window can remain allocated/active in Keep mode; this differs from closing the owned session. Terminal geometry's `classicInterface=false`/header44 is computed after cleanup and does not demonstrate a live-layout regression.
+
+No timeout, activation refusal, ABI failure or quarantine is recorded in these sessions. The log does not prove visible pixels, web navigation, keyboard delivery, the exact initiating gesture, an X tap, PreferenceLoader controls, all-app compatibility or long-term watchdog/lock behavior. The existing `touchDeliveryVerified=false` and `keyboardRoutingVerified=false` flags mean unverified, not that input was disabled. Visual/input/X confirmation from the already performed test remains pending; no reinstall or repeated test is requested merely to supply that observation.
+
+The same executable and archived DEB remain current: source `1392af09d382be746ea8ece2a86380a1914fef29`, Actions `41390672326`, artifact `13117841813`, DEB SHA256 `a98d7c615e2fdc92f90a33c61f993bd87473e0aec8e786d2fcb54c29673fa655`. Docs-only head `4e0bb279cdedc0c6a74c1367f58196ba288a25c1` also passed Actions `41391721255`. These observations justify recording evidence, not an additional executable or general compatibility claim. Main and the preserved RC1 recovery remain unchanged. Only derived observations are published; the raw report stays local.
+
+Machine summary: [RC2_SAFARI_SOURCE_FREE_DEVICE_OBSERVATIONS.json](RC2_SAFARI_SOURCE_FREE_DEVICE_OBSERVATIONS.json).
+
 ## RC1 Safari baseline supplied by the user
 
 The1.0.0~rc1 Safari report records a kept session manually closed after about34.83 seconds,7completed resizes and3moves. All4framework identities match, owned proxy binding and explicit controller/workspace cleanup are confirmed, ownership is unpinned/unpoisoned and replacement allowed. The user states it works. No retained drawer gesture, Settings-wide, cold-start or all-app proof is inferred. The submitted ZIP matches this repository's Alpha4 main rather than upstream c1d3r source.
 
-RC2's new source-independent factories and classic UI have no actual phone result yet. See [VALIDATION_1.0.1_RC2.md](VALIDATION_1.0.1_RC2.md); synthetic fixtures and firmware traces do not substitute for that gate.
+RC2 now has on-device source-independent scene/layer/cleanup observations recorded above; visible content/input and X confirmation remain pending. See [VALIDATION_1.0.1_RC2.md](VALIDATION_1.0.1_RC2.md).
 
 # Device validation
 

@@ -2,7 +2,11 @@
 
 [Download the single RC2 DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/8d360d8ded7df9e8e857b29088c5642769679172/release-candidates/1.0.1-rc2/com.renatasy83.pulloverpro.diagnostic_1.0.1~rc2_iphoneos-arm64.deb) · [Preserved RC1 recovery DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/8b63669eb2dc68032848843bb0316a76caa71d8a/release-candidates/1.0.0-rc1/com.renatasy83.pulloverpro.diagnostic_1.0.0~rc1_iphoneos-arm64.deb) · [Interface and exact remaining device check](CLASSIC_UI_RC2.md)
 
-**Implemented and compiled; cold launch and the new classic interface are not yet device-confirmed. Complete Dopamine/ElleKit compatibility and every-app support remain unconfirmed.** Main remains Alpha 4. No automatic phone installation/respring, personal-data deletion or other-tweak modification occurred.
+**Update: a supplied device report records three source-independent Safari sessions with active nonempty layers, sampled classic headerless layout, drawer transitions and clean owner teardown. Visible pixels/input and X confirmation remain pending. A terminated process and full Dopamine/ElleKit or every-app support are not established.** Main remains Alpha 4. No automatic phone installation/respring, personal-data deletion or other-tweak modification occurred.
+
+## Subsequent device report
+
+See [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md) and [the derived machine summary](RC2_SAFARI_SOURCE_FREE_DEVICE_OBSERVATIONS.json). Three unique source-free sessions close at 24.928600, 18.694687 and 3.750385 seconds in Keep mode; all complete controller/workspace invalidation, unpin and allow replacement. The second records three drawer retractions and two reopenings. The essential construction/layer/cleanup portion of the gate has run. The user has not yet stated the pixels/input/X outcome; no reinstall or new build is needed to report that observation. Below is the original build evidence and requested gate, retained for context.
 
 ## Exact build
 

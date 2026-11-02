@@ -1,6 +1,6 @@
 # Classic interface and direct favorites — RC2
 
-Version **1.0.1~rc2** follows the user-confirmed Safari baseline in **1.0.0~rc1**. It is a test candidate. Complete Dopamine/ElleKit compatibility and support for every application remain unconfirmed.
+Version **1.0.1~rc2** follows the user-confirmed Safari baseline in **1.0.0~rc1**. It is a test candidate. Complete Dopamine/ElleKit compatibility and support for every application remain unconfirmed. A subsequent device report demonstrates three source-independent Safari scene/layer/cleanup sessions and sampled classic geometry; visible content/input and X observations are pending. See [device evidence](DEVICE_VALIDATION.md).
 
 The original reference is GPL-3.0 `c1d3rdev/PullOver-Pro` at `4a227b75668929894d7faa5a83ea4bf2ba81edc0`. The uploaded `PullOverPro-main.zip` matches the seven Alpha 4 files on this repository's `main` at `af336d84a6b4812e6b6406af87803fb15bf29c3b`; it is not the upstream implementation. The upstream source was obtained independently. Uploaded ZIP SHA256: `44ba7b3ec1fd9b49069aad2c2b2996093bcb1d8c3f6cd7eb8b52fb23ec99e147`.
 

@@ -1,3 +1,7 @@
+## RC2 device observations received
+
+Three Safari sessions in the supplied1.0.1 report ran the fresh-application-identity path with no source scene, active nonempty owned layers, Keep and confirmed cleanup/reuse. The second records drawer retract/reopen transitions. No new executable is justified by this log; retain the validated1392af0 source/archived RC2 and preserved RC1. Actual pixels/input/X observations remain pending; no process-terminated or general compatibility claim is made. See [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md). Older status entries below describe their earlier checkpoints.
+
 ## RC2 implementation update
 
 The source-independent identity/specification factories and classic headerless edge interface are implemented on `debug/cold-favorites-classic-ui`. RC1 remains preserved at `stable/verified-rc1-safari-kept-resize-manual` and its permanent package archive. Main stays Alpha4. The user-confirmed RC1 Safari report contains a34.83s kept session,7resizes,3moves and verified own cleanup; this is not evidence of RC2 cold launch. See [CLASSIC_UI_RC2.md](CLASSIC_UI_RC2.md). CI and device status are recorded in the versioned RC2 report.
