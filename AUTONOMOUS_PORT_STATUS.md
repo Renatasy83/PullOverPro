@@ -1,3 +1,7 @@
+## Current RC4 candidate — corrected reveal flow and strict Messages profile
+
+The first tap/pull no longer requests an app window. Explicit second tap/choice uses the existing owner pipeline. A strict installed Messages profile is supported by static UIKit/app-delegate evidence and remains device-gated; Messenger receives no guessed exception. Eight-app diagnostic history preserves refusals. See [VALIDATION_1.0.3_RC4.md](VALIDATION_1.0.3_RC4.md) for34-suite/build/hash evidence and the one combined UI/Messages/Messenger gate. Main and scoped stableRC2 remain unchanged. Historical checkpoints below retain their original wording.
+
 ## Current RC3 candidate — public interface additions
 
 RC3 has manual outward nub and default-off public keyboard avoidance for the handle/compact chooser. Its own report is interface-1.0.2.json. The validated RC2 Safari baseline remains untouched. See [VALIDATION_1.0.2_RC3.md](VALIDATION_1.0.2_RC3.md) for exact build/hash/32-suite evidence and the single new physical-gesture/public-keyboard device gate. No ordinary source-free Safari replay is requested. Older entries below describe previous checkpoints.

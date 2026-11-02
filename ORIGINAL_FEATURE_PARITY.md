@@ -1,3 +1,5 @@
+> RC4 accepts the user's original-flow correction: first tap/inward pull only reveals the handle/choices; explicit second tap or row choice opens the app. It adds a strict firmware-matching Messages profile and per-app refusal history. New device behavior and Messenger remain unconfirmed. See [TWO_STAGE_HANDLE_MESSAGES_RC4.md](TWO_STAGE_HANDLE_MESSAGES_RC4.md) and [VALIDATION_1.0.3_RC4.md](VALIDATION_1.0.3_RC4.md). Older RC paragraphs below are historical where they differ.
+
 > Current RC3 update: [PUBLIC_KEYBOARD_MANUAL_NUB_RC3.md](PUBLIC_KEYBOARD_MANUAL_NUB_RC3.md) and [VALIDATION_1.0.2_RC3.md](VALIDATION_1.0.2_RC3.md). New changes concern only public handle/keyboard presentation. RC2's Safari evidence and recovery remain intact; no new private icon/focus or host calls are enabled.
 
 # Original feature coverage

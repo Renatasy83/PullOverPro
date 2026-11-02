@@ -1,3 +1,9 @@
+## RC3 supplied report and user correction
+
+The three uploaded1.0.2 reports contain four source-independent clean sessions: Safari118.583783s, Files10.076879s, Calendar282.295437s and Safari7.937405s. All record activity/layers/Keep and closed/unpinned/unpoisoned teardown/replacement. The interface counts47 public keyboard notifications and one manualnub commit; the retained keyboard observations are hidden/unadjusted, so no movement/restoration or every-control confirmation is inferred. The capability report is only Safari. No Messages/Messenger host failure is present in these files.
+
+The user reports “Suportul pentru fereastra nu poate fi verificat” and corrects the flow: opening the handle should not open its app. RC4 implements that two-stage correction, a strict firmware-audited Messages profile and bounded per-app refusal history. Messenger's installed metadata is missing; no shared cause or app compatibility is inferred. RC4 requires the combined actual UI/Messages/Messenger gate described in [VALIDATION_1.0.3_RC4.md](VALIDATION_1.0.3_RC4.md). Raw reports and app contents stay local; existing stableRC2 is not replaced.
+
 ## User-confirmed RC2 — source-independent Safari, input and X
 
 The supplied `host-1.0.1.json` (338,399 bytes, SHA256 `589004c83fc848e4433cfc83a2d046ff00f5aa7cc58d22b2193fd3a3492dde42`) contains three distinct Safari sessions; its top-level session duplicates the third history entry. All match the four expected 23A355 hosting framework identities and report version `1.0.1~rc2`.
