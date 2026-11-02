@@ -48,3 +48,8 @@ No automatic phone install/respring/process kill; no personal-data deletion or o
 Use GitHub Actions' pinned Theos/SDK16.5 workflow. Linux pure tests cannot validate UIKit or private iOS runtime. No compatible physical Apple Silicon Mac was available for vphone-cli. Private icons and keyboard alternatives remain unenabled; read the derived audit documents before changes.
 
 Raw phone reports and Apple firmware bytes were kept outside the repository and may not be available in a new environment. Do not assume prior ChatGPT context or access to those local files. Repository source, derived audits, reports and permanent DEBs are published.
+
+
+## Subsequent RC4 messaging reports
+
+Read [RC4_MESSAGING_DEVICE_RESULT.md](RC4_MESSAGING_DEVICE_RESULT.md) before changing messaging support. The attempted Messages identifier was com.apple.mobilesms.compose; the audited com.apple.MobileSMS profile has not yet been exercised in these reports. Messenger is unknown/manifest-unknown before host creation.
