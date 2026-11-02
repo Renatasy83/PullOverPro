@@ -549,6 +549,9 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     if (!ppoWindow || !PPOOverlayAllowed()) {
         ppoNubState.cancelGesture(); [self cancelOpening]; self.handlingPan = NO; return;
     }
+    // Ignore late/duplicate events after a completed or externally cancelled pan.
+    // An invalid sample from a live gesture is still handled once below.
+    if (recognizer.state != UIGestureRecognizerStateBegan && ppoNubState.mode() == PPOHandlePanMode::Inactive) return;
     ppoLastInteraction = NSProcessInfo.processInfo.systemUptime;
     CGPoint delta = [recognizer translationInView:ppoWindow];
     CGPoint velocity = [recognizer velocityInView:ppoWindow];
