@@ -1,12 +1,12 @@
 # PullOver Pro 1.0.1 RC2 validation
 
-[Download the single RC2 DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/8d360d8ded7df9e8e857b29088c5642769679172/release-candidates/1.0.1-rc2/com.renatasy83.pulloverpro.diagnostic_1.0.1~rc2_iphoneos-arm64.deb) · [Preserved RC1 recovery DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/8b63669eb2dc68032848843bb0316a76caa71d8a/release-candidates/1.0.0-rc1/com.renatasy83.pulloverpro.diagnostic_1.0.0~rc1_iphoneos-arm64.deb) · [Interface and exact remaining device check](CLASSIC_UI_RC2.md)
+[Download the single RC2 DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/8d360d8ded7df9e8e857b29088c5642769679172/release-candidates/1.0.1-rc2/com.renatasy83.pulloverpro.diagnostic_1.0.1~rc2_iphoneos-arm64.deb) · [Preserved RC1 recovery DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/8b63669eb2dc68032848843bb0316a76caa71d8a/release-candidates/1.0.0-rc1/com.renatasy83.pulloverpro.diagnostic_1.0.0~rc1_iphoneos-arm64.deb) · [Interface and test scope](CLASSIC_UI_RC2.md)
 
-**Update: a supplied device report records three source-independent Safari sessions with active nonempty layers, sampled classic headerless layout, drawer transitions and clean owner teardown. Visible pixels/input and X confirmation remain pending. A terminated process and full Dopamine/ElleKit or every-app support are not established.** Main remains Alpha 4. No automatic phone installation/respring, personal-data deletion or other-tweak modification occurred.
+**Update: a supplied device report records three source-independent Safari sessions with active nonempty layers, sampled classic headerless layout, drawer transitions and clean owner teardown. The user subsequently confirmed visible Safari content, navigation, keyboard and X; the stated Safari gate is complete. A terminated process and full Dopamine/ElleKit or every-app support are not established.** Main remains Alpha 4. No automatic phone installation/respring, personal-data deletion or other-tweak modification occurred.
 
 ## Subsequent device report
 
-See [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md) and [the derived machine summary](RC2_SAFARI_SOURCE_FREE_DEVICE_OBSERVATIONS.json). Three unique source-free sessions close at 24.928600, 18.694687 and 3.750385 seconds in Keep mode; all complete controller/workspace invalidation, unpin and allow replacement. The second records three drawer retractions and two reopenings. The essential construction/layer/cleanup portion of the gate has run. The user has not yet stated the pixels/input/X outcome; no reinstall or new build is needed to report that observation. Below is the original build evidence and requested gate, retained for context.
+See [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md) and [the derived machine summary](RC2_SAFARI_SOURCE_FREE_DEVICE_OBSERVATIONS.json). Three unique source-free sessions close at 24.928600, 18.694687 and 3.750385 seconds in Keep mode; all complete controller/workspace invalidation, unpin and allow replacement. The second records three drawer retractions and two reopenings. The essential construction/layer/cleanup portion of the gate has run. The user answered “Da. Funcționa totul” to the explicit page/navigation/keyboard/X question. This closes the specific Safari functional gate; the human observation is separate from sampled telemetry and is not mapped to individual session events. The stable baseline is `stable/verified-rc2-safari-source-free-classic-reuse`, with unchanged runtime source `1392af09d382be746ea8ece2a86380a1914fef29`. No new build, version, reinstall or repeated ordinary Safari test is needed. Below is the original build evidence and requested gate, retained for context rather than a new test request.
 
 ## Exact build
 
@@ -93,7 +93,7 @@ The supplied RC1 Safari JSON records a kept session closed manually after about 
 
 This CI run did not exercise real iOS launchd/entitlements, sandbox access, private framework construction/activation, cold process bootstrap, content pixels/input/keyboard, locking/orientation/app death, actual cleanup, watchdog behavior or PreferenceLoader discovery. No compatible physical Apple Silicon Mac is accessible for vphone-cli; neither Linux nor Intel Actions can substitute for the actual jailbroken target. Static firmware traces establish method shape/call paths, not authorization, readiness or runtime compatibility.
 
-## Essential combined device gate
+## Original combined device gate — Safari confirmation received
 
 Manually install RC2 with dependencies satisfied and respring. Close the owned PPO window, remove Safari from the iOS app switcher, stay in NewTerm, then open its favorite directly from PPO without normally opening Safari first. Check initial content, web input/keyboard, X and reopening. Confirm the narrow quick list/headerless window in the same session; no per-app matrix is needed. Send `/var/mobile/Library/Logs/PullOverPro/host-1.0.1.json`.
 

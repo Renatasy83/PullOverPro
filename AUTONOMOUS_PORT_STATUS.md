@@ -1,4 +1,10 @@
-## RC2 device observations received
+## Current RC2 status — Safari functional confirmation received
+
+The user explicitly confirmed visible Safari content, web navigation, keyboard response and X on1.0.1~rc2. Together with the three-session source-free scene/Keep/drawer/clean-cleanup report, this closes the specific Safari gate. Preserve `stable/verified-rc2-safari-source-free-classic-reuse` with runtime sources identical to the tested `1392af09d382be746ea8ece2a86380a1914fef29` and retain the permanent RC2/RC1 DEBs. No new binary, version or repeated ordinary test is needed.
+
+Process termination before launch, every compact chooser/Settings control, every app, long-term stress, exact upstream parity and complete Dopamine/ElleKit compatibility remain unconfirmed. Main stays Alpha4. Human confirmation and telemetry are recorded separately in [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md). Entries below describe earlier checkpoints; their pending wording is historical.
+
+## Earlier RC2 checkpoint — before the user confirmation
 
 Three Safari sessions in the supplied1.0.1 report ran the fresh-application-identity path with no source scene, active nonempty owned layers, Keep and confirmed cleanup/reuse. The second records drawer retract/reopen transitions. No new executable is justified by this log; retain the validated1392af0 source/archived RC2 and preserved RC1. Actual pixels/input/X observations remain pending; no process-terminated or general compatibility claim is made. See [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md). Older status entries below describe their earlier checkpoints.
 

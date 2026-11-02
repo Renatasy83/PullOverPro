@@ -1,6 +1,6 @@
 # Classic interface and direct favorites — RC2
 
-Version **1.0.1~rc2** follows the user-confirmed Safari baseline in **1.0.0~rc1**. It is a test candidate. Complete Dopamine/ElleKit compatibility and support for every application remain unconfirmed. A subsequent device report demonstrates three source-independent Safari scene/layer/cleanup sessions and sampled classic geometry; visible content/input and X observations are pending. See [device evidence](DEVICE_VALIDATION.md).
+Version **1.0.1~rc2** follows the user-confirmed Safari baseline in **1.0.0~rc1**. It is a test candidate. Complete Dopamine/ElleKit compatibility and support for every application remain unconfirmed. A subsequent device report demonstrates three source-independent Safari scene/layer/cleanup sessions and sampled classic geometry; the user has now confirmed visible Safari content, web navigation, keyboard response and X in the performed test. See [device evidence](DEVICE_VALIDATION.md).
 
 The original reference is GPL-3.0 `c1d3rdev/PullOver-Pro` at `4a227b75668929894d7faa5a83ea4bf2ba81edc0`. The uploaded `PullOverPro-main.zip` matches the seven Alpha 4 files on this repository's `main` at `af336d84a6b4812e6b6406af87803fb15bf29c3b`; it is not the upstream implementation. The upstream source was obtained independently. Uploaded ZIP SHA256: `44ba7b3ec1fd9b49069aad2c2b2996093bcb1d8c3f6cd7eb8b52fb23ec99e147`.
 
@@ -22,10 +22,12 @@ Cold activation has an 8-second initial activity/layer deadline. Layer inspectio
 
 Reports are in `/var/mobile/Library/Logs/PullOverPro/`: `host-1.0.1.json`, `capability-1.0.1.json` and `picker-1.0.1.json`. A genuine absent-source run must record `preparationMode=fresh-application-identity` and `sourceSceneProvided=false`. Warm success is not cold-start proof.
 
-## Automation and necessary device check
+## Automation and completed Safari device gate
 
 CI runs Clang analysis, 30 automated suites, pinned Theos rootless compilation for arm64/arm64e, lifecycle/payload/license checks and hashing. These use synthetic Foundation classes, pure policies and an actual subprocess with a fake workspace. They do not run SpringBoard or Apple private iOS frameworks. No compatible physical Apple Silicon Mac is accessible for vphone-cli.
 
-After a successful candidate build, manually close PPO's owned window, remove Safari from the iOS app switcher, stay in NewTerm, and open the Safari favorite from PPO without opening Safari normally. Check content, web input/keyboard, then X/reopen; send `host-1.0.1.json`. Confirm the classic handle, compact column and headerless drawer in the same session. This requires no per-application test matrix. No automatic phone install, respring or process kill occurs.
+The original requested check below has now produced the three-session report and the user's page/navigation/keyboard/X confirmation. This specific Safari gate is complete; no repetition or reinstall is requested. The stable baseline is `stable/verified-rc2-safari-source-free-classic-reuse`, with runtime sources identical to the compiled `1392af09d382be746ea8ece2a86380a1914fef29`. This does not establish every compact-chooser/Settings control, a terminated Safari process or global compatibility.
+
+Original procedure: after a successful candidate build, manually close PPO's owned window, remove Safari from the iOS app switcher, stay in NewTerm, and open the Safari favorite from PPO without opening Safari normally. Check content, web input/keyboard, then X/reopen; send `host-1.0.1.json`. Confirm the classic handle, compact column and headerless drawer in the same session. This requires no per-application test matrix. No automatic phone install, respring or process kill occurs.
 
 RC1 recovery is preserved at `stable/verified-rc1-safari-kept-resize-manual` (executable `f3653171e59fd04cb2ae0c7b70ba28acf4c20fef`) and permanent archive `release-candidates/1.0.0-rc1`. The older `recovery/0.17.0` package also remains. Main is untouched. The existing `/var/mobile/.ppo_disable` marker plus manual respring, or Dopamine startup without tweak injection followed by uninstalling only PPO, remain recovery routes. No other tweak or personal data is modified.
