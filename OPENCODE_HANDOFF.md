@@ -1,3 +1,13 @@
+## Messenger legacy lifecycle audit completed — no new runtime experiment
+
+Read MESSENGER_LEGACY_AUDIT_23A355.md. Offline23A355 UIKit inspection shows that lifecycle adoption depends on declared scene configurations OR delegate callback-support flags. Missing UIApplicationSceneManifest alone does not establish that Messenger's runtime lifecycle is legacy. The false-adoption branch can still construct a UIScene wrapper; it does not establish independent app content. Application-level main-interface initialization and defaultSceneToken are distinct from an arbitrary PPO-owned scene. Messenger declares neither a main storyboard/nib nor its actual delegate class. LaunchScreen is not interactive app content.
+
+Completed: read-only metadata/disassembly review; independent agreement for75 selector-stub resolutions;32 evidence anchors across10 extracts; exact declaration bit-offset check; local source-policy pass. These audit checks are not native suites or runtime tests. No new private call, admission relaxation, app modification, DEB or phone test. Original34-suite/Clang/Theos/package evidence remains run41521971944/source d0303bd039aefe08817702fb737c85eae90336eb; delivered RC4 source8bd812121489f896f4e38d578da10ba0ce284039 remains available. Main and stable/recovery refs preserved.
+
+Next: Messenger's running delegate/content/default-scene behavior and a route respecting independent ownership/cleanup remain unproven. Do not permit missing manifests globally or add an identifier-only Messenger exception. An existing-scene read cannot prove second-window content or another process's delegate. The user has been asked whether the reported phone slowdown persists; await health status before proposing any necessary device observation. Do not infer recovery, perform a respring/install or attribute slowdown without evidence. Continue from the current remote head and preserve intervening OpenCode work.
+
+---
+
 ## Installed Messenger metadata received — no phone test requested
 
 The user supplied Info.zip after reporting that the phone was slow. The extracted application plist identifies com.facebook.Messenger, version585.0.0/build1101076820, executable Messenger, APPL, device families[1,2]. It has77 keys and22483 bytes; SHA256741517f9808a10ac225c6490d2af5bd835ff56b112464c5d53ce670d7ff92e30. UIApplicationSceneManifest is absent; no other top-level scene/window keys or background-only/extension declarations were found. Raw plist/archive are not published.
