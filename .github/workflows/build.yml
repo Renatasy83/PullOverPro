@@ -245,13 +245,19 @@ jobs:
             tests/ClassicInterfaceGeometryTests.cpp -o "$RUNNER_TEMP/ppo-classic-geometry-tests"
           "$RUNNER_TEMP/ppo-classic-geometry-tests" | tee diagnostics/classic-geometry-tests.log
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/KeyboardAvoidanceTests.cpp -o "$RUNNER_TEMP/ppo-keyboard-avoidance-tests"
+          "$RUNNER_TEMP/ppo-keyboard-avoidance-tests" | tee diagnostics/keyboard-avoidance-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/HandleNubStateTests.cpp -o "$RUNNER_TEMP/ppo-handle-nub-tests"
+          "$RUNNER_TEMP/ppo-handle-nub-tests" | tee diagnostics/handle-nub-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
             tests/InteractionIntentTests.cpp -o "$RUNNER_TEMP/ppo-interaction-intent-tests"
           "$RUNNER_TEMP/ppo-interaction-intent-tests" | tee diagnostics/interaction-intent-tests.log
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
             PPOUserPreferences.mm tests/UserPreferencesTests.mm -framework Foundation -framework CoreFoundation \
             -o "$RUNNER_TEMP/ppo-user-preferences-tests"
           "$RUNNER_TEMP/ppo-user-preferences-tests" | tee diagnostics/user-preferences-tests.log
-          for source in PPOClassicQuickSwitchView.mm PPOUserPreferences.mm preferences/PPOSettingsController.mm; do
+          for source in PPOKeyboardMonitor.mm PPOClassicQuickSwitchView.mm PPOUserPreferences.mm preferences/PPOSettingsController.mm; do
             xcrun clang++ --analyze -std=c++17 -Werror -fobjc-arc -target arm64-apple-ios15.0 \
               -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -I . \
               -Xanalyzer -analyzer-output=text "$source"
@@ -305,7 +311,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-1.0.1-rc2-${{ github.sha }}
+          name: PullOverPro-1.0.2-rc3-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

@@ -17,6 +17,7 @@ NSDictionary<NSString *, id> *PPOUserPreferencesDefaults(void) {
         @"keepWindowOpen": @YES, @"rememberPosition": @YES,
         @"quickSwitchMode": @"recent", @"recentAppsCount": @5, @"quickSwitchScale": @1.75,
         @"hideLabels": @NO, @"hideInLandscape": @YES, @"hapticFeedback": @YES,
+        @"keyboardAvoiding": @NO,
         @"recentIdentifiers": @[]};
 }
 
@@ -49,7 +50,8 @@ static id PreferenceScalar(NSString *key, id value, BOOL strict) {
     if ([key isEqual:@"recentIdentifiers"]) return PreferenceRecentIdentifiers(value);
     if ([key isEqual:@"enabled"] || [key isEqual:@"autoHideHandle"] ||
         [key isEqual:@"keepWindowOpen"] || [key isEqual:@"rememberPosition"] ||
-        [key isEqual:@"hideLabels"] || [key isEqual:@"hideInLandscape"] || [key isEqual:@"hapticFeedback"])
+        [key isEqual:@"hideLabels"] || [key isEqual:@"hideInLandscape"] || [key isEqual:@"hapticFeedback"] ||
+        [key isEqual:@"keyboardAvoiding"])
         return PreferenceIsBoolean(value) ? ([value boolValue] ? @YES : @NO) : nil;
     if ([key isEqual:@"edge"] || [key isEqual:@"appearance"] || [key isEqual:@"quickSwitchMode"]) {
         if (![value isKindOfClass:NSString.class] || [(NSString *)value length] > 16) return nil;

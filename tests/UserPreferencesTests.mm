@@ -44,19 +44,20 @@ int main(void) {
         NSSet *keys = [NSSet setWithArray:@[@"enabled", @"edge", @"handleYRatio", @"handleSize",
             @"handleOpacity", @"windowSize", @"appearance", @"autoHideHandle", @"autoHideDelay",
             @"keepWindowOpen", @"rememberPosition", @"quickSwitchMode", @"recentAppsCount",
-            @"quickSwitchScale", @"hideLabels", @"hideInLandscape", @"hapticFeedback", @"recentIdentifiers"]];
+            @"quickSwitchScale", @"hideLabels", @"hideInLandscape", @"hapticFeedback", @"keyboardAvoiding", @"recentIdentifiers"]];
         Check([PPOUserPreferencesDomain isEqual:@"com.renatasy83.pulloverpro.settings"] &&
               [PPOUserPreferencesChangedNotification isEqual:@"com.renatasy83.pulloverpro.settings-changed"],
               "storage and Darwin notification use only the dedicated PPO settings domain");
-        Check(defaults.count == 18 && [[NSSet setWithArray:defaults.allKeys] isEqual:keys],
-              "default schema contains seventeen scalar keys and the own recent-choice cache");
+        Check(defaults.count == 19 && [[NSSet setWithArray:defaults.allKeys] isEqual:keys],
+              "default schema contains eighteen scalar keys and the own recent-choice cache");
         Check(PreferenceFixtureBoolean(defaults[@"enabled"], YES) &&
               PreferenceFixtureBoolean(defaults[@"autoHideHandle"], NO) &&
               PreferenceFixtureBoolean(defaults[@"rememberPosition"], YES) &&
               PreferenceFixtureBoolean(defaults[@"keepWindowOpen"], YES) &&
               PreferenceFixtureBoolean(defaults[@"hideLabels"], NO) &&
               PreferenceFixtureBoolean(defaults[@"hideInLandscape"], YES) &&
-              PreferenceFixtureBoolean(defaults[@"hapticFeedback"], YES),
+              PreferenceFixtureBoolean(defaults[@"hapticFeedback"], YES) &&
+              PreferenceFixtureBoolean(defaults[@"keyboardAvoiding"], NO),
               "default flags preserve original visible-handle behavior and persistent release windows");
         Check([defaults[@"edge"] isEqual:@"right"] && [defaults[@"appearance"] isEqual:@"system"] &&
               [defaults[@"handleYRatio"] isEqual:@0.5] && [defaults[@"handleSize"] isEqual:@34] &&
@@ -88,7 +89,7 @@ int main(void) {
             }
         }
         NSDictionary *unknown = PPOUserPreferencesNormalize(@{@"enabled": @NO, @"otherAppPreference": @"untouched"});
-        Check(unknown.count == 18 && PreferenceFixtureBoolean(unknown[@"enabled"], NO) &&
+        Check(unknown.count == 19 && PreferenceFixtureBoolean(unknown[@"enabled"], NO) &&
               unknown[@"otherAppPreference"] == nil,
               "unknown read keys are omitted without suppressing known valid values");
         NSMutableDictionary *oversized = [NSMutableDictionary dictionary];
@@ -97,7 +98,7 @@ int main(void) {
               "oversized root objects cannot amplify preference processing");
 
         for (NSString *key in @[@"enabled", @"autoHideHandle", @"keepWindowOpen", @"rememberPosition",
-                @"hideLabels", @"hideInLandscape", @"hapticFeedback"]) {
+                @"hideLabels", @"hideInLandscape", @"hapticFeedback", @"keyboardAvoiding"]) {
             for (NSNumber *flag in @[@YES, @NO]) {
                 NSDictionary *result = PPOUserPreferencesNormalize(With(key, flag));
                 Check(PreferenceFixtureBoolean(result[key], flag.boolValue),
@@ -112,6 +113,23 @@ int main(void) {
                 Rejected(@{key: impostor});
             }
         }
+
+        // Opt-in keyboard avoidance must neither migrate existing position nor
+        // rewrite window/choice state. Only this explicit Boolean may change.
+        NSMutableDictionary *legacy = [defaults mutableCopy];
+        [legacy removeObjectForKey:@"keyboardAvoiding"];
+        legacy[@"handleYRatio"] = @0.91;
+        NSDictionary *legacySnapshot = PPOUserPreferencesNormalize(legacy);
+        Check(PreferenceFixtureBoolean(legacySnapshot[@"keyboardAvoiding"], NO) &&
+              [legacySnapshot[@"handleYRatio"] isEqual:@0.91],
+              "old preference snapshots gain opt-in keyboard avoidance without moving the saved handle");
+        NSDictionary *avoiding = PPOUserPreferencesApplyingChanges(legacySnapshot, @{@"keyboardAvoiding": @YES}, NULL);
+        NSMutableDictionary *otherBefore = [legacySnapshot mutableCopy], *otherAfter = [avoiding mutableCopy];
+        [otherBefore removeObjectForKey:@"keyboardAvoiding"]; [otherAfter removeObjectForKey:@"keyboardAvoiding"];
+        Check(PreferenceFixtureBoolean(avoiding[@"keyboardAvoiding"], YES) && [otherBefore isEqual:otherAfter],
+              "enabling keyboard avoidance leaves saved position, selection history and window policy intact");
+        Check([PPOUserPreferencesApplyingChanges(avoiding, @{@"keyboardAvoiding": @NO}, NULL) isEqual:legacySnapshot],
+              "turning off keyboard avoidance restores only its flag and preserves other preferences");
 
         NSDictionary *numericBounds = @{@"handleYRatio": @[@0, @1], @"handleSize": @[@32, @72],
             @"handleOpacity": @[@0.2, @1], @"windowSize": @[@0, @3], @"autoHideDelay": @[@1, @30],
@@ -233,7 +251,7 @@ int main(void) {
         Check([snapshot[@"edge"] isEqual:@"left"] && PreferenceFixtureBoolean(snapshot[@"enabled"], NO) &&
               [editSnapshot isEqual:snapshot],
               "normalized and edited snapshots do not retain caller-owned mutable strings or dictionaries");
-        Check([PPOUserPreferencesNormalize(snapshot) isEqual:snapshot] && snapshot.count == 18,
+        Check([PPOUserPreferencesNormalize(snapshot) isEqual:snapshot] && snapshot.count == 19,
               "normalization is idempotent and does not retain unknown metadata");
         NSData *plist = [NSPropertyListSerialization dataWithPropertyList:snapshot
             format:NSPropertyListBinaryFormat_v1_0 options:0 error:NULL];
@@ -253,7 +271,7 @@ int main(void) {
             @"appearance": @"dark", @"autoHideHandle": @YES, @"autoHideDelay": @12,
             @"keepWindowOpen": @NO, @"rememberPosition": @NO,
             @"quickSwitchMode": @"favorites", @"recentAppsCount": @16, @"quickSwitchScale": @2.5,
-            @"hideLabels": @YES, @"hideInLandscape": @NO, @"hapticFeedback": @NO,
+            @"hideLabels": @YES, @"hideInLandscape": @NO, @"hapticFeedback": @NO, @"keyboardAvoiding": @YES,
             @"recentIdentifiers": @[@"com.example.chosen", @"com.example.previous"]};
         Check([PPOUserPreferencesApplyingChanges(defaults, allChanged, NULL) isEqual:allChanged],
               "one valid multi-key edit produces an independently normalized complete snapshot");

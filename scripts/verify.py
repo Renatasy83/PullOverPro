@@ -16,7 +16,7 @@ def require(condition, message):
         raise SystemExit(message)
 
 
-source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOClassicQuickSwitchView.mm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm', 'PPOFavoriteApps.mm', 'PPOFavoritesStore.mm', 'PPOPickerState.mm'])
+source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOKeyboardMonitor.mm', 'PPOClassicQuickSwitchView.mm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm', 'PPOFavoriteApps.mm', 'PPOFavoritesStore.mm', 'PPOPickerState.mm'])
 for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'NSSelectorFromString', r'valueForKey:', r'launchApplication',
                 r'method_getImplementation', r'method_invoke', r'dlopen', r'dlsym',
@@ -305,6 +305,10 @@ require('PPOUserPreferences.mm' in production_sources and 'preferences' in (ROOT
 require('CFPreferencesSetMultiple' in prefs_source and 'CFPreferencesSetAppValue' not in prefs_source and
         'PPOUserPreferencesChangedNotification' in prefs_source,
         'Preferences must update only validated keys in their own domain')
+require('@"keyboardAvoiding": @NO' in prefs_source and
+        '[key isEqual:@"keyboardAvoiding"]' in prefs_source and
+        '@"keyboardAvoiding"' in settings_source and '@"Evită tastatura"' in settings_source,
+        'Keyboard avoidance must be an explicit default-off Boolean in the own settings domain')
 require('PPOInteractionIntent _intent' in picker_source and '_intent.current(intent)' in picker_source and
         '_intent.held(intent)' in picker_source and '_intent.consume(intent)' in picker_source and
         '_intent.commit(_panIntent)' in picker_source,
@@ -324,7 +328,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.1~rc2', 'Unexpected version')
+    require(field('Version') == '1.0.2~rc3', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')

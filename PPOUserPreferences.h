@@ -4,7 +4,7 @@
 FOUNDATION_EXPORT NSString *const PPOUserPreferencesDomain;
 FOUNDATION_EXPORT NSString *const PPOUserPreferencesChangedNotification;
 
-// Pure snapshots containing seventeen scalar keys and recentIdentifiers. Missing
+// Pure snapshots containing eighteen scalar keys and recentIdentifiers. Missing
 // or malformed values use defaults; finite numeric values are clamped. Unknown
 // keys are ignored by reads, never propagated into an output snapshot.
 // recentIdentifiers is only PPO's own ordered choice cache: at most sixteen

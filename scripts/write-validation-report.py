@@ -7,6 +7,8 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'keyboard-avoidance-tests.log': 'Keyboard avoidance tests passed:',
+    'handle-nub-tests.log': 'Handle nub state tests passed:',
     'classic-geometry-tests.log': 'Classic interface geometry tests passed:',
     'owned-cold-scene-tests.log': 'Owned cold scene tests passed:',
     'edge-drawer-tests.log': 'Edge drawer geometry tests passed:',
@@ -43,6 +45,8 @@ for name, marker in markers.items():
         raise SystemExit(f'Missing successful test evidence: {name}')
 
 not_run = [
+    'RC3 public keyboard notification delivery, actual handle/compact-chooser avoidance and restoration on iOS',
+    'RC3 manual outward nub gesture, inward reveal and interaction with automatic nub on iOS',
     'Cold owned-scene process bootstrap, first rendered layer, input and cleanup on actual23A355',
     'Classic headerless drawer, moving handle, compact quick switch and outside tap on iOS',
     'iOS launchd bootstrap/removal and service permissions',
@@ -63,8 +67,8 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'RC2: verified-ABI application identity/specification factories allow source-independent construction with fresh installed eligibility; initial-render timeout; classic headerless edge window and compact quick switch. Cold process launch and new UIKit integration remain device-unverified.',
-    'prior_device_baseline': 'RC1 Safari report: manual close after34.83s in Keep;7completed resizes/3moves; clean own controller/workspace cleanup. User reports RC1 works. No RC2 cold/UI claim. 0.17.0 Files named-configuration admission/rendering with two clean default-timeout sessions;0.16.0 Calendar programmatic owned-window/kept/minimize/restore/resize/manual/default-timeout;0.15.0 own favorites store read/long-press access with1favorite;0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
+    'floating_application_hosting_implemented': 'RC3 retains the RC2 owned-scene implementation and adds default-off public keyboard avoidance for the handle/compact chooser plus manual outward handle nubbing. New public notification/gesture integration remains device-unverified.',
+    'prior_device_baseline': 'RC2 Safari: user confirmed visible page, web navigation, keyboard and X; three source-independent scenes with active nonempty layers, Keep, sampled headerless drawer geometry and clean own controller/workspace teardown. Source1392af09d382be746ea8ece2a86380a1914fef29 is preserved as the scoped stable baseline. Process termination before launch and global compatibility are not established. RC1 Safari report: manual close after34.83s in Keep;7completed resizes/3moves; clean own controller/workspace cleanup. User reports RC1 works. 0.17.0 Files named-configuration admission/rendering with two clean default-timeout sessions;0.16.0 Calendar programmatic owned-window/kept/minimize/restore/resize/manual/default-timeout;0.15.0 own favorites store read/long-press access with1favorite;0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
@@ -73,7 +77,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**Release candidate; not a completed/fully runtime-validated port. Files named-configuration admission is observed on0.17.0. RC1 has a user-confirmed Safari kept/manual-close baseline. RC2 cold rendering/input and the rebuilt classic UI require actual device validation. All native fixtures are synthetic; static firmware call paths do not prove process admission. Metadata remains advisory; no original scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
+    '**Release candidate; not a completed/fully runtime-validated port. RC2 Safari has a user-confirmed source-independent scene/content/navigation/keyboard/X baseline with three clean device sessions. RC3 public keyboard-notification avoidance and manual nub gesture integration require actual device validation. Native CI fixtures do not run private iOS frameworks or establish pixel/input delivery. Metadata remains advisory; no original scene is hosted or mutated. Full Dopamine/ElleKit compatibility remains unconfirmed.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)
