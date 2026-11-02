@@ -51,6 +51,7 @@ static PPOHandleNubState ppoNubState;
 static PPOKeyboardMonitor *ppoKeyboardMonitor;
 static UIEdgeInsets ppoCompactInsets;
 static BOOL ppoKeyboardAdjusted;
+static BOOL ppoCompactBlockedByKeyboard;
 static CGFloat ppoKeyboardShiftY;
 static NSUInteger ppoManualNubCount;
 static void PPORecordInterfaceEvent(NSString *event);
@@ -831,6 +832,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     if (!self.classicRequested && self.quickChoosing && (self.hoveredButton || self.quickDragSource)) [self cancelQuickChoosing];
     @try {
     if (self.classicRequested) {
+        if (ppoCompactBlockedByKeyboard) { [self closeChooser]; ppoStatus.text = @"Nu există spațiu liber pentru comutator"; return; }
         NSArray *projection = [self projectedRows];
         if (self.quickChoosing && ppoClassicView.visible) {
             // Never substitute a refreshed row under a held finger. A changed
@@ -1079,11 +1081,13 @@ static void PPOApplyOverlayLayout(void) {
     CGRect keyboard = ppoKeyboardMonitor ? ppoKeyboardMonitor.keyboardFrameInScene : CGRectNull;
     PPOKeyboardAvoidanceResult avoiding{};
     ppoCompactInsets = insets; ppoKeyboardAdjusted = NO; ppoKeyboardShiftY = 0;
-    if (PPOKeyboardAvoidanceLayout({screen.origin.x,screen.origin.y,screen.size.width,screen.size.height},
+    BOOL keyboardPolicyValid = PPOKeyboardAvoidanceLayout({screen.origin.x,screen.origin.y,screen.size.width,screen.size.height},
         {insets.top,insets.left,insets.bottom,insets.right},
         {desired.origin.x,desired.origin.y,desired.size.width,desired.size.height},
         CGRectIsNull(keyboard) ? PPOHostRect{} : PPOHostRect{keyboard.origin.x,keyboard.origin.y,keyboard.size.width,keyboard.size.height},
-        [ppoPreferences[@"keyboardAvoiding"] boolValue],ppoKeyboardMonitor.visible,&avoiding)) {
+        [ppoPreferences[@"keyboardAvoiding"] boolValue],ppoKeyboardMonitor.visible,&avoiding);
+    ppoCompactBlockedByKeyboard = !keyboardPolicyValid && [ppoPreferences[@"keyboardAvoiding"] boolValue] && ppoKeyboardMonitor.visible;
+    if (keyboardPolicyValid) {
         touch.origin.y = avoiding.touchHandle.y-screen.origin.y;
         ppoCompactInsets = UIEdgeInsetsMake(avoiding.pickerInsets.top,avoiding.pickerInsets.left,
             avoiding.pickerInsets.bottom,avoiding.pickerInsets.right);
@@ -1092,7 +1096,8 @@ static void PPOApplyOverlayLayout(void) {
     BOOL compactGeometryChanged = !CGRectEqualToRect(previousScreen,screen) ||
         !CGRectEqualToRect(previousTouch,touch) || !UIEdgeInsetsEqualToEdgeInsets(previousBand,ppoCompactInsets);
     ppoHandle.frame = touch;
-    if (compactGeometryChanged && ppoTarget.quickChoosing && ppoClassicView.visible) [ppoTarget closeChooser];
+    if ((compactGeometryChanged && ppoTarget.quickChoosing && ppoClassicView.visible) ||
+        (ppoCompactBlockedByKeyboard && ppoTarget.classicRequested)) [ppoTarget closeChooser];
     // The compact projection shares this public scene geometry. Refresh it when
     // safe areas, orientation or the handle position change; stale row frames
     // must not keep selecting an app at an old screen coordinate.
@@ -1174,6 +1179,7 @@ static void PPORecordInterfaceEvent(NSString *event) {
         @"keyboardFrameKnown":@(ppoKeyboardMonitor.frameKnown), @"keyboardVisible":@(ppoKeyboardMonitor.visible),
         @"keyboardStatus":ppoKeyboardMonitor.status ?: @"unavailable", @"keyboardNotificationCount":@(ppoKeyboardMonitor.notificationCount),
         @"keyboardAdjusted":@(ppoKeyboardAdjusted), @"keyboardShiftY":@(ppoKeyboardShiftY),
+        @"compactBlockedByKeyboard":@(ppoCompactBlockedByKeyboard),
         @"handleFrame":NSStringFromCGRect(ppoHandle.frame), @"configuredHandleYRatio":ppoPreferences[@"handleYRatio"] ?: @0.5,
         @"manualNubCount":@(ppoManualNubCount), @"manualNubbed":@(ppoNubState.manualNubbed()),
         @"handleNubbed":@(ppoHandleNubbed), @"quickChooserVisible":@(ppoClassicView.visible),
