@@ -1,3 +1,7 @@
+## Current RC3 candidate — public interface additions
+
+RC3 has manual outward nub and default-off public keyboard avoidance for the handle/compact chooser. Its own report is interface-1.0.2.json. The validated RC2 Safari baseline remains untouched. See [VALIDATION_1.0.2_RC3.md](VALIDATION_1.0.2_RC3.md) for exact build/hash/32-suite evidence and the single new physical-gesture/public-keyboard device gate. No ordinary source-free Safari replay is requested. Older entries below describe previous checkpoints.
+
 ## Current RC2 status — Safari functional confirmation received
 
 The user explicitly confirmed visible Safari content, web navigation, keyboard response and X on1.0.1~rc2. Together with the three-session source-free scene/Keep/drawer/clean-cleanup report, this closes the specific Safari gate. Preserve `stable/verified-rc2-safari-source-free-classic-reuse` with runtime sources identical to the tested `1392af09d382be746ea8ece2a86380a1914fef29` and retain the permanent RC2/RC1 DEBs. No new binary, version or repeated ordinary test is needed.
