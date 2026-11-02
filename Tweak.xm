@@ -15,6 +15,7 @@
 #import "PPOOwnedAdmission.h"
 #import "PPOSceneCapability.h"
 #import "PPOUserPreferences.h"
+#import "PPOClassicQuickSwitchView.h"
 #import "PPOScreenLockState.h"
 #include "PPOEdgeDrawerGeometry.h"
 #include "PPOInteractionIntent.h"
@@ -28,6 +29,10 @@ static UIButton *ppoHandle;
 static UIView *ppoHandlePill;
 static UIVisualEffectView *ppoHandleBlur;
 static UIImageView *ppoHandleIcon;
+static UIButton *ppoClassicClose;
+static PPOClassicQuickSwitchView *ppoClassicView;
+static UIControl *ppoOutsideDismiss;
+static CAShapeLayer *ppoOutsideMask;
 static NSInteger ppoRenderedTheme = -1;
 static NSString *ppoRenderedSymbol;
 static UIView *ppoPanel;
@@ -71,14 +76,29 @@ static PPOEdgeDrawerSide PPOChosenEdge(void) {
 }
 @end
 
+@interface PPOOutsideControl : UIControl
+@property(nonatomic) CGRect excludedPanel;
+@end
+@implementation PPOOutsideControl
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+    if (!CGRectIsNull(self.excludedPanel) && CGRectContainsPoint(self.excludedPanel,point)) return NO;
+    return [super pointInside:point withEvent:event];
+}
+@end
+
 @interface PPOEdgeOverlayWindow : UIWindow
 @end
 @implementation PPOEdgeOverlayWindow
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    if (ppoClassicView.visible) {
+        UIView *classicHit = [ppoClassicView hitTest:[ppoClassicView convertPoint:point fromView:self] withEvent:event];
+        if (classicHit) return classicHit;
+    }
     UIView *hit = [super hitTest:point withEvent:event];
     // A transparent full-scene window must never consume the surrounding app.
     if (hit && ((ppoHandle && [hit isDescendantOfView:ppoHandle]) ||
-        (ppoPanel && !ppoPanel.hidden && [hit isDescendantOfView:ppoPanel]))) return hit;
+        (ppoPanel && !ppoPanel.hidden && [hit isDescendantOfView:ppoPanel]) ||
+        (ppoOutsideDismiss && !ppoOutsideDismiss.hidden && [hit isDescendantOfView:ppoOutsideDismiss]))) return hit;
     return nil;
 }
 @end
@@ -151,7 +171,7 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 // plist/user contents. The bridge response has already passed nonce validation.
 static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *response, NSError *error) {
     NSDictionary *capability = PPOSceneCapabilityNormalize(response[@"sceneCapability"]);
-    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.0~rc1",
+    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.1~rc2",
         @"bundleIdentifier": identifier, @"responseStatus": response[@"status"] ?: @"unavailable",
         @"sceneCapability": capability ?: (id)NSNull.null, @"errorCode": @(error.code),
         @"observedUptime": @(NSProcessInfo.processInfo.systemUptime), @"runtimeCompatibilityConfirmed": @NO};
@@ -159,20 +179,20 @@ static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *re
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
         withIntermediateDirectories:YES attributes:nil error:NULL])
-        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-1.0.0.json"]
+        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-1.0.1.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
 // Worker-only bounded diagnostics: counts/outcome, never the favorite IDs or names.
 static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL readable, NSError *error) {
-    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.0~rc1", @"event": event,
+    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.1~rc2", @"event": event,
         @"favoriteCount": @(MIN(count, PPOFavoriteIdentifiersLimit)), @"readable": @(readable),
         @"errorCode": @(error.code), @"errorDomain": error ? ([error.domain isEqual:NSPOSIXErrorDomain] ? @"posix" : @"data") : @"none",
         @"runtimeCompatibilityConfirmed": @NO};
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES
-        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-1.0.0.json"]
+        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-1.0.1.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
@@ -186,7 +206,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 @implementation PPOPickerRowButton
 @end
 
-@interface PPOHandleTarget : NSObject
+@interface PPOHandleTarget : NSObject <UIGestureRecognizerDelegate>
 - (void)tapped:(id)sender;
 - (void)panned:(UIPanGestureRecognizer *)recognizer;
 @property(nonatomic,strong) PPOHostSessionSlot *hostSessions;
@@ -194,6 +214,17 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 @property(nonatomic) BOOL verticalPan;
 @property(nonatomic) BOOL panTargetsHost;
 @property(nonatomic) BOOL quickChoosing;
+@property(nonatomic) BOOL classicRequested;
+@property(nonatomic) BOOL cacheRestoreStarted;
+- (void)restoreCachedPicker;
+- (NSArray<NSDictionary *> *)projectedRows;
+- (void)showClassicChooser;
+- (void)classicChoice:(NSString *)identifier generation:(uint64_t)generation normal:(BOOL)normal;
+- (void)selectApplicationRow:(NSDictionary *)row;
+- (void)launchNormalRow:(NSDictionary *)row;
+- (void)closeClassicWindow:(id)sender;
+- (void)outsideTapped:(id)sender;
+- (void)showAllApplications:(UITapGestureRecognizer *)recognizer;
 @property(nonatomic) BOOL handlingPan;
 @property(nonatomic) BOOL quickDragging;
 @property(nonatomic,strong) PPOPickerRowButton *quickDragSource;
@@ -350,6 +381,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     if (!self.hostSessions) self.hostSessions = [PPOHostSessionSlot new];
     PPOOwnedSafariTrial *candidate = [PPOOwnedSafariTrial new];
     [candidate configurePresentationWithPreferences:ppoPreferences];
+    candidate.presentationDidChange = ^{ PPOApplyOverlayLayout(); };
     NSError *error = nil;
     if (![self.hostSessions adopt:candidate error:&error]) {
         ppoStatus.text = error.code == EBUSY ? @"Închide întâi fereastra activă"
@@ -398,7 +430,9 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     });
 }
 - (void)launchNormalFromRow:(PPOPickerRowButton *)sender {
-    NSDictionary *row = [self rowForButton:sender];
+    NSDictionary *row = [self rowForButton:sender]; [self launchNormalRow:row];
+}
+- (void)launchNormalRow:(NSDictionary *)row {
     if (!row || ![row[@"available"] boolValue] || !PPOOverlayAllowed() || ppoWindow.hidden ||
         !UIApplication.sharedApplication.protectedDataAvailable || self.launchInProgress || self.launchStopped) return;
     NSString *identifier = [row[@"bundleIdentifier"] copy];
@@ -439,9 +473,9 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 1.0.0] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 1.0.1] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 1.0.0] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 1.0.1] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport scenă salvat (Filza)" : @"Raport API: eroare";
@@ -469,7 +503,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 }
 - (void)showChooser:(NSInteger)mode {
     if (!PPOOverlayAllowed()) return;
-    [self cancelOpening];
+    [self closeChooser];
     [self touchHandle];
     self.pickerMode = MAX(0, MIN(2, mode));
     ppoExpanded = YES; ppoChooserProgress = 1;
@@ -483,7 +517,10 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     [self touchHandle];
     if (ppoExpanded) { [self closeChooser]; return; }
     PPOOwnedSafariTrial *active = [self activeDrawer];
-    if (active) { [active finishDrawerOpen:active.drawerProgress < 0.5]; return; }
+    if (active) {
+        [active finishDrawerOpen:active.drawerProgress < 0.5];
+        [UIView animateWithDuration:0.22 animations:^{ PPOApplyOverlayLayout(); }]; return;
+    }
     if (self.selectedIdentifier && self.apps.count) { [self openFloatingApp:nil]; return; }
     [self showChooser:0];
 }
@@ -531,7 +568,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     double travel = self.panTargetsHost && active ? active.drawerTravel : ppoEdgeLayout.travel;
     double progress = self.panStartProgress;
     if (PPOEdgeDrawerProgress(PPOChosenEdge(), self.panStartProgress, delta.x, travel, &progress)) {
-        if (self.panTargetsHost) { if (active) [active setDrawerProgress:progress]; }
+        if (self.panTargetsHost) { if (active) { [active setDrawerProgress:progress]; PPOApplyOverlayLayout(); } }
         else { ppoChooserProgress = progress; PPOApplyOverlayLayout(); }
     }
     if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled ||
@@ -555,6 +592,11 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 }
 - (void)showApps:(UIButton *)sender { (void)sender; [self showChooser:0]; }
 - (void)cancelQuickChoosing {
+    [ppoClassicView dismiss];
+    if (self.classicRequested) {
+        self.classicRequested = NO; ppoExpanded = NO; ppoChooserProgress = 0;
+        [self.picker closeList]; self.renderGeneration++;
+    }
     self.hoveredButton.transform = CGAffineTransformIdentity;
     self.hoveredButton = nil; self.quickDragSource = nil;
     self.quickChoosing = NO; self.quickDragging = NO; self.feedback = nil;
@@ -602,61 +644,17 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     self.quickDropTarget.alpha = CGRectContainsPoint(self.quickDropTarget.frame,point) ? 1 : 0.65;
 }
 - (void)quickFavorites:(UILongPressGestureRecognizer *)recognizer {
-    if (recognizer.state == UIGestureRecognizerStateBegan) {
-        [self cancelQuickChoosing];
-        [self showChooser:[ppoPreferences[@"quickSwitchMode"] isEqual:@"favorites"] ? 2 : 1];
-        if (!ppoExpanded || !PPOOverlayAllowed() || ppoWindow.hidden) return;
-        self.quickChoosing = YES;
-        if ([ppoPreferences[@"hapticFeedback"] boolValue]) {
-            self.feedback = [UISelectionFeedbackGenerator new]; [self.feedback prepare];
-        }
-    }
-    if (!self.quickChoosing) return;
-    if (!PPOOverlayAllowed() || ppoWindow.hidden || !UIApplication.sharedApplication.protectedDataAvailable) {
-        [self cancelQuickChoosing]; return;
-    }
-    ppoLastInteraction = NSProcessInfo.processInfo.systemUptime;
-    CGPoint location = [recognizer locationInView:self.listScroll];
-    CGPoint rootPoint = [recognizer locationInView:ppoController.view];
-    if (!std::isfinite(rootPoint.x) || !std::isfinite(rootPoint.y)) { [self cancelQuickChoosing]; return; }
-    BOOL insideList = self.listScroll && CGRectContainsPoint(self.listScroll.bounds,location);
-    NSDictionary *source = [self rowForButton:self.quickDragSource];
-    // Latch once the chosen row leaves the visible list or is pulled sideways.
-    // The wide accessible chooser can overlap the central target, so reentry
-    // must not silently switch the source application after dragging begins.
-    if (!self.quickDragging && source && (!insideList || fabs(rootPoint.x-self.quickSourcePoint.x) >= 44))
-        [self beginQuickDragAtPoint:rootPoint];
-    if (self.quickDragging) {
-        if (![self rowForButton:self.quickDragSource]) { [self cancelQuickChoosing]; return; }
-        [self updateQuickDragAtPoint:rootPoint];
-    } else {
-        PPOPickerRowButton *found = nil;
-        if (insideList) for (UIView *view in self.listScroll.subviews) {
-            if (![view isKindOfClass:PPOPickerRowButton.class] || view.bounds.size.width <= 44) continue;
-            PPOPickerRowButton *row = (PPOPickerRowButton *)view;
-            if (CGRectContainsPoint(row.restingFrame,location) && row.enabled) { found = row; break; }
-        }
-        if (found != self.hoveredButton) {
-            self.hoveredButton.transform = CGAffineTransformIdentity; self.hoveredButton = found;
-            if (found) {
-                self.quickDragSource = found; self.quickSourcePoint = rootPoint;
-                CGFloat scale = MIN([ppoPreferences[@"quickSwitchScale"] doubleValue],3);
-                found.transform = CGAffineTransformMakeScale(1,scale);
-                [self.listScroll bringSubviewToFront:found]; [self.feedback selectionChanged];
-            }
-        }
-    }
+    if (recognizer.state == UIGestureRecognizerStateBegan) [self showClassicChooser];
+    if (!self.classicRequested) return;
+    CGPoint point = [recognizer locationInView:ppoController.view];
+    if (recognizer.state == UIGestureRecognizerStateBegan || recognizer.state == UIGestureRecognizerStateChanged)
+        [ppoClassicView updateGestureAtPoint:point];
     if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled ||
         recognizer.state == UIGestureRecognizerStateFailed) {
-        PPOPickerRowButton *chosen = self.hoveredButton, *dragged = self.quickDragSource;
-        BOOL launch = recognizer.state == UIGestureRecognizerStateEnded && self.quickDragging &&
-            self.quickDropTarget && CGRectContainsPoint(self.quickDropTarget.frame,rootPoint) &&
-            [self rowForButton:dragged] != nil;
-        [self cancelQuickChoosing];
-        // Validate before hiding the chooser: its generation and visible list
-        // bind the user's committed row to the existing isolated launch bridge.
-        if (launch) [self launchNormalFromRow:dragged];
-        else if (recognizer.state == UIGestureRecognizerStateEnded && chosen) [self selectApp:chosen];
+        NSUInteger generation = self.renderGeneration;
+        [ppoClassicView endGestureAtPoint:point cancelled:recognizer.state != UIGestureRecognizerStateEnded];
+        self.quickChoosing = NO;
+        if (self.classicRequested && generation == self.renderGeneration) [self closeChooser];
     }
 }
 - (void)loadPicker {
@@ -664,7 +662,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
     PPOPickerTicket *ticket = [self.picker beginLoad];
     self.pickerMessage = nil;
     [self renderApps];
-    if (self.picker.listRequested) { self.listView.hidden = NO; ppoPanel.hidden = NO; }
+    if (self.picker.listRequested) { self.listView.hidden = self.classicRequested; ppoPanel.hidden = self.classicRequested; }
     if (!ticket) return; // Coalesce an in-flight load; its result uses current mode/visibility.
     dispatch_async(PPOFileQueue(), ^{
         @autoreleasepool {
@@ -693,14 +691,103 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                 [self updateLaunchButton];
                 if (!ppoExpanded || !self.picker.listRequested) return;
                 [self renderApps];
-                if (self.picker.listRequested) { self.listView.hidden = NO; ppoPanel.hidden = NO; }
+                if (self.picker.listRequested) { self.listView.hidden = self.classicRequested; ppoPanel.hidden = self.classicRequested; }
             });
         }
     });
 }
+- (NSArray<NSDictionary *> *)projectedRows {
+    NSArray *rows = self.picker.rows;
+    if (self.pickerMode == 1) {
+        NSMutableArray *recent = [NSMutableArray array];
+        NSMutableArray *identifiers = [NSMutableArray arrayWithArray:ppoPreferences[@"recentIdentifiers"] ?: @[]];
+        if (self.selectedIdentifier && ![identifiers containsObject:self.selectedIdentifier]) [identifiers insertObject:self.selectedIdentifier atIndex:0];
+        for (NSString *identifier in identifiers) {
+            for (NSDictionary *row in rows) if ([row[@"bundleIdentifier"] isEqual:identifier]) { [recent addObject:row]; break; }
+            if (recent.count >= [ppoPreferences[@"recentAppsCount"] unsignedIntegerValue]) break;
+        }
+        rows = recent;
+    }
+    return rows;
+}
+- (void)restoreCachedPicker {
+    if (self.cacheRestoreStarted) return;
+    self.cacheRestoreStarted = YES;
+    PPOPickerTicket *ticket = [self.picker beginLoad];
+    if (!ticket) return;
+    dispatch_async(PPOFileQueue(), ^{
+        @autoreleasepool {
+            NSArray *apps = PPOAppsFromData(PPOReadBoundedFile(PPOAppsPath,2*1024*1024,NULL),NULL);
+            NSDictionary *selection = PPOSelectionFromData(PPOReadBoundedFile(PPOSelectionPath,16384,NULL));
+            NSArray *favorites = PPOFavoritesLoad(PPOFavoritesDirectory,NULL);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (![self.picker finishLoad:ticket apps:apps selection:selection favorites:favorites]) return;
+                PPOApplyOverlayLayout();
+                if (ppoExpanded && self.picker.listRequested) [self loadPicker];
+            });
+        }
+    });
+}
+- (void)showClassicChooser {
+    if (!PPOOverlayAllowed() || ppoWindow.hidden) return;
+    [self closeChooser];
+    self.classicRequested = YES; self.quickChoosing = YES;
+    self.pickerMode = [ppoPreferences[@"quickSwitchMode"] isEqual:@"favorites"] ? 2 : 1;
+    [self.picker requestListFavoritesOnly:self.pickerMode == 2];
+    ppoExpanded = YES; ppoChooserProgress = 0;
+    [self touchHandle]; [self loadPicker];
+}
+- (void)classicChoice:(NSString *)identifier generation:(uint64_t)generation normal:(BOOL)normal {
+    if (!self.classicRequested || !ppoExpanded || !self.picker.listRequested || !ppoClassicView.visible ||
+        generation != self.renderGeneration || !PPOOverlayAllowed() || ppoWindow.hidden) return;
+    for (NSDictionary *row in self.listRows) {
+        if ([row[@"bundleIdentifier"] isEqual:identifier] && [row[@"available"] boolValue]) {
+            if (normal) [self launchNormalRow:row]; else [self selectApplicationRow:row];
+            return;
+        }
+    }
+}
+- (void)closeClassicWindow:(id)sender {
+    (void)sender; [self cancelOpening]; [[self activeDrawer] close]; [self touchHandle];
+}
+- (void)outsideTapped:(id)sender {
+    (void)sender; [self closeChooser]; [[self activeDrawer] finishDrawerOpen:NO];
+    [UIView animateWithDuration:0.22 animations:^{ [self touchHandle]; }];
+}
+- (void)showAllApplications:(UITapGestureRecognizer *)recognizer {
+    if (recognizer.state == UIGestureRecognizerStateRecognized) [self showChooser:0];
+}
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer shouldReceiveTouch:(UITouch *)touch {
+    (void)recognizer;
+    return !ppoClassicClose || ![touch.view isDescendantOfView:ppoClassicClose];
+}
 - (void)renderApps {
-    if (self.quickChoosing && (self.hoveredButton || self.quickDragSource)) [self cancelQuickChoosing];
+    if (!self.classicRequested && self.quickChoosing && (self.hoveredButton || self.quickDragSource)) [self cancelQuickChoosing];
     @try {
+    if (self.classicRequested) {
+        NSArray *projection = [self projectedRows];
+        if (self.quickChoosing && ppoClassicView.visible) {
+            // Never substitute a refreshed row under a held finger. A changed
+            // projection cancels; an identical refresh preserves its generation.
+            if (![projection isEqual:self.listRows]) [self closeChooser];
+            return;
+        }
+        self.listRows = projection; self.renderGeneration++;
+        ppoPanel.hidden = YES; self.listView.hidden = YES;
+        CGRect screen = ppoWindow.windowScene.coordinateSpace.bounds;
+        UIEdgeInsets insets = ppoController.view.safeAreaInsets;
+        insets.top = MAX(insets.top,ppoWindow.windowScene.statusBarManager.statusBarFrame.size.height);
+        ppoClassicView.hapticFeedbackEnabled = [ppoPreferences[@"hapticFeedback"] boolValue];
+        BOOL left = CGRectGetMidX(ppoHandle.frame) < screen.size.width/2;
+        if (![ppoClassicView presentRows:self.listRows generation:self.renderGeneration screen:screen insets:insets
+            leftEdge:left handleCenterY:screen.origin.y+CGRectGetMidY(ppoHandle.frame)
+            scale:[ppoPreferences[@"quickSwitchScale"] doubleValue] dark:!ppoLightTheme
+            hideInstructions:[ppoPreferences[@"hideLabels"] boolValue]]) {
+            if (!self.picker.loading) ppoStatus.text = @"Alege favoritele în Configurări sau atinge de două ori mânerul pentru toate aplicațiile";
+        }
+        PPOApplyOverlayLayout(); return;
+    }
+
     if (!self.listView) {
         UIView *panel = [[UIView alloc] initWithFrame:ppoPanel.bounds];
         panel.layer.cornerRadius = 12; panel.clipsToBounds = YES;
@@ -735,17 +822,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
         self.listView = panel; self.listScroll = scroll; self.pageLabel = pageLabel;
         self.previousButton = previous; self.nextButton = next;
     }
-    NSArray *rows = self.picker.rows;
-    if (self.pickerMode == 1) {
-        NSMutableArray *recent = [NSMutableArray array];
-        NSMutableArray *identifiers = [NSMutableArray arrayWithArray:ppoPreferences[@"recentIdentifiers"] ?: @[]];
-        if (self.selectedIdentifier && ![identifiers containsObject:self.selectedIdentifier]) [identifiers insertObject:self.selectedIdentifier atIndex:0];
-        for (NSString *identifier in identifiers) {
-            for (NSDictionary *row in rows) if ([row[@"bundleIdentifier"] isEqual:identifier]) { [recent addObject:row]; break; }
-            if (recent.count >= [ppoPreferences[@"recentAppsCount"] unsignedIntegerValue]) break;
-        }
-        rows = recent;
-    }
+    NSArray *rows = [self projectedRows];
     self.listRows = rows; self.renderGeneration++;
     [self layoutPicker];
     UIColor *foreground = ppoLightTheme ? UIColor.blackColor : UIColor.whiteColor;
@@ -852,6 +929,10 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
 }
 - (void)selectApp:(PPOPickerRowButton *)sender {
     NSDictionary *row = [self rowForButton:sender]; if (!row || ![row[@"available"] boolValue]) return;
+    [self selectApplicationRow:row];
+}
+- (void)selectApplicationRow:(NSDictionary *)row {
+    if (!PPOOverlayAllowed() || ![row[@"available"] boolValue]) return;
     PPOPickerTicket *ticket = [self.picker beginSelection:row[@"bundleIdentifier"]]; if (!ticket) return;
     [self cancelOpening]; uint64_t intent = _intent.begin(false);
     [self updateLaunchButton]; [self hideChooser]; ppoStatus.text = @"Se salvează selecția…";
@@ -918,21 +999,45 @@ static void PPOApplyOverlayLayout(void) {
     if (!CGRectEqualToRect(ppoController.view.frame,rootFrame)) ppoController.view.frame = rootFrame;
     PPOOpenWidth = ppoEdgeLayout.openDrawer.width;
     CGRect drawer = PPOCGRect(ppoEdgeLayout.drawer); drawer.origin.x -= screen.origin.x; drawer.origin.y -= screen.origin.y;
-    ppoPanel.frame = drawer; ppoPanel.hidden = !ppoExpanded;
+    ppoPanel.frame = drawer; ppoPanel.hidden = !ppoExpanded || ppoTarget.classicRequested;
     CGRect touch = PPOCGRect(ppoEdgeLayout.touchHandle); touch.origin.x -= screen.origin.x; touch.origin.y -= screen.origin.y;
     BOOL left = PPOChosenEdge() == PPOEdgeDrawerSide::Left;
     // Original-style 80-point capsule protrudes beyond a 50-point edge strip.
     // The actual touch width remains at least the geometry policy's44 points.
-    touch.size.width = 50;
-    touch.origin.x = left ? 0 : screen.size.width - 50;
+    PPOOwnedSafariTrial *active = [ppoTarget activeDrawer];
+    double progress = active.classicLayout ? std::clamp(active.drawerProgress,0.0,1.0) : 0;
+    touch.size.width = 50 + 30*progress;
+    touch.origin.x = left ? (screen.size.width-80)*progress : (screen.size.width-50)*(1-progress);
     ppoHandle.frame = touch;
+    // The compact projection shares this public scene geometry. Refresh it when
+    // safe areas, orientation or the handle position change; stale row frames
+    // must not keep selecting an app at an old screen coordinate.
+    if (ppoTarget.classicRequested && ppoClassicView.visible &&
+        ![ppoClassicView relayoutWithScreen:screen insets:insets
+            leftEdge:CGRectGetMidX(touch) < screen.size.width/2
+            handleCenterY:screen.origin.y+CGRectGetMidY(touch)]) {
+        [ppoTarget closeChooser];
+    }
     CGFloat height = [ppoPreferences[@"handleSize"] doubleValue];
-    CGRect pill = CGRectMake(left ? -30 : 0, (touch.size.height-height)/2, 80, height);
+    CGRect pill = CGRectMake(left ? -30*(1-progress) : 0, (touch.size.height-height)/2, 80, height);
     if (ppoHandleNubbed) pill.origin.x += left ? -40 : 40;
     ppoHandlePill.frame = pill;
     ppoHandlePill.layer.cornerRadius = ppoHandleNubbed ? 6 : MIN(17,height/2);
     ppoHandleBlur.frame = ppoHandlePill.bounds;
-    ppoHandleIcon.frame = CGRectMake(left ? 46 : 14, (height-24)/2,24,24);
+    ppoHandleIcon.frame = CGRectMake(left ? 42 : 14, (height-24)/2,24,24);
+    ppoHandlePill.hidden = ppoTarget.classicRequested && ppoClassicView.visible;
+    ppoClassicClose.hidden = progress < 0.99 || ppoTarget.classicRequested;
+    ppoClassicClose.frame = CGRectMake(left ? 0 : 36,(touch.size.height-44)/2,44,44);
+    ppoOutsideDismiss.frame = ppoController.view.bounds;
+    CGRect visible = active ? active.drawerVisibleFrameInScene : CGRectNull;
+    if (!CGRectIsNull(visible)) { visible.origin.x -= screen.origin.x; visible.origin.y -= screen.origin.y; }
+    ((PPOOutsideControl *)ppoOutsideDismiss).excludedPanel = visible;
+    ppoOutsideDismiss.hidden = !active.classicLayout || progress <= 0 || CGRectIsNull(visible);
+    ppoOutsideDismiss.alpha = 0.5*progress;
+    UIBezierPath *mask = [UIBezierPath bezierPathWithRect:ppoOutsideDismiss.bounds];
+    if (!CGRectIsNull(visible)) [mask appendPath:[UIBezierPath bezierPathWithRoundedRect:visible cornerRadius:12]];
+    ppoOutsideMask.frame = ppoOutsideDismiss.bounds; ppoOutsideMask.fillRule = kCAFillRuleEvenOdd;
+    ppoOutsideMask.path = mask.CGPath;
     NSDictionary *symbols = @{@"com.apple.mobilesafari":@"safari", @"com.apple.DocumentsApp":@"folder",
         @"com.apple.mobilecal":@"calendar", @"com.apple.reminders":@"checklist", @"com.apple.MobileAddressBook":@"person.crop.circle"};
     NSString *symbol = symbols[ppoTarget.selectedIdentifier ?: @""] ?: @"app.fill";
@@ -992,6 +1097,16 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     UIView *panel = [[UIView alloc] initWithFrame:CGRectZero];
     panel.layer.cornerRadius = 18; panel.clipsToBounds = YES; panel.hidden = YES;
     [controller.view addSubview:panel];
+    UIControl *outside = [[PPOOutsideControl alloc] initWithFrame:controller.view.bounds];
+    outside.backgroundColor = UIColor.blackColor; outside.hidden = YES;
+    CAShapeLayer *mask = [CAShapeLayer layer]; outside.layer.mask = mask;
+    [outside addTarget:target action:@selector(outsideTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [controller.view insertSubview:outside atIndex:0];
+    PPOClassicQuickSwitchView *classic = [[PPOClassicQuickSwitchView alloc] initWithFrame:controller.view.bounds];
+    __weak PPOHandleTarget *weakTarget = target;
+    classic.selectionHandler = ^(NSString *identifier,uint64_t generation) { [weakTarget classicChoice:identifier generation:generation normal:NO]; };
+    classic.normalLaunchHandler = ^(NSString *identifier,uint64_t generation) { [weakTarget classicChoice:identifier generation:generation normal:YES]; };
+    [controller.view addSubview:classic];
     UILabel *status = [[PPOEdgeStatusLabel alloc] initWithFrame:CGRectZero];
     status.numberOfLines = 2; status.font = [UIFont systemFontOfSize:13]; status.textAlignment = NSTextAlignmentCenter;
     status.textColor = UIColor.labelColor; status.backgroundColor = UIColor.secondarySystemBackgroundColor;
@@ -1008,9 +1123,17 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     handle.accessibilityLabel = @"PullOver Pro; glisează spre interior sau ține apăsat pentru aplicații";
     [handle addTarget:target action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:target action:@selector(panned:)];
-    [handle addGestureRecognizer:pan];
+    pan.delegate = target; [handle addGestureRecognizer:pan];
     UILongPressGestureRecognizer *quick = [[UILongPressGestureRecognizer alloc] initWithTarget:target action:@selector(quickFavorites:)];
-    quick.minimumPressDuration = 0.3; [handle addGestureRecognizer:quick];
+    quick.minimumPressDuration = 0.3; quick.delegate = target; [handle addGestureRecognizer:quick];
+    UITapGestureRecognizer *allApps = [[UITapGestureRecognizer alloc] initWithTarget:target action:@selector(showAllApplications:)];
+    allApps.numberOfTapsRequired = 2; allApps.delaysTouchesEnded = YES; allApps.delegate = target;
+    [handle addGestureRecognizer:allApps];
+    UIButton *classicClose = [UIButton buttonWithType:UIButtonTypeSystem];
+    [classicClose setTitle:@"×" forState:UIControlStateNormal]; classicClose.titleLabel.font = [UIFont systemFontOfSize:24];
+    classicClose.accessibilityLabel = @"Închide fereastra PullOver Pro"; classicClose.hidden = YES;
+    [classicClose addTarget:target action:@selector(closeClassicWindow:) forControlEvents:UIControlEventTouchUpInside];
+    [handle addSubview:classicClose];
     [pan requireGestureRecognizerToFail:quick];
     [controller.view addSubview:handle];
     dispatch_source_t visibilityTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_get_main_queue());
@@ -1019,9 +1142,10 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoWindow = window; ppoController = controller; ppoTarget = target; ppoPanel = panel;
     ppoStatus = status; ppoHandle = handle; ppoHandlePill = pill; ppoHandleBlur = blur; ppoHandleIcon = icon;
     ppoRenderedTheme = -1; ppoRenderedSymbol = nil;
+    ppoClassicView = classic; ppoClassicClose = classicClose; ppoOutsideDismiss = outside; ppoOutsideMask = mask;
     ppoFirmwareMatches = [PPOSceneFrameworkIdentity()[@"matches"] boolValue];
     ppoLastInteraction = NSProcessInfo.processInfo.systemUptime; ppoWasDrawerOpen = NO;
-    PPOApplyOverlayLayout(); PPORefreshOverlayVisibility();
+    PPOApplyOverlayLayout(); PPORefreshOverlayVisibility(); [target restoreCachedPicker];
     dispatch_source_set_timer(ppoVisibilityTimer, dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC), NSEC_PER_SEC,NSEC_PER_MSEC*100);
     dispatch_source_set_event_handler(ppoVisibilityTimer, ^{ PPORefreshOverlayVisibility(); });
     dispatch_resume(ppoVisibilityTimer);
@@ -1101,16 +1225,16 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 1.0.0] no-active-scene; stopped");
+                NSLog(@"[PPO 1.0.1] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 1.0.0] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 1.0.1] ui-exception=%@; stopped", exception.name);
             ppoWindow.hidden = YES; [ppoTarget cancelOpening];
             if (ppoVisibilityTimer) { dispatch_source_cancel(ppoVisibilityTimer); ppoVisibilityTimer = nil; }
             ppoWindow = nil; ppoController = nil; ppoTarget = nil;
-            ppoPanel = nil; ppoStatus = nil; ppoHandle = nil; ppoHandlePill = nil; ppoHandleBlur = nil; ppoHandleIcon = nil;
+            ppoPanel = nil; ppoStatus = nil; ppoHandle = nil; ppoHandlePill = nil; ppoHandleBlur = nil; ppoHandleIcon = nil; ppoClassicView = nil; ppoClassicClose = nil; ppoOutsideDismiss = nil; ppoOutsideMask = nil;
             ppoStopped = YES;
         }
         if (ppoStopped && ppoSceneObserver) {

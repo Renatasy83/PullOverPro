@@ -94,6 +94,117 @@ static void LoadLifecycle(void) {
         "valid empty report clears an unavailable target but never prunes favorites");
 }
 
+static void CachedBootRestoration(void) {
+    // A startup read restores display/selection state before the first gesture.
+    // It never requests a chooser, selects a fallback or grants scene permission.
+    PPOPickerState *state = [PPOPickerState new];
+    NSMutableString *identifier = [Alpha mutableCopy];
+    NSMutableString *name = [@"Cached Alpha" mutableCopy];
+    NSMutableString *diskIdentifier = [Alpha mutableCopy];
+    NSMutableString *favoriteIdentifier = [Beta mutableCopy];
+    NSMutableDictionary *app = [App(identifier, name) mutableCopy];
+    NSMutableArray *apps = [NSMutableArray arrayWithObject:app];
+    NSMutableDictionary *diskSelection = [App(diskIdentifier, @"Old selection name") mutableCopy];
+    NSMutableArray *favorites = [NSMutableArray arrayWithObjects:favoriteIdentifier, Missing, nil];
+    PPOPickerTicket *cache = [state beginLoad];
+    Check(cache != nil && state.loading && !state.listRequested && !state.favoritesOnly,
+        "startup cache loading does not request or display a chooser");
+    Check([state beginLoad] == nil && [state beginSelection:Alpha] == nil,
+        "startup reads coalesce and cannot select an app before inventory is restored");
+    Check([state finishLoad:cache apps:apps selection:diskSelection favorites:favorites],
+        "startup cache accepts the normal coordinator load ticket without list visibility");
+    Check(!state.loading && !state.listRequested && [state.selectedIdentifier isEqual:Alpha] &&
+        state.selectionGeneration == 1 && [state.apps[0][@"name"] isEqual:@"Cached Alpha"] &&
+        state.favoritesReadable && [state.favoriteIdentifiers isEqual:@[Beta, Missing]],
+        "cached selected membership and ordered favorites restore without opening UI");
+    [identifier appendString:@".changed"]; [name appendString:@" changed"];
+    [diskIdentifier appendString:@".changed"]; [favoriteIdentifier appendString:@".changed"];
+    [app removeAllObjects]; [apps removeAllObjects];
+    [diskSelection removeAllObjects]; [favorites removeAllObjects];
+    Check([state.apps isEqual:@[App(Alpha, @"Cached Alpha")]] &&
+        [state.selectedIdentifier isEqual:Alpha] && [state.favoriteIdentifiers isEqual:@[Beta, Missing]],
+        "boot snapshots freeze mutable inventory, selection and favorite inputs independently");
+    Check(![state finishLoad:cache apps:@[] selection:nil favorites:@[]] &&
+        [state.selectedIdentifier isEqual:Alpha] && !state.listRequested,
+        "replayed boot completion cannot clear the selected app or open a chooser");
+
+    state = [PPOPickerState new];
+    cache = [state beginLoad];
+    [state requestListFavoritesOnly:NO];
+    [state requestListFavoritesOnly:YES];
+    Check(state.loading && [state beginLoad] == nil,
+        "a chooser opened during the startup read shares its one in-flight load");
+    Check([state finishLoad:cache apps:Inventory() selection:App(Beta, @"Old Beta") favorites:@[Alpha]] &&
+        state.listRequested && state.favoritesOnly && [state.selectedIdentifier isEqual:Beta],
+        "boot completion respects the latest chooser mode without changing the selected app");
+    Check(state.rows.count == 1 && [state.rows[0][@"bundleIdentifier"] isEqual:Alpha],
+        "the newly opened favorite chooser projects restored favorites rather than every cached app");
+
+    state = [PPOPickerState new];
+    cache = [state beginLoad];
+    [state requestListFavoritesOnly:YES]; [state closeList];
+    Check([state finishLoad:cache apps:Inventory() selection:App(Alpha, @"Alpha") favorites:@[Beta]] &&
+        !state.listRequested && !state.loading && [state.selectedIdentifier isEqual:Alpha],
+        "closing a chooser before the startup response cannot cause a late reopening");
+
+    state = Loaded(Inventory(), App(Alpha, @"Alpha"), @[Alpha]);
+    cache = [state beginLoad];
+    PPOPickerTicket *selection = [state beginSelection:Beta];
+    NSUInteger generation = state.selectionGeneration;
+    Check(selection != nil && [state finishSelection:selection saved:YES],
+        "a user's newer cached member can finish saving before an older disk read returns");
+    Check([state finishLoad:cache apps:@[App(Alpha, @"Alpha current"), App(Beta, @"Beta current")]
+        selection:App(Alpha, @"Stale Alpha") favorites:@[Alpha]] &&
+        [state.selectedIdentifier isEqual:Beta] && state.selectionGeneration == generation &&
+        !state.selectionSaving && !state.listRequested,
+        "a late boot-style read cannot replace a newer saved choice or request the chooser");
+    Check([state.apps[1][@"name"] isEqual:@"Beta current"],
+        "protecting newer selection still permits current display names to refresh");
+
+    state = [PPOPickerState new];
+    cache = [state beginLoad];
+    Check([state finishLoad:cache apps:nil selection:App(Alpha, @"Alpha") favorites:@[Beta]] &&
+        !state.loading && !state.listRequested && state.apps.count == 0 &&
+        state.selectedIdentifier == nil && state.favoriteIdentifiers.count == 0 && !state.favoritesReadable,
+        "failed initial inventory leaves empty unreadable state without using unrelated disk selection");
+    for (id malformed in @[@[@1], @[App(Alpha, @"Alpha"), App(Alpha, @"Duplicate")],
+            @[@{@"bundleIdentifier": Alpha}], NSNull.null]) {
+        state = [PPOPickerState new];
+        cache = [state beginLoad];
+        Check([state finishLoad:cache apps:malformed selection:App(Alpha, @"Alpha") favorites:@[Beta]] &&
+            !state.loading && !state.listRequested && state.apps.count == 0 &&
+            state.selectedIdentifier == nil && !state.favoritesReadable,
+            "malformed startup inventory cannot supply a selected identity or writable favorites");
+    }
+    state = [PPOPickerState new];
+    cache = [state beginLoad];
+    Check([state finishLoad:cache apps:@[] selection:App(Alpha, @"Alpha") favorites:@[]] &&
+        state.apps.count == 0 && state.selectedIdentifier == nil && state.favoritesReadable &&
+        !state.listRequested,
+        "a valid empty startup snapshot remains distinct from an unreadable cache");
+
+    state = Loaded(Inventory(), App(Alpha, @"Alpha"), @[Beta, Missing]);
+    cache = [state beginLoad];
+    Check([state finishLoad:cache apps:Inventory() selection:App(Alpha, @"Alpha") favorites:nil] &&
+        [state.selectedIdentifier isEqual:Alpha] && !state.favoritesReadable &&
+        [state.favoriteIdentifiers isEqual:@[Beta, Missing]] && !state.listRequested,
+        "missing favorite data preserves previous ordered IDs read-only during cache restoration");
+    Check([state beginFavoriteToggle:Beta] == nil && [state beginFavoriteToggle:Missing] == nil,
+        "unreadable restored favorites cannot be removed or rewritten using cached IDs");
+
+    state = [PPOPickerState new];
+    cache = [state beginLoad];
+    Check([state finishLoad:cache apps:@[App(@"com.apple.springboard", @"System"), App(Alpha, @"Alpha")]
+        selection:App(@"com.apple.springboard", @"System") favorites:@[Alpha]] &&
+        state.selectedIdentifier == nil && [state beginSelection:@"com.apple.springboard"] == nil &&
+        !state.listRequested,
+        "cached system-process membership never overrides selected-application exclusions");
+    cache = [state beginLoad];
+    Check([state finishLoad:cache apps:Inventory() selection:App(Missing, @"Gone") favorites:@[Beta]] &&
+        state.selectedIdentifier == nil && !state.listRequested,
+        "an unavailable persisted choice never silently selects a favorite as a fallback");
+}
+
 static void SelectionOwnership(void) {
     PPOPickerState *state = Loaded(Inventory(), nil, @[]);
     Check([state beginSelection:nil] == nil && [state beginSelection:Missing] == nil &&
@@ -321,6 +432,7 @@ static void FrozenInputs(void) {
 int main(void) {
     @autoreleasepool {
         LoadLifecycle();
+        CachedBootRestoration();
         SelectionOwnership();
         SelectionLoadRaces();
         FavoriteTransactions();

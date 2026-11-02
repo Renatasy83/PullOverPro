@@ -16,7 +16,7 @@ def require(condition, message):
         raise SystemExit(message)
 
 
-source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm', 'PPOFavoriteApps.mm', 'PPOFavoritesStore.mm', 'PPOPickerState.mm'])
+source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOClassicQuickSwitchView.mm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm', 'PPOFavoriteApps.mm', 'PPOFavoritesStore.mm', 'PPOPickerState.mm'])
 for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'NSSelectorFromString', r'valueForKey:', r'launchApplication',
                 r'method_getImplementation', r'method_invoke', r'dlopen', r'dlsym',
@@ -109,6 +109,17 @@ for pattern in (r'valueForKey:', r'object_getIvar', r'method_getImplementation',
                 r'foregroundAssertionForReason:', r'createSceneWithDefinition:'):
     require(not re.search(pattern, owned_source + owned_trial), f'Unexpected separate-scene operation: {pattern}')
 require(owned_source.count('objc_msgSend') == 4, 'Unexpected separate-scene dispatch surface')
+require('identityForBundleID:' in owned_source and 'unsupported-cold-input-abi' in owned_source and
+        'cold-inputs-require-installed-eligibility' in owned_source and
+        'object_getClass(self.factoryIdentity) != identityClass' in owned_source and
+        'object_getClass(self.factorySpecification) != specificationClass' in owned_source and
+        '@"sourceSceneProvided"' in owned_source and '@"fresh-application-identity"' in owned_source,
+        'Cold constructor inputs require guarded factories, exact classes, eligibility and truthful absence telemetry')
+require('!foreignScene && ![self.selection[@"state"] isEqual:@"not-found"]' in owned_trial and
+        'startForApplicationIdentity' in owned_trial and 'conditions.renderReady' in owned_trial and
+        '(!self.coldStart || _lifetime.observedRendered())' in owned_trial,
+        'Cold fallback must refuse ambiguous sources and bound initial render before Keep')
+
 require('object_getClass(componentScene) == HostClass(self.classes, @"FBSComponentScene")' in owned_source and
         'else if (proxyClassMatches)' in owned_source and
         'boundScene = HostObject(componentScene, "scene")' in owned_source and
@@ -313,7 +324,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.0~rc1', 'Unexpected version')
+    require(field('Version') == '1.0.1~rc2', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')

@@ -15,6 +15,7 @@ struct PPOWindowConditions {
     bool sceneKnown = false;
     bool sceneValid = false;
     bool sceneActive = false;
+    bool renderReady = false; // Read-only owned-layer observation; cold startup only.
 };
 
 enum class PPOWindowStop {
@@ -28,6 +29,7 @@ enum class PPOWindowStop {
     SceneInvalid,
     SceneInactive,
     ActivationTimeout,
+    ColdRenderTimeout,
     ClockInvalid,
     Timeout
 };
@@ -36,20 +38,12 @@ class PPOWindowLifetime {
 public:
     static constexpr double TimedSeconds = 15.0;
     static constexpr double ActivationGraceSeconds = 2.0;
+    static constexpr double ColdActivationGraceSeconds = 8.0;
 
     // The first start attempt is final. A duplicate cannot reset a deadline or
     // revive a stopped session. Rejected duplicates preserve the current state.
-    bool start(double now) noexcept {
-        if (startAttempted_ || stopped()) return false;
-        startAttempted_ = true;
-        if (!std::isfinite(now) || now < 0) {
-            reason_ = PPOWindowStop::ClockInvalid;
-            return false;
-        }
-        started_ = true;
-        startTime_ = lastTime_ = now;
-        return true;
-    }
+    bool start(double now) noexcept { return begin(now, ActivationGraceSeconds, false); }
+    bool startForApplicationIdentity(double now) noexcept { return begin(now, ColdActivationGraceSeconds, true); }
 
     PPOWindowStop evaluate(const PPOWindowConditions &conditions) noexcept {
         if (stopped()) return reason_;
@@ -72,9 +66,14 @@ public:
         const double elapsed = conditions.now - startTime_;
         if (conditions.sceneActive) observedActive_ = true;
         else if (observedActive_) return stop(PPOWindowStop::SceneInactive);
-        else if (elapsed >= ActivationGraceSeconds)
+        else if (elapsed >= activationGrace_)
             return stop(PPOWindowStop::ActivationTimeout);
 
+        if (requireRender_) {
+            if (conditions.renderReady) observedRendered_ = true;
+            else if (!observedRendered_ && elapsed >= activationGrace_)
+                return stop(PPOWindowStop::ColdRenderTimeout);
+        }
         if (!kept_ && elapsed >= TimedSeconds) return stop(PPOWindowStop::Timeout);
         return PPOWindowStop::None;
     }
@@ -82,17 +81,30 @@ public:
     // Keep is explicit, never inferred from input/rendering. It removes only
     // the normal 15-second deadline; all safety conditions continue to apply.
     bool keep(const PPOWindowConditions &conditions) noexcept {
-        if (evaluate(conditions) != PPOWindowStop::None || !conditions.sceneActive)
+        if (evaluate(conditions) != PPOWindowStop::None || !conditions.sceneActive || (requireRender_ && !observedRendered_))
             return false;
         kept_ = true;
         return true;
     }
 
+    bool observedRendered() const noexcept { return observedRendered_; }
     bool kept() const noexcept { return kept_; }
     bool observedActive() const noexcept { return observedActive_; }
     bool stopped() const noexcept { return reason_ != PPOWindowStop::None; }
 
 private:
+    bool begin(double now, double grace, bool cold) noexcept {
+        if (startAttempted_ || stopped()) return false;
+        startAttempted_ = true;
+        if (!std::isfinite(now) || now < 0) {
+            reason_ = PPOWindowStop::ClockInvalid;
+            return false;
+        }
+        activationGrace_ = grace; requireRender_ = cold;
+        started_ = true;
+        startTime_ = lastTime_ = now;
+        return true;
+        }
     PPOWindowStop stop(PPOWindowStop reason) noexcept {
         reason_ = reason;
         return reason_;
@@ -102,6 +114,8 @@ private:
     bool started_ = false;
     bool kept_ = false;
     bool observedActive_ = false;
+    bool requireRender_ = false, observedRendered_ = false;
+    double activationGrace_ = ActivationGraceSeconds;
     double startTime_ = 0;
     double lastTime_ = 0;
     PPOWindowStop reason_ = PPOWindowStop::None;

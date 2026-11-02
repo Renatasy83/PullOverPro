@@ -248,6 +248,45 @@ int main() {
               "elapsed-time arithmetic remains finite at the maximum finite nonnegative clock");
     }
 
+    {
+        PPOWindowLifetime cold;
+        Check(cold.startForApplicationIdentity(100), "cold identity startup has its own bounded grace");
+        auto pending = Healthy(100); pending.sceneActive = false;
+        Check(cold.evaluate(pending) == PPOWindowStop::None && !cold.keep(pending), "inactive cold startup cannot enter Keep");
+        pending.now = 107.999;
+        Check(cold.evaluate(pending) == PPOWindowStop::None, "cold startup remains responsive within eight seconds");
+        pending.now = 108;
+        Check(cold.evaluate(pending) == PPOWindowStop::ActivationTimeout, "cold inactive startup times out at the bound");
+        CheckLatched(cold, PPOWindowStop::ActivationTimeout, 108);
+    }
+    {
+        PPOWindowLifetime cold; Check(cold.startForApplicationIdentity(100), "render startup fixture starts");
+        auto active = Healthy(100.2);
+        Check(cold.evaluate(active) == PPOWindowStop::None && !cold.keep(active) && !cold.observedRendered(),
+              "an active flag without render layers cannot keep a cold black window indefinitely");
+        active.now = 108;
+        Check(cold.evaluate(active) == PPOWindowStop::ColdRenderTimeout, "cold rendering has the same bounded deadline");
+        CheckLatched(cold, PPOWindowStop::ColdRenderTimeout, 108);
+    }
+    {
+        PPOWindowLifetime cold; Check(cold.startForApplicationIdentity(100), "successful cold fixture starts");
+        auto active = Healthy(107.9); active.renderReady = true;
+        Check(cold.keep(active) && cold.observedRendered(), "active cold rendering can enter configured Keep before deadline");
+        active.now = 1000; active.renderReady = false;
+        Check(cold.evaluate(active) == PPOWindowStop::None, "startup render proof is latched and not a per-frame pixel guarantee");
+        active.locked = true;
+        Check(cold.evaluate(active) == PPOWindowStop::Locked, "cold Keep retains the lock stop guard");
+    }
+    for (unsigned failure = 0; failure < 4; failure++) {
+        PPOWindowLifetime cold; Check(cold.startForApplicationIdentity(100), "cold immediate closure fixture starts");
+        auto pending = Healthy(100.1); pending.sceneActive = false;
+        PPOWindowStop expected;
+        if (failure == 0) { pending.allowed = false; expected = PPOWindowStop::Disabled; }
+        else if (failure == 1) { pending.locked = true; expected = PPOWindowStop::Locked; }
+        else if (failure == 2) { pending.protectedDataAvailable = false; expected = PPOWindowStop::ProtectedDataUnavailable; }
+        else { pending.sceneValid = false; expected = PPOWindowStop::SceneInvalid; }
+        Check(cold.evaluate(pending) == expected, "cold grace never delays disable/lock/protected-data/invalidation");
+    }
     std::printf("Window lifetime tests passed: %u checks; native policy only, not iOS lifecycle\n", checks);
     return 0;
 }

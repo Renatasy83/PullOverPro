@@ -10,6 +10,7 @@
 #include "PPOFloatingWindowGeometry.h"
 #include "PPOFloatingWindowPresentation.h"
 #include "PPOEdgeDrawerGeometry.h"
+#include "PPOClassicInterfaceGeometry.h"
 #include "PPOWindowLifetime.h"
 #import <objc/runtime.h>
 #include <sys/stat.h>
@@ -94,6 +95,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         case PPOWindowStop::SceneInvalid: return @"scene-invalid";
         case PPOWindowStop::SceneInactive: return @"scene-inactive";
         case PPOWindowStop::ActivationTimeout: return @"scene-activation-timeout";
+        case PPOWindowStop::ColdRenderTimeout: return @"cold-render-timeout";
         case PPOWindowStop::ClockInvalid: return @"clock-invalid";
         case PPOWindowStop::Timeout: return @"timeout";
         case PPOWindowStop::None: return @"none";
@@ -151,6 +153,9 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 @property(nonatomic,strong) NSMutableArray *events;
 @property(nonatomic,strong) NSDictionary *selection;
 @property(nonatomic,strong) NSDictionary *frameworks;
+@property(nonatomic) BOOL coldStart;
+@property(nonatomic) NSTimeInterval nextColdLayerProbe;
+@property(nonatomic,strong) UIActivityIndicatorView *startupSpinner;
 @property(nonatomic) BOOL attempted;
 @property(nonatomic) BOOL opening;
 @property(nonatomic) BOOL running;
@@ -182,6 +187,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 - (void)minimizeFromButton:(UIButton *)sender;
 - (void)restoreFromButton:(UIButton *)sender;
 - (BOOL)applyDrawerTransform;
+- (void)notifyPresentationChange;
 @end
 @implementation PPOOwnedSafariTrial {
     PPOWindowLifetime _lifetime;
@@ -193,6 +199,32 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     self.presentationPreferences = PPOUserPreferencesNormalize(preferences);
 }
 - (double)drawerProgress { return self.presentedDrawerProgress; }
+- (BOOL)classicLayout { return self.drawerSized && !self.closed && !_presentation.minimized(); }
+- (CGRect)drawerVisibleFrameInScene {
+    if (!NSThread.isMainThread || !self.running || self.closed || self.closing || self.closePending ||
+        !self.window || self.window.hidden || !self.panel || self.panel.hidden ||
+        self.window.alpha <= 0 || self.panel.alpha <= 0 || !self.windowScene) return CGRectNull;
+    @try {
+        CGRect inWindow = [self.panel convertRect:self.panel.bounds toView:self.window];
+        CGRect frame = [self.window convertRect:inWindow toCoordinateSpace:self.windowScene.coordinateSpace];
+        for (CGFloat value : {frame.origin.x,frame.origin.y,frame.size.width,frame.size.height})
+            if (!std::isfinite(value)) return CGRectNull;
+        if (frame.size.width <= 0 || frame.size.height <= 0) return CGRectNull;
+        CGRect visible = CGRectIntersection(frame,self.windowScene.coordinateSpace.bounds);
+        return CGRectIsNull(visible) || CGRectIsEmpty(visible) ? CGRectNull : visible;
+    } @catch (NSException *exception) { (void)exception; return CGRectNull; }
+}
+- (void)notifyPresentationChange {
+    if (!NSThread.isMainThread) return;
+    void (^changed)(void) = self.presentationDidChange;
+    if (!changed) return;
+    @try { changed(); }
+    @catch (NSException *exception) {
+        // A public UI callback must never interrupt owned-scene teardown.
+        (void)exception; self.presentationDidChange = nil;
+        NSLog(@"[PPO] presentation-callback-disabled");
+    }
+}
 - (double)drawerTravel {
     if (!NSThread.isMainThread || !self.windowScene || !self.panel) return 0;
     double translation = 0, travel = 0;
@@ -212,7 +244,9 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         PPOFloatingRect(self.panelBaseFrame), side, self.presentedDrawerProgress,
         &translation, &travel)) return NO;
     self.panel.transform = CGAffineTransformMakeTranslation(translation, 0);
-    return YES;
+    UIView *updatedPanel = self.panel;
+    [self notifyPresentationChange];
+    return self.panel == updatedPanel && !self.closed && !self.closing && !self.closePending;
 }
 - (BOOL)setDrawerProgress:(double)progress {
     if (!NSThread.isMainThread || !std::isfinite(progress) || progress < 0 || progress > 1 ||
@@ -275,9 +309,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.0~rc1",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.1~rc2",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
-        @"replacementAllowed": @(self.replacementAllowed),
+        @"replacementAllowed": @(self.replacementAllowed), @"coldPreparation": @(self.coldStart),
+        @"activationGraceSeconds": @(self.coldStart ? PPOWindowLifetime::ColdActivationGraceSeconds : PPOWindowLifetime::ActivationGraceSeconds),
+        @"coldRenderObserved": @(_lifetime.observedRendered()),
         @"geometry": geometry,
         @"lastLiveSample": self.lastLiveSample ?: @{},
         @"lastHostedSourceSample": self.lastSourceSample ?: @{},
@@ -322,11 +358,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.0.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.1.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.0] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.1] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -381,9 +417,17 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 - (BOOL)checkLifetime {
     if (!NSThread.isMainThread || !self.running || self.closed || self.closing || self.closePending) return NO;
     @try {
+        NSTimeInterval probeNow = NSProcessInfo.processInfo.systemUptime;
+        if (self.coldStart && !_lifetime.observedRendered() && !self.opening && probeNow >= self.nextColdLayerProbe) {
+            self.nextColdLayerProbe = probeNow + 0.5;
+            [self sampleObservations];
+        }
         PPOWindowConditions conditions = [self lifetimeConditions];
         if (!self.running || self.closed || self.closing || self.closePending) return NO;
+        conditions.renderReady = [self.lastSourceSample[@"status"] isEqual:@"sampled"] &&
+            [self.lastSourceSample[@"layerCount"] unsignedIntegerValue] > 0;
         PPOWindowStop stop = _lifetime.evaluate(conditions);
+        if (_lifetime.observedRendered()) [self.startupSpinner stopAnimating];
         if (stop != PPOWindowStop::None) { [self closeBecause:PPOWindowStopName(stop)]; return NO; }
         if (!CGSizeEqualToSize(self.windowScene.coordinateSpace.bounds.size, self.fallbackNativeFrame.size)) {
             [self closeBecause:@"geometry-changed"]; return NO;
@@ -392,6 +436,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         // once after the newly owned scene has actually become active. It does
         // not extend activation grace or repeatedly restart a deadline.
         if (!self.opening && !self.keepPreferenceAttempted && _lifetime.observedActive() &&
+            (!self.coldStart || _lifetime.observedRendered()) &&
             [self.presentationPreferences[@"keepWindowOpen"] boolValue]) {
             self.keepPreferenceAttempted = YES;
             if (!_lifetime.kept() && _lifetime.keep(conditions)) {
@@ -471,11 +516,15 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         id foreignScene = nil;
         self.selection = PPOFindUniqueScene(objc_lookUpClass("FBSceneManager"),
             objc_lookUpClass("FBScene"), bundleIdentifier, &foreignScene);
-        if (!foreignScene) {
+        if (!foreignScene && ![self.selection[@"state"] isEqual:@"not-found"]) {
             [self record:@"selection-refused"];
-            return [self.selection[@"state"] isEqual:@"not-found"]
-                ? @"Deschide aplicația o dată, apoi revino aici"
-                : @"Scena aplicației nu poate fi selectată în siguranță";
+            return @"Scena aplicației nu poate fi selectată în siguranță";
+        }
+        self.coldStart = foreignScene == nil;
+        if (self.coldStart && (![admission[@"basis"] isEqual:@"installed-info"] ||
+            ![self.sceneCapability[@"status"] isEqual:@"eligible"])) {
+            [self record:@"cold-admission-refused"];
+            return @"Pornirea directă necesită verificarea aplicației instalate";
         }
         self.originalScene = foreignScene;
         self.windowScene = scene;
@@ -519,18 +568,23 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         CGRect screen = scene.coordinateSpace.bounds;
         self.placementInsets = PPOPlacementInsets(scene);
         PPOHostRect initial{};
-        if (!PPOFloatingInitial(PPOFloatingRect(screen), PPOFloatingSafeInsets(self.placementInsets),
-            _sizePreset, &initial)) return @"Spațiu insuficient pentru fereastră";
         self.drawerSized = preferredSize == 3;
-        if (self.drawerSized && !PPOEdgeDrawerAppFrame(PPOFloatingRect(screen),
-            {self.placementInsets.top,self.placementInsets.left,self.placementInsets.bottom,self.placementInsets.right},
-            screen.size.width,screen.size.height,&initial)) return @"Spațiu insuficient pentru sertar";
-        PPOHostRect usable{};
-        if (!PPOFloatingUsable(PPOFloatingRect(screen), PPOFloatingSafeInsets(self.placementInsets), &usable))
-            return @"Spațiu insuficient pentru fereastră";
-        initial.x = [self.presentationPreferences[@"edge"] isEqual:@"left"]
-            ? usable.x : usable.x + (usable.width - initial.width);
-        initial.y = usable.y + (usable.height - initial.height) / 2;
+        if (self.drawerSized) {
+            PPOEdgeDrawerSide side = [self.presentationPreferences[@"edge"] isEqual:@"left"]
+                ? PPOEdgeDrawerSide::Left : PPOEdgeDrawerSide::Right;
+            if (!PPOClassicAppPanelFrame(PPOFloatingRect(screen),
+                {self.placementInsets.top,self.placementInsets.left,self.placementInsets.bottom,self.placementInsets.right},
+                side,screen.size.width,screen.size.height,&initial)) return @"Spațiu insuficient pentru sertar";
+        } else {
+            if (!PPOFloatingInitial(PPOFloatingRect(screen), PPOFloatingSafeInsets(self.placementInsets),
+                _sizePreset, &initial)) return @"Spațiu insuficient pentru fereastră";
+            PPOHostRect usable{};
+            if (!PPOFloatingUsable(PPOFloatingRect(screen), PPOFloatingSafeInsets(self.placementInsets), &usable))
+                return @"Spațiu insuficient pentru fereastră";
+            initial.x = [self.presentationPreferences[@"edge"] isEqual:@"left"]
+                ? usable.x : usable.x + (usable.width - initial.width);
+            initial.y = usable.y + (usable.height - initial.height) / 2;
+        }
         CGFloat width = initial.width, height = initial.height;
         self.window = [[PPOOwnedPassthroughWindow alloc] initWithWindowScene:scene];
         self.window.frame = screen;
@@ -552,7 +606,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(initial.x - screen.origin.x,
             initial.y - screen.origin.y, width, height)];
         panel.backgroundColor = UIColor.secondarySystemBackgroundColor;
-        panel.layer.cornerRadius = 14; panel.clipsToBounds = YES;
+        panel.layer.cornerRadius = self.classicLayout ? 12 : 14; panel.clipsToBounds = YES;
         [root.view addSubview:panel]; self.panel = panel;
         ((PPOOwnedPassthroughWindow *)self.window).interactivePanel = panel;
         UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, width - 156, 44)];
@@ -589,7 +643,10 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         [close setTitle:@"✕" forState:UIControlStateNormal];
         [close addTarget:self action:@selector(closeFromButton:) forControlEvents:UIControlEventTouchUpInside];
         self.closeButton = close; [panel addSubview:close];
-        self.content = [[UIView alloc] initWithFrame:CGRectMake(0, 44, width, height - 44)];
+        BOOL classic = self.classicLayout;
+        title.hidden = classic; actions.hidden = classic; size.hidden = classic; close.hidden = classic;
+        CGFloat contentTop = classic ? 0 : 44;
+        self.content = [[UIView alloc] initWithFrame:CGRectMake(0, contentTop, width, height - contentTop)];
         self.content.clipsToBounds = YES;
         // Preserve the container flag used in the observed 0.7.2 trial. This
         // UIView property does NOT establish blocking of remote scene input.
@@ -619,7 +676,16 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         [child didMoveToParentViewController:root];
         if (![self fitPresentation]) return @"Geometria ferestrei nu este disponibilă";
         if (self.closePending || ![self accessAllowed]) return @"Deschiderea ferestrei a fost oprită";
-        if (!_lifetime.start(NSProcessInfo.processInfo.systemUptime)) return @"Temporizator indisponibil";
+        NSTimeInterval startedAt = NSProcessInfo.processInfo.systemUptime;
+        if (!(self.coldStart ? _lifetime.startForApplicationIdentity(startedAt) : _lifetime.start(startedAt)))
+            return @"Temporizator indisponibil";
+        self.nextColdLayerProbe = startedAt + 0.25;
+        if (self.coldStart) {
+            self.startupSpinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+            self.startupSpinner.center = CGPointMake(CGRectGetMidX(self.content.bounds),CGRectGetMidY(self.content.bounds));
+            self.startupSpinner.hidesWhenStopped = YES; self.startupSpinner.userInteractionEnabled = NO;
+            [self.content addSubview:self.startupSpinner]; [self.startupSpinner startAnimating];
+        }
         // Keep existing key-window ownership and app scene foreground/geometry.
         self.window.hidden = NO;
         [self record:@"window-shown"];
@@ -640,6 +706,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         dispatch_resume(self.timer);
         self.running = YES;
         if (![self checkLifetime]) return @"Fereastra a fost închisă de protecțiile active";
+        if (![self applyDrawerTransform]) { [self closeBecause:@"drawer-layout-refused"]; return @"Geometria sertarului nu este disponibilă"; }
         [self captureLayout:@"post-layout"];
         if (self.closed || self.closePending || !self.running) return @"Fereastra nu poate fi afișată";
         for (NSNumber *delay in @[@0.1, @0.75]) {
@@ -677,7 +744,13 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     CGRect screen = self.windowScene.coordinateSpace.bounds;
     if (!CGSizeEqualToSize(screen.size, self.fallbackNativeFrame.size)) return NO;
     PPOHostRect frame{};
-    if (!_presentation.move(requested, PPOFloatingRect(screen), PPOFloatingSafeInsets(self.placementInsets),
+    if (self.classicLayout) {
+        PPOEdgeDrawerSide side = [self.presentationPreferences[@"edge"] isEqual:@"left"]
+            ? PPOEdgeDrawerSide::Left : PPOEdgeDrawerSide::Right;
+        if (!PPOClassicAppPanelFrame(PPOFloatingRect(screen),
+            {self.placementInsets.top,self.placementInsets.left,self.placementInsets.bottom,self.placementInsets.right},
+            side,self.fallbackNativeFrame.size.width,self.fallbackNativeFrame.size.height,&frame)) return NO;
+    } else if (!_presentation.move(requested, PPOFloatingRect(screen), PPOFloatingSafeInsets(self.placementInsets),
         0, 0, &frame)) return NO;
     self.panelBaseFrame = CGRectMake(frame.x, frame.y, frame.width, frame.height);
     self.panel.transform = CGAffineTransformIdentity;
@@ -690,12 +763,16 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     self.sizeButton.frame = CGRectMake(frame.width - 88, 0, 44, 44);
     self.restoreButton.frame = CGRectMake(frame.width - 88, 0, 44, 44);
     self.closeButton.frame = CGRectMake(frame.width - 44, 0, 44, 44);
-    self.actionsButton.hidden = minimized; self.sizeButton.hidden = minimized;
-    self.restoreButton.hidden = !minimized;
+    BOOL classic = self.classicLayout;
+    self.titleLabel.hidden = classic; self.closeButton.hidden = classic;
+    self.actionsButton.hidden = classic || minimized; self.sizeButton.hidden = classic || minimized;
+    self.restoreButton.hidden = classic || !minimized;
+    self.panel.layer.cornerRadius = classic ? 12 : 14;
     // The minimized window clips below its 44-point bar. Keep the positive
     // expanded viewport, wrapper, native view and containment exactly in place.
     if (minimized) return self.content.bounds.size.width > 0 && self.content.bounds.size.height > 0;
-    self.content.frame = CGRectMake(0, 44, frame.width, frame.height - 44);
+    CGFloat contentTop = classic ? 0 : 44;
+    self.content.frame = CGRectMake(0, contentTop, frame.width, frame.height - contentTop);
     self.sizeButton.accessibilityValue = _sizePreset == PPOFloatingSize::Large ? @"Mare"
         : (_sizePreset == PPOFloatingSize::Compact ? @"Mică" : @"Medie");
     // Resize only our viewport/wrapper. The child's native frame is supplied
@@ -816,7 +893,8 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         @"panelBaseFrame": self.panel ? NSStringFromCGRect(self.panelBaseFrame) : @"none",
         @"panelTransform": self.panel ? NSStringFromCGAffineTransform(self.panel.transform) : @"none",
         @"drawerProgress": @(self.presentedDrawerProgress), @"drawerTravel": @(self.drawerTravel),
-        @"fullScenePassthrough": @YES,
+        @"fullScenePassthrough": @YES, @"classicInterface": @(self.classicLayout),
+        @"contentHeaderHeight": self.classicLayout ? @0 : @44,
         @"usedFallbackFrame": @(self.usedFallbackFrame),
         @"windowFrame": self.window ? NSStringFromCGRect(self.window.frame) : @"none",
         @"windowHidden": @(!self.window || self.window.hidden),
@@ -896,6 +974,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // SpringBoard/UIKit notification poster's transition stack.
     @try { self.content.userInteractionEnabled = NO; self.window.hidden = YES; }
     @catch (NSException *exception) { (void)exception; }
+    [self notifyPresentationChange];
     if (wasPending) return; // Still attempt hiding on every notification.
     __weak PPOOwnedSafariTrial *weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf closeBecause:reason]; });
@@ -966,6 +1045,8 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
             if (uiClean) [self.scalingWrapper removeFromSuperview];
         } else uiClean = NO;
     } @catch (NSException *exception) { (void)exception; uiClean = NO; }
+    [self notifyPresentationChange];
+    self.presentationDidChange = nil;
     // The owner invalidates only its independently created controller/scene.
     BOOL ownerClosed = !self.session || [self.session close];
     if (uiClean) {
@@ -973,6 +1054,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         @catch (NSException *exception) { (void)exception; uiClean = NO; }
     }
     if (uiClean) {
+        [self.startupSpinner stopAnimating]; self.startupSpinner = nil;
         self.window = nil; self.panel = nil; self.content = nil; self.scalingWrapper = nil;
         self.childController = nil; self.rootController = nil;
         self.actionsButton = nil; self.titleLabel = nil;

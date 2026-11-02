@@ -1,7 +1,10 @@
 #import <Foundation/Foundation.h>
 
 // Own-new-scene adapter. Caller must gate exact framework UUIDs and select a
-// unique eligible application source. A source is read only and never invalidated.
+// unique eligible application source, OR explicitly pass nil for the audited
+// application-identity factory path with fresh installed positive metadata.
+// Ambiguous/unsupported source selection is not permission for that fallback.
+// A supplied source is read only and never invalidated.
 @interface PPOOwnedSceneHost : NSObject
 @property(nonatomic,strong,readonly) id viewController;
 @property(nonatomic,strong,readonly) id hostedScene;

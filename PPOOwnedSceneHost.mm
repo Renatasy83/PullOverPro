@@ -6,6 +6,14 @@
 
 // These typed declarations preserve ARC's +1 alloc/init method-family rules.
 // Actual private receiver method tables are validated before every dispatch.
+// Exact23A355 +0 factories. They construct immutable inputs, not a foreign scene.
+@protocol PPOApplicationIdentityFactory <NSObject>
++ (id)identityForBundleID:(NSString *)identifier;
+@end
+@protocol PPOApplicationSpecificationFactory <NSObject>
++ (id)specification;
+@end
+
 @protocol PPOHostAllocation <NSObject>
 + (instancetype)alloc;
 @end
@@ -85,6 +93,10 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
 @property(nonatomic,readwrite) BOOL poisoned;
 @property(nonatomic,readwrite) BOOL closed;
 @property(nonatomic,strong) id sourceScene;
+@property(nonatomic,copy) NSString *preparationMode;
+@property(nonatomic) BOOL sourceSceneProvided;
+@property(nonatomic,strong) id factoryIdentity;
+@property(nonatomic,strong) id factorySpecification;
 @property(nonatomic,copy) NSString *workspaceIdentifier;
 @property(nonatomic,copy) NSString *sceneIdentifier;
 @property(nonatomic,strong) id allocatedWorkspace;
@@ -175,34 +187,69 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
     (void)keepAlive;
     if (!NSThread.isMainThread || self.busy || self.attempted || self.poisoned || self.closed) return NO;
     self.attempted = YES; self.busy = YES;
+    self.sourceSceneProvided = source != nil;
+    self.preparationMode = source ? @"existing-source-definition" : @"fresh-application-identity";
     BOOL success = NO, cleanFailure = NO;
     @try {
         self.admission = PPOOwnedAdmissionSnapshot(identifier, capability,
             NSProcessInfo.processInfo.systemUptime);
         if (!self.admission) { self.state = @"application-not-eligible"; return NO; }
         self.expectedBundleIdentifier = self.admission[@"bundleIdentifier"];
-        BOOL strictSpecification = !PPOOwnedApplicationAllowed(self.expectedBundleIdentifier);
+        BOOL cold = source == nil;
+        BOOL strictSpecification = cold || !PPOOwnedApplicationAllowed(self.expectedBundleIdentifier);
         if (![self classesSupported]) { self.state = @"unsupported-owned-host-abi"; return NO; }
-        if (![source isKindOfClass:HostClass(self.classes, @"FBScene")] || !HostFlag(source, "isValid")) {
-            self.state = @"unexpected-source"; return NO;
+        id identity = nil, specification = nil, sourceIdentifier = nil;
+        if (cold) {
+            // A baseline or an unknown descriptor cannot authorize new cold inputs.
+            NSDictionary *proof = self.admission[@"sceneCapability"];
+            if (![self.admission[@"basis"] isEqual:@"installed-info"] ||
+                ![proof isKindOfClass:NSDictionary.class] || ![proof[@"status"] isEqual:@"eligible"] ||
+                ![proof[@"eligible"] boolValue]) {
+                self.state = @"cold-inputs-require-installed-eligibility"; return NO;
+            }
+            Class identityClass = HostClass(self.classes, @"FBSSceneClientIdentity");
+            Class specificationClass = HostClass(self.classes, @"UIApplicationSceneSpecification");
+            if (!HostShape(object_getClass(identityClass), "identityForBundleID:", @encode(id), YES) ||
+                !HostShape(object_getClass(specificationClass), "specification", @encode(id))) {
+                self.state = @"unsupported-cold-input-abi"; return NO;
+            }
+            [self pin]; // Retain any unexpected private factory result until recovery.
+            self.factoryIdentity = [(Class<PPOApplicationIdentityFactory>)identityClass
+                identityForBundleID:self.expectedBundleIdentifier];
+            if (object_getClass(self.factoryIdentity) != identityClass) {
+                [self poisonWithState:@"unverified-cold-client-identity"]; return NO;
+            }
+            self.factorySpecification = [(Class<PPOApplicationSpecificationFactory>)specificationClass specification];
+            if (object_getClass(self.factorySpecification) != specificationClass) {
+                [self poisonWithState:@"unverified-cold-specification"]; return NO;
+            }
+            identity = self.factoryIdentity; specification = self.factorySpecification;
+        } else {
+            if (![source isKindOfClass:HostClass(self.classes, @"FBScene")] || !HostFlag(source, "isValid")) {
+                self.state = @"unexpected-source"; return NO;
+            }
+            id definition = HostObject(source, "definition");
+            if (![definition isKindOfClass:HostClass(self.classes, @"FBSSceneDefinition")]) {
+                self.state = @"unexpected-definition"; return NO;
+            }
+            identity = HostObject(definition, "clientIdentity");
+            specification = HostObject(definition, "specification");
+            sourceIdentifier = HostObject(source, "identifier");
         }
-        id definition = HostObject(source, "definition");
-        if (![definition isKindOfClass:HostClass(self.classes, @"FBSSceneDefinition")]) {
-            self.state = @"unexpected-definition"; return NO;
-        }
-        id identity = HostObject(definition, "clientIdentity");
-        id specification = HostObject(definition, "specification");
-        id sourceIdentifier = HostObject(source, "identifier");
         if (strictSpecification && object_getClass(specification) !=
             HostClass(self.classes, @"UIApplicationSceneSpecification")) {
-            self.state = @"unsupported-source-specification"; return NO;
+            if (cold) [self poisonWithState:@"unverified-cold-specification"];
+            else self.state = @"unsupported-source-specification";
+            return NO;
         }
         if (![identity isKindOfClass:HostClass(self.classes, @"FBSSceneClientIdentity")] ||
             ![specification isKindOfClass:HostClass(self.classes, @"UIApplicationSceneSpecification")] ||
-            !HostText(sourceIdentifier) ||
+            (source && !HostText(sourceIdentifier)) ||
             !HostTextEquals(HostObject(identity, "bundleIdentifier"), self.expectedBundleIdentifier) ||
             !HostTextEquals(HostObject(specification, "uiSceneSessionRole"), @"UIWindowSceneSessionRoleApplication")) {
-            self.state = @"unsupported-source"; return NO;
+            if (cold) [self poisonWithState:@"unverified-cold-input-readback"];
+            else self.state = @"unsupported-source";
+            return NO;
         }
         self.sourceScene = source;
         NSString *nonce = NSUUID.UUID.UUIDString;
@@ -321,7 +368,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
             [self poisonWithState:@"unverified-controller-scene"]; return NO;
         }
         binding[@"matchesCreatedScene"] = @(boundScene == child);
-        binding[@"matchesBorrowedSource"] = @(boundScene == source);
+        binding[@"matchesBorrowedSource"] = source ? @(boundScene == source) : (id)NSNull.null;
         binding[@"status"] = boundScene == child ?
             (proxyClassMatches ? @"verified-proxy" : @"verified-direct") : @"host-scene-foreign";
         self.componentBinding = binding;
@@ -373,6 +420,7 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
     self.controller = nil; self.allocatedController = nil;
     self.configuration = nil; self.allocatedConfiguration = nil;
     self.workspace = nil; self.allocatedWorkspace = nil; self.sourceScene = nil;
+    self.factoryIdentity = nil; self.factorySpecification = nil;
     self.closed = YES; self.state = @"closed"; self.pinned = NO;
     __attribute__((objc_precise_lifetime)) PPOOwnedSceneHost *keepAlive = self;
     [HostPins removeObject:self];
@@ -430,7 +478,8 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
     } @finally { self.busy = NO; }
 }
 - (NSDictionary *)snapshot {
-    return @{@"state": self.state, @"poisoned": @(self.poisoned), @"closed": @(self.closed),
+    return @{@"preparationMode": self.preparationMode ?: @"not-started",
+        @"sourceSceneProvided": @(self.sourceSceneProvided), @"state": self.state, @"poisoned": @(self.poisoned), @"closed": @(self.closed),
         @"pinned": @(self.pinned), @"workspaceVerified": @(self.workspaceVerified),
         @"controllerVerified": @(self.controllerVerified),
         @"controllerInvalidateAttempted": @(self.controllerInvalidateAttempted),
