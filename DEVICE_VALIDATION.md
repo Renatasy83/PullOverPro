@@ -1,3 +1,9 @@
+## RC1 Safari baseline supplied by the user
+
+The1.0.0~rc1 Safari report records a kept session manually closed after about34.83 seconds,7completed resizes and3moves. All4framework identities match, owned proxy binding and explicit controller/workspace cleanup are confirmed, ownership is unpinned/unpoisoned and replacement allowed. The user states it works. No retained drawer gesture, Settings-wide, cold-start or all-app proof is inferred. The submitted ZIP matches this repository's Alpha4 main rather than upstream c1d3r source.
+
+RC2's new source-independent factories and classic UI have no actual phone result yet. See [VALIDATION_1.0.1_RC2.md](VALIDATION_1.0.1_RC2.md); synthetic fixtures and firmware traces do not substitute for that gate.
+
 # Device validation
 
 ## User-confirmed 0.17.0 — Files named configurations and default expiry

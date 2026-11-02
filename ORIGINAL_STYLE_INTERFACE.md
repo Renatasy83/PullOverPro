@@ -1,3 +1,5 @@
+> RC2 update: see [CLASSIC_UI_RC2.md](CLASSIC_UI_RC2.md). The default drawer now has no header, X is on the handle, long press opens the narrow icon column, double tap opens the full browser, and source-independent scene construction has an8s initial-render guard. Details below describe the original RC1 delivery where they differ.
+
 # Original-style interface —1.0.0 RC1
 
 Version `1.0.0~rc1` on `debug/original-interface-rc` brings the main PullOver Pro edge-drawer flow and Settings controls to the existing owned-scene port. It is the closest implemented candidate, not a claim of complete original parity or general Dopamine/ElleKit compatibility. Exact source/build/package evidence belongs in [VALIDATION_1.0.0_RC1.md](VALIDATION_1.0.0_RC1.md). The new interface, full-scene remote input and Settings integration still require actual device validation after automation.

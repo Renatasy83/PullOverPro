@@ -1,3 +1,7 @@
+## RC2 implementation update
+
+The source-independent identity/specification factories and classic headerless edge interface are implemented on `debug/cold-favorites-classic-ui`. RC1 remains preserved at `stable/verified-rc1-safari-kept-resize-manual` and its permanent package archive. Main stays Alpha4. The user-confirmed RC1 Safari report contains a34.83s kept session,7resizes,3moves and verified own cleanup; this is not evidence of RC2 cold launch. See [CLASSIC_UI_RC2.md](CLASSIC_UI_RC2.md). CI and device status are recorded in the versioned RC2 report.
+
 # Port status —2026-11-01
 
 Current candidate: **1.0.0~rc1**, branch `debug/original-interface-rc`, executable `f3653171e59fd04cb2ae0c7b70ba28acf4c20fef`. Final Actions41337396599/job124940003921/artifact13095304677 passed28 automated suites, iOS analysis, pinned Theos rootless arm64/arm64e compilation and downloaded-artifact/payload/hash checks. Exact digests and limits are in [VALIDATION_1.0.0_RC1.md](VALIDATION_1.0.0_RC1.md).
