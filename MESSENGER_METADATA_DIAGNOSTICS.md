@@ -1,3 +1,15 @@
+## Installed Messenger metadata received — no phone test requested
+
+The user supplied Info.zip after reporting that the phone was slow. The extracted application plist identifies com.facebook.Messenger, version585.0.0/build1101076820, executable Messenger, APPL, device families[1,2]. It has77 keys and22483 bytes; SHA256741517f9808a10ac225c6490d2af5bd835ff56b112464c5d53ce670d7ff92e30. UIApplicationSceneManifest is absent; no other top-level scene/window keys or background-only/extension declarations were found. Raw plist/archive are not published.
+
+Bounded offline plist parsing checked the earlier parser prerequisites (dictionary/key counts/types, identifier, package type, device families and background/extension absence). Therefore this supplied plist reaches RC4's missing-manifest branch: unknown/manifest-unknown; investigation source d0303bd039aefe08817702fb737c85eae90336eb refines it to unknown/scene-manifest-missing. This explains the current metadata refusal for these supplied bytes. No explicit false multiple-scene declaration exists. It does not prove a compatible legacy hosting path, current phone runtime behavior or a cause for the phone slowdown.
+
+Next autonomous work: audit the exact23A355 UIKit/FrontBoard legacy/no-manifest application lifecycle and normal-scene admission path before proposing a narrowly justified Messenger route. Do not apply the MobileSMS exception or simply authorize missing manifests. Existing exact ABI/identity/ownership/cleanup guards remain mandatory. No new app file, diagnostic installation, respring or real-device test is requested now. Messages remains user-confirmed working.
+
+Runtime unchanged; previous CI run41521971944 passed34 suites, Clang analysis, Theos rootless arm64/arm64e build and package inspection. This checkpoint changes documentation only; no new runtime build/test is claimed. Main, stable/recovery refs and the permanent RC4 DEB remain unchanged. Phone slowdown remains uninvestigated; do not attribute it to PPO, Dopamine or ElleKit without evidence. Ask about recovery only if needed before any future phone test.
+
+---
+
 # Messenger: bounded negative diagnostics
 
 Investigation source: d0303bd039aefe08817702fb737c85eae90336eb, branch debug/two-stage-handle-messages. This is not a new delivered package and does not fix Messenger hosting.
