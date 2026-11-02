@@ -927,7 +927,12 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         NSMutableDictionary *sample = [[self.session sampleState] mutableCopy];
         sample[@"sampleUptime"] = @(NSProcessInfo.processInfo.systemUptime);
         self.lastLiveSample = [sample copy];
-        if (!self.sourceProbeStopped && self.sourceScene && [self.frameworks[@"matches"] boolValue]) {
+        // A cold client may not have supplied layer/settings objects while inactive.
+        // Wait for the independently sampled owned-scene activation; unsupported
+        // active objects still stop this probe rather than being retried blindly.
+        BOOL inspectLayers = !self.coldStart || ([self.lastLiveSample[@"status"] isEqual:@"sampled"] &&
+            [self.lastLiveSample[@"active"] boolValue]);
+        if (inspectLayers && !self.sourceProbeStopped && self.sourceScene && [self.frameworks[@"matches"] boolValue]) {
             sample = [PPOReadSceneLayerState(self.sourceScene, objc_lookUpClass("FBScene"),
                 objc_lookUpClass("FBSceneLayerManager"), objc_lookUpClass("FBSceneLayer"),
                 objc_lookUpClass("FBSSceneSettings")) mutableCopy];

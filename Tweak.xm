@@ -1104,6 +1104,12 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     [controller.view insertSubview:outside atIndex:0];
     PPOClassicQuickSwitchView *classic = [[PPOClassicQuickSwitchView alloc] initWithFrame:controller.view.bounds];
     __weak PPOHandleTarget *weakTarget = target;
+    classic.symbolProvider = ^UIImage *(NSString *identifier) {
+        NSDictionary *symbols = @{@"com.apple.mobilesafari":@"safari", @"com.apple.DocumentsApp":@"folder",
+            @"com.apple.mobilecal":@"calendar", @"com.apple.reminders":@"checklist", @"com.apple.MobileAddressBook":@"person.crop.circle"};
+        NSString *symbol = symbols[identifier];
+        return symbol ? [UIImage systemImageNamed:symbol] : nil;
+    };
     classic.selectionHandler = ^(NSString *identifier,uint64_t generation) { [weakTarget classicChoice:identifier generation:generation normal:NO]; };
     classic.normalLaunchHandler = ^(NSString *identifier,uint64_t generation) { [weakTarget classicChoice:identifier generation:generation normal:YES]; };
     [controller.view addSubview:classic];
