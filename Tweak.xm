@@ -894,7 +894,7 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
             leftEdge:left handleCenterY:screen.origin.y+CGRectGetMidY(ppoHandle.frame) handleTouchHeight:ppoHandle.bounds.size.height
             scale:[ppoPreferences[@"quickSwitchScale"] doubleValue] dark:!ppoLightTheme
             hideInstructions:[ppoPreferences[@"hideLabels"] boolValue]]) {
-            if (!self.picker.loading) ppoStatus.text = @"Alege favoritele în Configurări sau atinge de două ori mânerul pentru toate aplicațiile";
+            if (!self.picker.loading) ppoStatus.text = @"Alege favoritele în Configurări sau apasă butonul grilă pentru toate aplicațiile";
         }
         PPOApplyOverlayLayout(); return;
     }
@@ -1331,7 +1331,7 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     UIImageView *icon = [UIImageView new]; icon.contentMode = UIViewContentModeScaleAspectFit;
     [blur.contentView addSubview:icon]; [handle addSubview:pill];
     handle.titleLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightSemibold];
-    handle.accessibilityLabel = @"PullOver Pro; glisează spre interior sau ține apăsat pentru aplicații";
+    handle.accessibilityLabel = @"PullOver Pro; prima atingere afișează opțiunile, a doua deschide aplicația selectată";
     [handle addTarget:target action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:target action:@selector(panned:)];
     pan.delegate = target; [handle addGestureRecognizer:pan];
