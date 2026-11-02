@@ -2,7 +2,7 @@
 #import <CoreFoundation/CoreFoundation.h>
 #include <cmath>
 
-static NSString *const CapabilityPolicy = @"installed-basic-multiscene-v3";
+static NSString *const CapabilityPolicy = @"installed-basic-multiscene-v4";
 
 static BOOL CapabilityASCIIAlphanumeric(unichar value) {
     return (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') ||
@@ -97,7 +97,10 @@ NSDictionary *PPOSceneCapabilityNormalize(id value) {
         if ([raw[@"status"] isEqual:@"eligible"] && [raw[@"eligible"] boolValue]) {
             status = @"eligible";
             reason = CapabilityCanonicalReason(raw[@"reason"], @[@"declared-single-application-scene",
-                @"declared-programmatic-application-scenes", @"declared-named-application-configurations"]);
+                @"declared-programmatic-application-scenes", @"declared-named-application-configurations",
+                @"declared-messages-programmatic-scenes"]);
+            if ([reason isEqual:@"declared-messages-programmatic-scenes"] &&
+                ![raw[@"bundleIdentifier"] isEqual:@"com.apple.MobileSMS"]) return nil;
         } else if ([raw[@"status"] isEqual:@"ineligible"] && ![raw[@"eligible"] boolValue]) {
             status = @"ineligible";
             reason = CapabilityCanonicalReason(raw[@"reason"], CapabilityIneligibleReasons());
@@ -115,6 +118,38 @@ BOOL PPOSceneCapabilityFresh(id value, NSTimeInterval now) {
     if (!capability || !CapabilityTime(now)) return NO;
     NSTimeInterval observed = [capability[@"observedUptime"] doubleValue];
     return now >= observed - 0.1 && now <= observed + 5.0;
+}
+
+// Advisory exact-profile extension, not an app/framework trust or entitlement check.
+// 23A355 MobileSMS declares only auxiliary roles; its inspected delegate builds
+// the unnamed normal application configuration dynamically. No auxiliary role,
+// class name or delegate is selected/instantiated by this data policy. The owner
+// still enforces exact firmware, normal-role specification, selected identity,
+// independent workspace/child/proxy binding, lifetime and cleanup at runtime.
+static BOOL CapabilityMessagesProfile(NSDictionary *raw, NSDictionary *manifest) {
+    NSDictionary *scalars = @{@"CFBundleIdentifier": @"com.apple.MobileSMS",
+        @"CFBundleExecutable": @"MobileSMS", @"NSPrincipalClass": @"SMSApplication",
+        @"CFBundleVersion": @"1448.100.1.2.102", @"CFBundleShortVersionString": @"26.0",
+        @"DTPlatformVersion": @"26.0", @"DTPlatformBuild": @"23A345", @"DTSDKBuild": @"23A345"};
+    for (NSString *key in scalars)
+        if (!CapabilityText(raw[key], 256) || ![raw[key] isEqual:scalars[key]]) return NO;
+    if (![raw[@"UIDeviceFamily"] isEqual:@[@1, @2]] ||
+        !CapabilityBoolean(manifest[@"UIApplicationSupportsMultipleScenes"]) ||
+        ![manifest[@"UIApplicationSupportsMultipleScenes"] boolValue] ||
+        !CapabilityBoolean(manifest[@"UIApplicationSupportsSceneItemProviders"]) ||
+        ![manifest[@"UIApplicationSupportsSceneItemProviders"] boolValue]) return NO;
+    NSDictionary *expected = @{@"UIApplicationSupportsMultipleScenes": @YES,
+        @"UIApplicationSupportsSceneItemProviders": @YES,
+        @"UISceneConfigurations": @{
+            @"CPTemplateApplicationSceneSessionRoleApplication": @[
+                @{@"UISceneClassName": @"CPTemplateApplicationScene", @"UISceneConfigurationName": @"Messages-Car",
+                  @"UISceneDelegateClassName": @"CKStarkManager"}],
+            @"UIWindowSceneSessionRoleAssistiveAccessApplication": @[
+                @{@"UISceneConfigurationName": @"Messages-ClarityUI", @"UISceneDelegateClassName": @"CKClarityUISceneDelegate"}],
+            @"com.apple.PosterBoardUIServices.editor-overlay": @[
+                @{@"UISceneConfigurationName": @"Messages-EditorOverlayConfiguration",
+                  @"UISceneDelegateClassName": @"ChatKit.PosterEditorOverlaySceneDelegate"}]}};
+    return [manifest isEqual:expected];
 }
 
 NSDictionary *PPOSceneCapabilityFromInfo(id info, NSString *identifier, NSTimeInterval observedUptime) {
@@ -170,6 +205,8 @@ NSDictionary *PPOSceneCapabilityFromInfo(id info, NSString *identifier, NSTimeIn
                  [key rangeOfString:@"window" options:NSCaseInsensitiveSearch].location != NSNotFound))
                 return PPOSceneCapabilityUnknown(identifier, @"manifest-complex", observedUptime);
         }
+        if (CapabilityMessagesProfile(raw, manifest))
+            return CapabilityResult(identifier, @"eligible", @"declared-messages-programmatic-scenes", observedUptime);
         if ([(NSDictionary *)manifest count] > 2 || !CapabilityDictionaryKeys(manifest,
                 @[@"UIApplicationSupportsMultipleScenes", @"UISceneConfigurations"]))
             return PPOSceneCapabilityUnknown(identifier, @"manifest-complex", observedUptime);

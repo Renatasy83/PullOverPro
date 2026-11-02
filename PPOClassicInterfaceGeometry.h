@@ -20,7 +20,7 @@ struct PPOClassicHandleLayout {
 };
 
 struct PPOClassicQuickSwitchLayout {
-    PPOHostRect screen{}, safe{}, list{}, visibleList{}, touchList{};
+    PPOHostRect screen{}, safe{}, list{}, visibleList{}, touchList{}, reservedHandle{};
     std::array<PPOHostRect, PPOClassicMaximumItems> rows{}, rowTouches{};
     std::array<std::size_t, PPOClassicMaximumItems> itemIndices{};
     std::size_t count = 0;
@@ -33,7 +33,11 @@ inline PPOHostRect Intersection(PPOHostRect a, PPOHostRect b) noexcept {
     const double x = std::max(a.x,b.x), y = std::max(a.y,b.y);
     const double right = std::min(a.x+a.width,b.x+b.width);
     const double bottom = std::min(a.y+a.height,b.y+b.height);
-    return right > x && bottom > y ? PPOHostRect{x,y,right-x,bottom-y} : PPOHostRect{};
+    if (right <= x || bottom <= y) return {};
+    double width=right-x,height=bottom-y;
+    if(x+width>right)width=std::nextafter(width,0.0);
+    if(y+height>bottom)height=std::nextafter(height,0.0);
+    return {x,y,width,height};
 }
 inline bool Contains(PPOHostRect outer, PPOHostRect inner) noexcept {
     return inner.x >= outer.x && inner.y >= outer.y &&
@@ -42,6 +46,24 @@ inline bool Contains(PPOHostRect outer, PPOHostRect inner) noexcept {
 }
 inline bool Same(PPOHostRect a, PPOHostRect b) noexcept {
     return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
+}
+inline PPOHostRect ListTouchRect(PPOHostRect list, PPOHostRect safe, PPOHostRect reserved) noexcept {
+    PPOHostRect touch = Intersection({list.x,list.y-5,list.width,list.height+10},safe);
+    if (touch.width <= 0 || touch.height <= 0) return {};
+    const double bottom = touch.y+touch.height;
+    if (list.y >= reserved.y+reserved.height) {
+        touch.y = std::max(touch.y,reserved.y+reserved.height);
+        touch.height = bottom-touch.y;
+    } else if (list.y+list.height <= reserved.y) {
+        touch.height = std::min(bottom,reserved.y)-touch.y;
+        // Arithmetic rounding must not leak an expanded hit target a fraction
+        // into the handle's separate second-tap band.
+        if (touch.y+touch.height > reserved.y) touch.height = std::nextafter(touch.height,0.0);
+    } else return {};
+    const double maximumBottom=std::min(safe.y+safe.height,
+        list.y+list.height <= reserved.y ? reserved.y : safe.y+safe.height);
+    if(touch.y+touch.height>maximumBottom)touch.height=std::nextafter(touch.height,0.0);
+    return touch.height > 0 ? touch : PPOHostRect{};
 }
 }
 
@@ -106,34 +128,43 @@ inline bool PPOClassicAppPanelFrame(PPOHostRect screen, PPOEdgeDrawerInsets inse
 
 inline bool PPOClassicMakeQuickSwitch(PPOHostRect screen, PPOEdgeDrawerInsets insets,
     PPOEdgeDrawerSide side, double handleCenterY, std::size_t count,
-    PPOClassicQuickSwitchLayout *result) noexcept {
+    PPOClassicQuickSwitchLayout *result, double handleTouchHeight = PPOClassicTouchHeight) noexcept {
     if (!result) return false;
     *result = {};
     PPOHostRect safe{};
     if (!PPOEdgeDrawerDetail::Usable(screen,insets,&safe) ||
         !PPOEdgeDrawerDetail::Side(side) || !PPOEdgeDrawerDetail::Coordinate(handleCenterY) ||
-        count == 0 || count > PPOClassicMaximumItems) return false;
-    handleCenterY = std::clamp(handleCenterY,safe.y+PPOClassicTouchHeight/2,
-        safe.y+safe.height-PPOClassicTouchHeight/2);
+        count == 0 || count > PPOClassicMaximumItems || !std::isfinite(handleTouchHeight) ||
+        handleTouchHeight < PPOClassicTouchHeight || handleTouchHeight > 72) return false;
+    handleCenterY = std::clamp(handleCenterY,safe.y+handleTouchHeight/2,
+        safe.y+safe.height-handleTouchHeight/2);
     PPOClassicQuickSwitchLayout value{};
     value.screen = screen; value.safe = safe; value.count = count;
     value.contentHeight = static_cast<double>(count)*PPOClassicRowHeight;
-    const double handleTop = handleCenterY-PPOClassicPillHeight/2;
-    const double handleBottom = handleCenterY+PPOClassicPillHeight/2;
-    value.reversed = handleTop+value.contentHeight > safe.y+safe.height;
-    const double available = value.reversed ? handleBottom-safe.y : safe.y+safe.height-handleTop;
+    // The selected handle remains a distinct second-tap target. Reserve its
+    // entire touch height, not just the visible34pt pill. A5pt separation also
+    // keeps expanded44pt row hit padding outside that band.
+    const double handleTop = handleCenterY-handleTouchHeight/2;
+    const double handleBottom = handleCenterY+handleTouchHeight/2;
+    const double belowStart = handleBottom+5;
+    const double aboveEnd = handleTop-5;
+    const double below = std::max(0.0,safe.y+safe.height-belowStart);
+    const double above = std::max(0.0,aboveEnd-safe.y);
+    value.reversed = value.contentHeight > below &&
+        (value.contentHeight <= above || above >= below);
+    const double available = value.reversed ? above : below;
     const double height = std::min(value.contentHeight,available);
-    const double y = std::clamp(value.reversed ? handleBottom-height : handleTop,
-        safe.y,safe.y+safe.height-height);
+    if (height < PPOClassicRowHeight) return false;
+    const double y = value.reversed ? aboveEnd-height : belowStart;
     const bool left = side == PPOEdgeDrawerSide::Left;
     // Like the original pill, a normal list protrudes 30 points. With a large
     // horizontal safe inset, move it inward enough to retain44 visible points.
     const double x = left ? std::max(screen.x-30,safe.x+44-PPOClassicPillWidth)
         : std::min(screen.x+screen.width-PPOClassicEdgeStrip,safe.x+safe.width-44);
+    value.reservedHandle = {x,handleTop,PPOClassicPillWidth,handleTouchHeight};
     value.list = {x,y,PPOClassicPillWidth,height};
     value.visibleList = PPOClassicDetail::Intersection(value.list,safe);
-    value.touchList = PPOClassicDetail::Intersection({value.list.x,value.list.y-5,
-        value.list.width,value.list.height+10},safe);
+    value.touchList = PPOClassicDetail::ListTouchRect(value.list,safe,value.reservedHandle);
     if (!PPOEdgeDrawerDetail::Rect(value.list) ||
         !PPOEdgeDrawerDetail::Rect(value.visibleList) ||
         !PPOEdgeDrawerDetail::Rect(value.touchList) || value.visibleList.width < 44) return false;
@@ -159,7 +190,14 @@ inline bool PPOClassicQuickSwitchItemAtPoint(const PPOClassicQuickSwitchLayout &
     if (layout.count == 0 || layout.count > PPOClassicMaximumItems ||
         !PPOEdgeDrawerDetail::Rect(layout.screen) || !PPOEdgeDrawerDetail::Rect(layout.safe) ||
         !PPOEdgeDrawerDetail::Rect(layout.list) || !PPOEdgeDrawerDetail::Rect(layout.visibleList) ||
-        !PPOEdgeDrawerDetail::Rect(layout.touchList) || layout.list.width != PPOClassicPillWidth ||
+        !PPOEdgeDrawerDetail::Rect(layout.touchList) || !PPOEdgeDrawerDetail::Rect(layout.reservedHandle) ||
+        layout.reservedHandle.x != layout.list.x || layout.reservedHandle.width != PPOClassicPillWidth ||
+        layout.reservedHandle.height < PPOClassicTouchHeight || layout.reservedHandle.height > 72 ||
+        layout.reservedHandle.y < layout.safe.y-1e-8 ||
+        layout.reservedHandle.y+layout.reservedHandle.height > layout.safe.y+layout.safe.height+1e-8 ||
+        !(layout.touchList.y+layout.touchList.height <= layout.reservedHandle.y+1e-8 ||
+          layout.touchList.y >= layout.reservedHandle.y+layout.reservedHandle.height-1e-8) ||
+        layout.list.width != PPOClassicPillWidth ||
         layout.contentHeight != static_cast<double>(layout.count)*PPOClassicRowHeight ||
         layout.list.height > layout.contentHeight || !std::isfinite(scrollOffset) || scrollOffset < 0 ||
         scrollOffset > layout.contentHeight-layout.list.height ||
@@ -167,10 +205,10 @@ inline bool PPOClassicQuickSwitchItemAtPoint(const PPOClassicQuickSwitchLayout &
         !PPOClassicDetail::Contains(layout.screen,layout.visibleList) ||
         !PPOClassicDetail::Contains(layout.safe,layout.touchList) ||
         !PPOClassicDetail::Same(layout.visibleList,PPOClassicDetail::Intersection(layout.list,layout.safe)) ||
-        !PPOClassicDetail::Same(layout.touchList,PPOClassicDetail::Intersection({layout.list.x,layout.list.y-5,
-            layout.list.width,layout.list.height+10},layout.safe)) ||
+        !PPOClassicDetail::Same(layout.touchList,PPOClassicDetail::ListTouchRect(layout.list,layout.safe,layout.reservedHandle)) ||
         !PPOEdgeDrawerDetail::Coordinate(sceneX) || !PPOEdgeDrawerDetail::Coordinate(sceneY) ||
-        !PPOEdgeDrawerDetail::Contains(layout.touchList,sceneX,sceneY)) return false;
+        !PPOEdgeDrawerDetail::Contains(layout.touchList,sceneX,sceneY) ||
+        (sceneY >= layout.reservedHandle.y && sceneY <= layout.reservedHandle.y+layout.reservedHandle.height)) return false;
     const double contentY = std::clamp(sceneY-layout.list.y+scrollOffset,scrollOffset,
         std::nextafter(scrollOffset+layout.list.height,scrollOffset));
     const std::size_t row = static_cast<std::size_t>(std::floor(contentY/PPOClassicRowHeight));

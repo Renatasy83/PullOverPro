@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Fixture contract: pure synthetic plist/descriptor policy v3, normalization and freshness.
+// Fixture contract: pure synthetic plist/descriptor policy v4, normalization and freshness.
 // Files (two names) and Mail (four names) model metadata shapes only. They do not
 // read Apple bundles/binaries, call private APIs or establish app/scene admission.
 static unsigned checks;
@@ -81,7 +81,7 @@ static void Result(NSDictionary *value, NSString *status, NSString *reason) {
     Check([value[@"status"] isEqual:status] && [value[@"reason"] isEqual:reason],
           "outcome distinguishes explicit negatives from unavailable or unsupported metadata");
     Check([value[@"bundleIdentifier"] isEqual:Identifier] &&
-          [value[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
+          [value[@"policy"] isEqual:@"installed-basic-multiscene-v4"] &&
           [value[@"schema"] isEqual:@1] && [value[@"observedUptime"] isEqual:@100],
           "result is bound to the requested app, fixed policy and injected observation time");
     Check(CFGetTypeID((__bridge CFTypeRef)value[@"eligible"]) == CFBooleanGetTypeID() &&
@@ -98,8 +98,151 @@ static void NormalizeField(NSString *field, NSArray *values) {
             Check(PPOSceneCapabilityNormalize(value) == nil, "malformed descriptor scalar is rejected for every positive metadata shape");
         }
 }
+// Derived Messages profile facts, not a copied Apple plist or app execution.
+static NSString *const MessagesID = @"com.apple.MobileSMS";
+static NSMutableDictionary *MessagesInfo(void) {
+    return [@{@"CFBundleIdentifier": MessagesID, @"CFBundlePackageType": @"APPL",
+        @"UIDeviceFamily": @[@1, @2], @"CFBundleExecutable": @"MobileSMS", @"NSPrincipalClass": @"SMSApplication",
+        @"CFBundleVersion": @"1448.100.1.2.102", @"CFBundleShortVersionString": @"26.0",
+        @"DTPlatformVersion": @"26.0", @"DTPlatformBuild": @"23A345", @"DTSDKBuild": @"23A345",
+        @"UIApplicationSceneManifest": @{@"UIApplicationSupportsMultipleScenes": @YES,
+            @"UIApplicationSupportsSceneItemProviders": @YES, @"UISceneConfigurations": @{
+                @"CPTemplateApplicationSceneSessionRoleApplication": @[@{@"UISceneClassName": @"CPTemplateApplicationScene",
+                    @"UISceneConfigurationName": @"Messages-Car", @"UISceneDelegateClassName": @"CKStarkManager"}],
+                @"UIWindowSceneSessionRoleAssistiveAccessApplication": @[@{@"UISceneConfigurationName": @"Messages-ClarityUI",
+                    @"UISceneDelegateClassName": @"CKClarityUISceneDelegate"}],
+                @"com.apple.PosterBoardUIServices.editor-overlay": @[@{@"UISceneConfigurationName": @"Messages-EditorOverlayConfiguration",
+                    @"UISceneDelegateClassName": @"ChatKit.PosterEditorOverlaySceneDelegate"}]}}} mutableCopy];
+}
+static NSDictionary *MessagesRead(id info) { return PPOSceneCapabilityFromInfo(info, MessagesID, 100); }
+static void MessagesResult(NSDictionary *value, NSString *status, NSString *reason) {
+    Check(value.count == 7 && [value[@"bundleIdentifier"] isEqual:MessagesID] &&
+          [value[@"policy"] isEqual:@"installed-basic-multiscene-v4"] &&
+          [value[@"observedUptime"] isEqual:@100] && [value[@"status"] isEqual:status] &&
+          [value[@"reason"] isEqual:reason], "Messages profile result is bounded, identity-bound and reason-specific");
+    Check(CFGetTypeID((__bridge CFTypeRef)value[@"eligible"]) == CFBooleanGetTypeID() &&
+          [value[@"eligible"] boolValue] == [status isEqual:@"eligible"] &&
+          [PPOSceneCapabilityNormalize(value) isEqual:value], "Messages result normalizes without changing eligibility");
+    NSData *wire = [NSJSONSerialization dataWithJSONObject:value options:0 error:NULL];
+    Check(wire != nil && [PPOSceneCapabilityNormalize([NSJSONSerialization JSONObjectWithData:wire options:0 error:NULL]) isEqual:value],
+          "Messages profile crosses JSON using only seven canonical scalars");
+}
+static NSMutableDictionary *MessagesConfiguration(NSMutableDictionary *info, NSString *role) {
+    NSMutableDictionary *roles = Roles(info);
+    NSMutableArray *configurations = [roles[role] mutableCopy]; roles[role] = configurations;
+    NSMutableDictionary *configuration = [configurations[0] mutableCopy]; configurations[0] = configuration;
+    return configuration;
+}
+static void MessagesProfileCases(void) {
+    NSDictionary *positive = MessagesRead(MessagesInfo());
+    MessagesResult(positive, @"eligible", @"declared-messages-programmatic-scenes");
+    Check(![[positive description] containsString:@"CKStarkManager"] && ![[positive description] containsString:@"SMSApplication"] &&
+          ![[positive description] containsString:@"Messages-Car"], "Messages profile details are not disclosed in eligibility");
+    for (NSString *key in @[@"CFBundleExecutable", @"NSPrincipalClass", @"CFBundleVersion", @"CFBundleShortVersionString",
+            @"DTPlatformVersion", @"DTPlatformBuild", @"DTSDKBuild"]) {
+        NSMutableDictionary *missing = MessagesInfo(); [missing removeObjectForKey:key];
+        MessagesResult(MessagesRead(missing), @"unknown", @"manifest-complex");
+        for (id value in @[NSNull.null, @YES, @1, @[], @{}, @"", @"future-profile", @"1448.100.1.2.103"]) {
+            NSMutableDictionary *changed = MessagesInfo(); changed[key] = value;
+            MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+        }
+    }
+    for (id family in @[@[@1], @[@2, @1], @[@1, @2, @3]]) {
+        NSMutableDictionary *changed = MessagesInfo(); changed[@"UIDeviceFamily"] = family;
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+    }
+    NSMutableDictionary *changed = MessagesInfo(); changed[@"UIDeviceFamily"] = @[@2];
+    MessagesResult(MessagesRead(changed), @"ineligible", @"not-iphone");
+    changed = MessagesInfo(); changed[@"UIDeviceFamily"] = @[@YES, @2];
+    MessagesResult(MessagesRead(changed), @"unknown", @"manifest-unknown");
+    for (id impostor in @[@1, @0, @"true", NSNull.null, @[], @{}]) {
+        changed = MessagesInfo(); Manifest(changed)[@"UIApplicationSupportsSceneItemProviders"] = impostor;
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+        changed = MessagesInfo(); Manifest(changed)[@"UIApplicationSupportsMultipleScenes"] = impostor;
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-unknown");
+    }
+    changed = MessagesInfo(); Manifest(changed)[@"UIApplicationSupportsSceneItemProviders"] = @NO;
+    MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+    changed = MessagesInfo(); [Manifest(changed) removeObjectForKey:@"UIApplicationSupportsSceneItemProviders"];
+    MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+    changed = MessagesInfo(); Manifest(changed)[@"UIApplicationSupportsMultipleScenes"] = @NO;
+    Manifest(changed)[@"unreviewed-security-field"] = @YES;
+    MessagesResult(MessagesRead(changed), @"ineligible", @"multiple-scenes-disabled");
+    for (NSString *flag in @[@"LSBackgroundOnly", @"LSUIElement", @"UIBackgroundOnly"]) {
+        changed = MessagesInfo(); changed[flag] = @YES;
+        MessagesResult(MessagesRead(changed), @"ineligible", @"not-application");
+    }
+    changed = MessagesInfo(); changed[@"NSExtension"] = @{};
+    MessagesResult(MessagesRead(changed), @"ineligible", @"app-extension");
+    changed = MessagesInfo(); changed[@"CFBundlePackageType"] = @"XPC!";
+    MessagesResult(MessagesRead(changed), @"ineligible", @"not-application");
+    for (NSString *field in @[@"ExtraSceneSetting", @"WindowSecurity", @"scene", @"window"]) {
+        changed = MessagesInfo(); changed[field] = @YES;
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+    }
+    for (NSString *field in @[@"UnreviewedManifestField", @"UISceneClassName", @"UIWindowSceneSessionRoleApplication"]) {
+        changed = MessagesInfo(); Manifest(changed)[field] = @YES;
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+    }
+    for (id roles in @[@{}, @[], @YES, NSNull.null]) {
+        changed = MessagesInfo(); Manifest(changed)[@"UISceneConfigurations"] = roles;
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+    }
+    for (NSString *role in [MessagesInfo()[@"UIApplicationSceneManifest"][@"UISceneConfigurations"] allKeys]) {
+        changed = MessagesInfo(); [Roles(changed) removeObjectForKey:role];
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+        for (id configs in @[@[], @[@{}], NSNull.null, @[@1], @[@{}, @{}]]) {
+            changed = MessagesInfo(); Roles(changed)[role] = configs;
+            MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+        }
+        NSDictionary *original = MessagesInfo()[@"UIApplicationSceneManifest"][@"UISceneConfigurations"][role][0];
+        for (NSString *field in original) {
+            changed = MessagesInfo(); [MessagesConfiguration(changed,role) removeObjectForKey:field];
+            MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+            for (id value in @[@"Changed", @"", @1, @YES, NSNull.null, @[], @{}]) {
+                changed = MessagesInfo(); MessagesConfiguration(changed,role)[field] = value;
+                MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+            }
+        }
+        changed = MessagesInfo(); MessagesConfiguration(changed,role)[@"UnreviewedConfiguration"] = @"value";
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+    }
+    for (NSString *role in @[@"UIWindowSceneSessionRoleApplication", @"UnreviewedRole", @"UIWindowSceneSessionRoleExternalDisplay"]) {
+        changed = MessagesInfo(); Roles(changed)[role] = @[@{@"UISceneDelegateClassName": @"UnreviewedDelegate"}];
+        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
+    }
+    for (NSString *other in @[@"com.facebook.Messenger", @"com.example.application", @"com.apple.mobilesms"]) {
+        changed = MessagesInfo(); changed[@"CFBundleIdentifier"] = other;
+        NSDictionary *value = PPOSceneCapabilityFromInfo(changed,other,100);
+        Check([value[@"status"] isEqual:@"unknown"] && [value[@"reason"] isEqual:@"manifest-complex"],
+              "the Messages profile never authorizes Messenger, another app or case-folded identifier");
+        NSMutableDictionary *rebound = [positive mutableCopy]; rebound[@"bundleIdentifier"] = other;
+        Check(PPOSceneCapabilityNormalize(rebound) == nil, "the Messages-only wire reason cannot cross identifiers");
+    }
+    changed = MessagesInfo(); changed[@"CFBundleIdentifier"] = @"com.example.other";
+    MessagesResult(MessagesRead(changed), @"unknown", @"identifier-mismatch");
+    for (NSString *status in @[@"unknown", @"ineligible"]) {
+        NSMutableDictionary *bad = [positive mutableCopy]; bad[@"status"] = status; bad[@"eligible"] = @NO;
+        Check(PPOSceneCapabilityNormalize(bad) == nil, "Messages reason cannot be reclassified into another status");
+    }
+    for (id flag in @[@NO, @1, @0, @"true", NSNull.null]) {
+        NSMutableDictionary *bad = [positive mutableCopy]; bad[@"eligible"] = flag;
+        Check(PPOSceneCapabilityNormalize(bad) == nil, "Messages reason requires a genuine true Boolean");
+    }
+    for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"installed-basic-multiscene-v3"]) {
+        NSMutableDictionary *old = [positive mutableCopy]; old[@"policy"] = policy;
+        Check(!PPOSceneCapabilityNormalize(old) && !PPOSceneCapabilityFresh(old,100), "old descriptors cannot claim Messages profile eligibility");
+    }
+    NSMutableString *mutableVersion = [@"1448.100.1.2.102" mutableCopy];
+    changed = MessagesInfo(); changed[@"CFBundleVersion"] = mutableVersion;
+    NSDictionary *frozen = MessagesRead(changed); [mutableVersion setString:@"future"]; [changed removeAllObjects];
+    MessagesResult(frozen, @"eligible", @"declared-messages-programmatic-scenes");
+    Check(PPOSceneCapabilityFresh(positive,105) && !PPOSceneCapabilityFresh(positive,105.000001),
+          "Messages eligibility retains the same short five-second freshness boundary");
+}
 int main(void) {
     @autoreleasepool {
+        MessagesProfileCases();
         for (NSString *valid in @[@"com.example.application", @"com.apple.mobilesafari",
                 @"com.apple.reminders", @"com.apple.MobileAddressBook", @"org.Example.some-app_1"])
             Check(PPOSceneApplicationIdentifierAllowed(valid), "ordinary dotted identifiers preserve exact case");
@@ -150,7 +293,7 @@ int main(void) {
             NSDictionary *capability = PPOSceneCapabilityFromInfo(metadata, fixture[@"identifier"], 100);
             Check(manifest.count == 2 && [configurations count] == [fixture[@"count"] unsignedIntegerValue] &&
                   [capability[@"bundleIdentifier"] isEqual:fixture[@"identifier"]] &&
-                  [capability[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
+                  [capability[@"policy"] isEqual:@"installed-basic-multiscene-v4"] &&
                   [capability[@"reason"] isEqual:@"declared-named-application-configurations"] &&
                   [capability[@"status"] isEqual:@"eligible"] &&
                   [PPOSceneCapabilityNormalize(capability) isEqual:capability],
@@ -451,7 +594,7 @@ int main(void) {
                 NSMutableDictionary *canonical = [Read(Info()) mutableCopy];
                 canonical[@"reason"] = reason; canonical[@"status"] = group[@"status"];
                 canonical[@"eligible"] = @([group[@"status"] isEqual:@"eligible"]);
-                for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+                for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"installed-basic-multiscene-v3"]) {
                     canonical[@"policy"] = policy;
                     Check(PPOSceneCapabilityNormalize(canonical) == nil && !PPOSceneCapabilityFresh(canonical, 100),
                           "legacy policy rejection also covers every unknown and ineligible canonical reason");
@@ -463,7 +606,7 @@ int main(void) {
                   "invalid observation clocks never produce descriptors");
 
         NormalizeField(@"schema", @[@YES, @0, @2, @0.5, @(NAN), @(INFINITY), @"1", NSNull.null]);
-        NormalizeField(@"policy", @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"unknown-v2", @1, NSNull.null]);
+        NormalizeField(@"policy", @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"installed-basic-multiscene-v3", @"unknown-v2", @1, NSNull.null]);
         NormalizeField(@"bundleIdentifier", @[@"com.other..app", @"com.apple.springboard", @1, NSNull.null]);
         NormalizeField(@"status", @[@"unknown", @"ineligible", @"other", @1, NSNull.null]);
         NormalizeField(@"eligible", @[@1, @0, @NO, @"true", NSNull.null]);
@@ -488,7 +631,7 @@ int main(void) {
         Check(PPOSceneCapabilityNormalize(contradictory) != nil, "integral numeric schema is distinct from a Boolean");
 
         NSMutableString *mutableIdentifier = [Identifier mutableCopy];
-        NSMutableString *mutablePolicy = [@"installed-basic-multiscene-v3" mutableCopy];
+        NSMutableString *mutablePolicy = [@"installed-basic-multiscene-v4" mutableCopy];
         NSMutableString *mutableStatus = [@"eligible" mutableCopy];
         NSMutableString *mutableReason = [@"declared-single-application-scene" mutableCopy];
         NSMutableDictionary *caller = [valid mutableCopy];
@@ -550,13 +693,13 @@ int main(void) {
                   PPOSceneCapabilityFresh(fixture, 99.9) && !PPOSceneCapabilityFresh(fixture, 105.0001) &&
                   !PPOSceneCapabilityFresh(fixture, 99.8999),
                   "every current-policy eligible reason obeys the same freshness boundaries");
-            for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+            for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"installed-basic-multiscene-v3"]) {
                 NSMutableDictionary *legacy = [fixture mutableCopy]; legacy[@"policy"] = policy;
                 Check(PPOSceneCapabilityNormalize(legacy) == nil && !PPOSceneCapabilityFresh(legacy, 100),
                       "v1 and v2 proofs are rejected without translation or freshening for every eligible reason");
             }
         }
-        printf("Scene capability tests passed: %u checks; policy v3 synthetic metadata, normalization and freshness; no app admission\n", checks);
+        printf("Scene capability tests passed: %u checks; policy v4 synthetic metadata, normalization and freshness; no app admission\n", checks);
     }
     return 0;
 }

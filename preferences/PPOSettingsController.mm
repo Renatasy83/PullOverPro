@@ -321,11 +321,12 @@ static NSArray<NSArray<NSDictionary *> *> *PPOSettingsRows(void) {
                 @{@"key": @"keepWindowOpen", @"title": @"Păstrează fereastra deschisă", @"kind": @"switch"}
             ],
             @[
-                @{@"title": @"Glisează mânerul spre interior pentru a deschide sertarul. Când sertarul este închis, trage mânerul spre marginea exterioară pentru a-l restrânge. Trage înapoi spre margine pentru a-l închide. Apasă lung pentru Recente sau Favorite. Atinge de două ori mânerul pentru lista completă. În modul Sertar, X de pe mâner închide fereastra.", @"kind": @"info"},
+                @{@"title": @"Prima atingere sau tragere spre interior afișează mânerul și lista de aplicații. Alege o aplicație din listă sau apasă a doua oară mânerul pentru aplicația deja selectată. Pentru o fereastră deja deschisă, mânerul retrage sau readuce sertarul.", @"kind": @"info"},
+                @{@"title": @"Când sertarul este închis, trage mânerul spre marginea exterioară pentru a-l restrânge. Apasă lung pentru Recente sau Favorite; atinge de două ori pentru lista completă. În modul Sertar, X de pe mâner închide fereastra.", @"kind": @"info"},
                 @{@"title": @"Evită tastatura mută temporar doar mânerul și comutatorul de aplicații într-o zonă liberă când se suprapun cu tastatura. Poziția memorată revine când tastatura dispare; dimensiunea ferestrei aplicației nu se schimbă.", @"kind": @"info"},
                 @{@"title": @"Favoritele se aleg și se reordonează pe această pagină sau în lista de aplicații PPO. Lista și favoritele existente sunt păstrate.", @"kind": @"info"},
                 @{@"title": @"Recuperare: creează /var/mobile/.ppo_disable și fă respring. Dacă SpringBoard nu pornește, dezactivează tweak injection în Dopamine și dezinstalează doar PPO.", @"kind": @"info"},
-                @{@"title": @"PullOver Pro · 1.0.2 RC3\nOriginal: c1d3r / Will Smillie\nPort: Renatasy83 · GPL-3.0", @"kind": @"info"},
+                @{@"title": @"PullOver Pro · 1.0.3 RC4\nOriginal: c1d3r / Will Smillie\nPort: Renatasy83 · GPL-3.0", @"kind": @"info"},
                 @{@"title": @"Cod sursă și licență", @"kind": @"source"}
             ]
         ];

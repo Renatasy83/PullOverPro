@@ -15,7 +15,7 @@ static void Check(BOOL condition, const char *message) {
 static NSDictionary *Capability(NSString *identifier, NSString *status, double observed = 100) {
     NSString *reason = [status isEqual:@"eligible"] ? @"declared-single-application-scene" :
         ([status isEqual:@"ineligible"] ? @"multiple-scenes-disabled" : @"manifest-unknown");
-    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v3",
+    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v4",
         @"bundleIdentifier": identifier, @"status": status,
         @"eligible": [status isEqual:@"eligible"] ? @YES : @NO,
         @"reason": reason, @"observedUptime": @(observed)};
@@ -63,6 +63,25 @@ int main(void) {
         Check(PPOOwnedAdmissionSnapshot(@"com.example.other", programmatic, 101) == nil &&
               PPOOwnedAdmissionSnapshot(dynamic, programmatic, 105.000001) == nil,
               "programmatic proof cannot cross identifiers or extend freshness");
+        NSMutableDictionary *messages = [Capability(@"com.apple.MobileSMS", @"eligible") mutableCopy];
+        messages[@"reason"] = @"declared-messages-programmatic-scenes";
+        NSDictionary *messagesAdmission = PPOOwnedAdmissionSnapshot(@"com.apple.MobileSMS", messages, 101);
+        Check([messagesAdmission[@"basis"] isEqual:@"installed-info"] &&
+              [messagesAdmission[@"sceneCapability"][@"reason"] isEqual:@"declared-messages-programmatic-scenes"],
+              "Messages profile remains fresh identifier-bound installed metadata, never a firmware baseline bypass");
+        Check(PPOOwnedAdmissionSnapshot(@"com.apple.MobileSMS",nil,101) == nil &&
+              PPOOwnedAdmissionSnapshot(@"com.example.other",messages,101) == nil &&
+              PPOOwnedAdmissionSnapshot(@"com.apple.mobilesafari",messages,101) == nil &&
+              PPOOwnedAdmissionSnapshot(@"com.apple.MobileSMS",messages,105.000001) == nil,
+              "Messages profile cannot omit proof, cross identifiers or extend freshness");
+        NSMutableDictionary *wrongMessages = [messages mutableCopy]; wrongMessages[@"bundleIdentifier"] = @"com.example.other";
+        Check(PPOOwnedAdmissionSnapshot(@"com.example.other",wrongMessages,101) == nil,
+              "rebinding the Messages-only reason never admits another application");
+        for (NSString *policy in @[@"installed-basic-multiscene-v1",@"installed-basic-multiscene-v2",@"installed-basic-multiscene-v3"]) {
+            NSMutableDictionary *oldMessages = [messages mutableCopy]; oldMessages[@"policy"] = policy;
+            Check(PPOOwnedAdmissionSnapshot(@"com.apple.MobileSMS",oldMessages,101) == nil,
+                  "old policy cannot authorize the exact Messages reason");
+        }
         programmatic[@"policy"] = @"installed-basic-multiscene-v1";
         Check(PPOOwnedAdmissionSnapshot(dynamic, programmatic, 101) == nil,
               "a previous-policy descriptor is never upgraded into programmatic permission");
@@ -75,7 +94,7 @@ int main(void) {
         Check(PPOOwnedAdmissionSnapshot(@"com.example.other", named, 101) == nil &&
               PPOOwnedAdmissionSnapshot(dynamic, named, 105.000001) == nil,
               "named configuration metadata cannot cross app IDs or extend freshness");
-        for (NSString *oldPolicy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+        for (NSString *oldPolicy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"installed-basic-multiscene-v3"]) {
             named[@"policy"] = oldPolicy;
             Check(PPOOwnedAdmissionSnapshot(dynamic, named, 101) == nil &&
                   PPOOwnedAdmissionSnapshot(@"com.apple.mobilesafari", named, 101) == nil,
@@ -124,7 +143,7 @@ int main(void) {
               PPOOwnedAdmissionSnapshot(@"com.apple.mobilesafari", (id)NSNull.null, 100) == nil,
               "supplied metadata must be a valid dictionary rather than a truthy value");
         NSMutableString *request = [dynamic mutableCopy], *proofID = [dynamic mutableCopy];
-        NSMutableString *policy = [@"installed-basic-multiscene-v3" mutableCopy];
+        NSMutableString *policy = [@"installed-basic-multiscene-v4" mutableCopy];
         NSMutableString *status = [@"eligible" mutableCopy], *reason = [@"declared-single-application-scene" mutableCopy];
         NSMutableDictionary *mutableProof = [Capability(dynamic, @"eligible") mutableCopy];
         mutableProof[@"bundleIdentifier"] = proofID; mutableProof[@"policy"] = policy;
@@ -137,7 +156,7 @@ int main(void) {
         NSDictionary *frozenProof = frozen[@"sceneCapability"];
         Check([frozen[@"bundleIdentifier"] isEqual:dynamic] &&
               [frozenProof[@"bundleIdentifier"] isEqual:dynamic] &&
-              [frozenProof[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
+              [frozenProof[@"policy"] isEqual:@"installed-basic-multiscene-v4"] &&
               [frozenProof[@"status"] isEqual:@"eligible"] &&
               [frozenProof[@"reason"] isEqual:@"declared-single-application-scene"] &&
               [frozenProof[@"observedUptime"] isEqual:@100] && [frozenProof[@"eligible"] isEqual:@YES],

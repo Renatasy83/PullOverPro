@@ -41,6 +41,7 @@
 @property(nonatomic) CGRect sceneScreen;
 @property(nonatomic) UIEdgeInsets sceneInsets;
 @property(nonatomic) CGFloat handleCenterY;
+@property(nonatomic) CGFloat handleTouchHeight;
 @property(nonatomic) CGFloat hoverScale;
 @property(nonatomic) BOOL leftEdge;
 @property(nonatomic) BOOL dark;
@@ -183,7 +184,7 @@ static NSArray<NSDictionary *> *ClassicRows(id value) {
 
 - (BOOL)presentRows:(NSArray<NSDictionary *> *)rows generation:(uint64_t)generation
             screen:(CGRect)screen insets:(UIEdgeInsets)insets leftEdge:(BOOL)leftEdge
-     handleCenterY:(CGFloat)handleCenterY scale:(CGFloat)scale dark:(BOOL)dark
+     handleCenterY:(CGFloat)handleCenterY handleTouchHeight:(CGFloat)handleTouchHeight scale:(CGFloat)scale dark:(BOOL)dark
   hideInstructions:(BOOL)hideInstructions {
     if (!NSThread.isMainThread) return NO;
     [self dismiss];
@@ -196,7 +197,7 @@ static NSArray<NSDictionary *> *ClassicRows(id value) {
     self.hoverName.textColor = [self foreground]; self.dropHint.textColor = [self foreground];
     self.dropTarget.backgroundColor = [[self surface] colorWithAlphaComponent:0.8];
     self.dropOutline.strokeColor = [self foreground].CGColor;
-    if (![self relayoutWithScreen:screen insets:insets leftEdge:leftEdge handleCenterY:handleCenterY]) {
+    if (![self relayoutWithScreen:screen insets:insets leftEdge:leftEdge handleCenterY:handleCenterY handleTouchHeight:handleTouchHeight]) {
         [self dismiss]; return NO;
     }
     for (PPOClassicChoiceButton *button in self.buttons) [button removeFromSuperview];
@@ -223,18 +224,20 @@ static NSArray<NSDictionary *> *ClassicRows(id value) {
 }
 
 - (BOOL)relayoutWithScreen:(CGRect)screen insets:(UIEdgeInsets)insets
-                 leftEdge:(BOOL)leftEdge handleCenterY:(CGFloat)handleCenterY {
+                 leftEdge:(BOOL)leftEdge handleCenterY:(CGFloat)handleCenterY
+       handleTouchHeight:(CGFloat)handleTouchHeight {
     if (!NSThread.isMainThread) return NO;
     PPOClassicQuickSwitchLayout layout{};
     if (!PPOClassicMakeQuickSwitch(ClassicRect(screen), {insets.top,insets.left,insets.bottom,insets.right},
         leftEdge ? PPOEdgeDrawerSide::Left : PPOEdgeDrawerSide::Right, handleCenterY,
-        self.rows.count, &layout)) return NO;
+        self.rows.count, &layout,handleTouchHeight)) return NO;
     BOOL same = CGRectEqualToRect(screen,self.sceneScreen) && UIEdgeInsetsEqualToEdgeInsets(insets,self.sceneInsets) &&
-        leftEdge == self.leftEdge && handleCenterY == self.handleCenterY && _layout.count == layout.count;
+        leftEdge == self.leftEdge && handleCenterY == self.handleCenterY &&
+        handleTouchHeight == self.handleTouchHeight && _layout.count == layout.count;
     if (same) return YES;
     [self stopTracking];
     _layout = layout; self.sceneScreen = screen; self.sceneInsets = insets;
-    self.leftEdge = leftEdge; self.handleCenterY = handleCenterY;
+    self.leftEdge = leftEdge; self.handleCenterY = handleCenterY; self.handleTouchHeight = handleTouchHeight;
     self.frame = CGRectMake(0,0,screen.size.width,screen.size.height);
     CGRect visible = [self localRect:layout.visibleList];
     self.clipView.frame = visible;

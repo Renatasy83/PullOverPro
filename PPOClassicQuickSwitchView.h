@@ -25,11 +25,13 @@ typedef void (^PPOClassicQuickSwitchChoiceHandler)(NSString *identifier, uint64_
             insets:(UIEdgeInsets)insets
           leftEdge:(BOOL)leftEdge
      handleCenterY:(CGFloat)handleCenterY
+ handleTouchHeight:(CGFloat)handleTouchHeight
              scale:(CGFloat)scale
               dark:(BOOL)dark
   hideInstructions:(BOOL)hideInstructions;
 - (BOOL)relayoutWithScreen:(CGRect)screen insets:(UIEdgeInsets)insets
-                 leftEdge:(BOOL)leftEdge handleCenterY:(CGFloat)handleCenterY;
+                 leftEdge:(BOOL)leftEdge handleCenterY:(CGFloat)handleCenterY
+       handleTouchHeight:(CGFloat)handleTouchHeight;
 - (void)updateGestureAtPoint:(CGPoint)point;
 - (void)endGestureAtPoint:(CGPoint)point cancelled:(BOOL)cancelled;
 - (void)dismiss;

@@ -14,7 +14,7 @@ static void Same(PPOHostRect a,PPOHostRect b,const char *message) {
     Check(Near(a.x,b.x)&&Near(a.y,b.y)&&Near(a.width,b.width)&&Near(a.height,b.height),message);
 }
 static void Cleared(const PPOClassicQuickSwitchLayout &l) {
-    for (auto r : {l.screen,l.safe,l.list,l.visibleList,l.touchList}) Same(r,{},"failed layout clears scene rectangles");
+    for (auto r : {l.screen,l.safe,l.list,l.visibleList,l.touchList,l.reservedHandle}) Same(r,{},"failed layout clears scene rectangles");
     for (std::size_t i=0;i<16;i++) {
         Same(l.rows[i],{},"failed layout clears rows");
         Same(l.rowTouches[i],{},"failed layout clears row targets");
@@ -60,11 +60,28 @@ static void QuickFits(const PPOClassicQuickSwitchLayout &l) {
             l.list.y+l.rows[i].y+34-l.initialScrollOffset);
         if (bottom-top>1e-7) {
             std::size_t hit=999;
-            Check(PPOClassicQuickSwitchItemAtPoint(l,x,(top+bottom)/2,l.initialScrollOffset,&hit)&&
-                hit==l.itemIndices[i],"every actually visible row maps back to its own original item");
+            bool ok=PPOClassicQuickSwitchItemAtPoint(l,x,(top+bottom)/2,l.initialScrollOffset,&hit)&&hit==l.itemIndices[i];
+            Check(ok,"every actually visible row maps back to its own original item");
         }
     }
     std::size_t hit=999;
+    Check(l.reservedHandle.height>=44&&l.reservedHandle.height<=72,
+        "selected handle retains its complete configured touch height");
+    const auto collision=PPOClassicDetail::Intersection(l.touchList,l.reservedHandle);
+    Check(collision.width==0&&collision.height==0,
+        "list hit padding never overlaps the separate selected-handle target");
+    for (double y : {l.reservedHandle.y,l.reservedHandle.y+l.reservedHandle.height/2,
+            l.reservedHandle.y+l.reservedHandle.height})
+        Check(!PPOClassicQuickSwitchItemAtPoint(l,x,y,l.initialScrollOffset,&hit),
+            "the handle band and boundary belong to the selected handle, never a quick row");
+    for (std::size_t i=0;i<l.count;i++) {
+        PPOHostRect rowTouch=l.rowTouches[i];
+        rowTouch.x+=l.list.x; rowTouch.y+=l.list.y-l.initialScrollOffset;
+        const auto actual=PPOClassicDetail::Intersection(rowTouch,l.touchList);
+        const auto overlap=PPOClassicDetail::Intersection(actual,l.reservedHandle);
+        Check(overlap.width==0&&overlap.height==0,
+            "each visible expanded row target stays outside the selected handle at the initial scroll offset");
+    }
     Check(!PPOClassicQuickSwitchItemAtPoint(l,l.touchList.x-0.01,l.touchList.y, l.initialScrollOffset,&hit)&&hit==0,
         "points outside the list do not capture an underlying app");
     Check(!PPOClassicQuickSwitchItemAtPoint(l,x,l.touchList.y-0.01,l.initialScrollOffset,&hit),
@@ -95,26 +112,27 @@ int main() {
 
     PPOClassicQuickSwitchLayout quick{};
     Check(PPOClassicMakeQuickSwitch(phone,safe,PPOEdgeDrawerSide::Right,453,1,&quick),"one item list");
-    Same(quick.list,{364,436,80,34},"first choice starts on the handle rather than a large browser");
-    Same(quick.visibleList,{364,436,50,34},"only physical50points are drawn on an ordinary edge");
+    Same(quick.list,{364,480,80,34},"first choice starts below the complete selected handle");
+    Same(quick.visibleList,{364,480,50,34},"only physical50points are drawn on an ordinary edge");
     Check(!quick.reversed&&!quick.scrollable,"one item needs neither reverse nor scroll");
     QuickFits(quick);
     Check(PPOClassicMakeQuickSwitch(phone,safe,PPOEdgeDrawerSide::Right,453,5,&quick),"five item list");
-    Same(quick.list,{364,436,80,170},"five choices are a compact170point list");
+    Same(quick.list,{364,480,80,170},"five choices are a compact170point list below the handle");
     Check(!quick.reversed,"five centered choices fit below");
     QuickFits(quick);
     Check(PPOClassicMakeQuickSwitch(phone,safe,PPOEdgeDrawerSide::Right,840,5,&quick),"near-bottom list");
-    Same(quick.list,{364,687,80,170},"near-bottom choices extend above the handle");
+    Same(quick.list,{364,643,80,170},"near-bottom choices extend above the complete handle target");
     Check(quick.reversed&&quick.itemIndices[4]==0,"nearest choice remains the original first favorite");
     std::size_t hit=99;
-    Check(PPOClassicQuickSwitchItemAtPoint(quick,389,840,0,&hit)&&hit==0,"upward handle-center release selects first favorite");
+    Check(!PPOClassicQuickSwitchItemAtPoint(quick,389,840,0,&hit),"upward handle-center release belongs to the selected handle");
+    Check(PPOClassicQuickSwitchItemAtPoint(quick,389,796,0,&hit)&&hit==0,"upward nearest visible row selects the first favorite");
     QuickFits(quick);
     Check(PPOClassicMakeQuickSwitch(phone,safe,PPOEdgeDrawerSide::Right,453,16,&quick),"sixteen centered choices");
-    Same(quick.list,{364,44,80,426},"long lists clip safely above rather than crossing the status area");
-    Check(quick.reversed&&quick.scrollable&&quick.initialScrollOffset==118,
+    Same(quick.list,{364,44,80,382},"long lists clip above the reserved handle rather than crossing the status area");
+    Check(quick.reversed&&quick.scrollable&&quick.initialScrollOffset==162,
         "clipped reverse list initially scrolls to the nearest choice");
-    Check(PPOClassicQuickSwitchItemAtPoint(quick,389,453,118,&hit)&&hit==0,
-        "clipping does not move the first choice away from the original hold");
+    Check(PPOClassicQuickSwitchItemAtPoint(quick,389,409,162,&hit)&&hit==0,
+        "the nearest visible choice stays adjacent to the reserved handle");
     QuickFits(quick);
     Check(PPOClassicQuickSwitchItemAtPoint(quick,389,quick.list.y+10,0,&hit)&&hit==15,
         "scrolling the reverse list reveals its other end with stable identities");
@@ -173,13 +191,13 @@ int main() {
 
     Check(PPOClassicMakeQuickSwitch(phone,safe,PPOEdgeDrawerSide::Right,453,1,&quick),"restore valid hit fixture");
     for (double invalid : {nan,inf,-inf,-1.0,0.001}) {
-        Check(!PPOClassicQuickSwitchItemAtPoint(quick,389,453,invalid,&hit)&&hit==0,
+        Check(!PPOClassicQuickSwitchItemAtPoint(quick,389,497,invalid,&hit)&&hit==0,
             "single-row list rejects invalid or out-of-range scroll offset");
     }
     for (double invalid : {nan,inf,-inf})
-        Check(!PPOClassicQuickSwitchItemAtPoint(quick,invalid,453,0,&hit)&&
+        Check(!PPOClassicQuickSwitchItemAtPoint(quick,invalid,497,0,&hit)&&
             !PPOClassicQuickSwitchItemAtPoint(quick,389,invalid,0,&hit),"nonfinite hit points are ignored");
-    Check(!PPOClassicQuickSwitchItemAtPoint(quick,389,453,0,nullptr),"null hit output is safe");
+    Check(!PPOClassicQuickSwitchItemAtPoint(quick,389,497,0,nullptr),"null hit output is safe");
     for (unsigned problem=0;problem<8;problem++) {
         auto bad=quick;
         if (problem==0) bad.count=17;
@@ -190,7 +208,41 @@ int main() {
         if (problem==5) bad.rows[0].y=nan;
         if (problem==6) bad.rowTouches[0].height=340;
         if (problem==7) bad.list.height=nan;
-        Check(!PPOClassicQuickSwitchItemAtPoint(bad,389,453,0,&hit)&&hit==0,"malformed cached layout cannot capture another region or item");
+        Check(!PPOClassicQuickSwitchItemAtPoint(bad,389,497,0,&hit)&&hit==0,"malformed cached layout cannot capture another region or item");
+    }
+
+    // Direct production API regression: the visual pill may grow to72points,
+    // while the selected handle's entire touch band remains separately usable.
+    for (auto side : {PPOEdgeDrawerSide::Left,PPOEdgeDrawerSide::Right})
+        for (double height : {44.0,48.0,64.0,72.0})
+            for (double center : {66.0,453.0,840.0})
+                for (std::size_t count=1;count<=16;count++) {
+                    Check(PPOClassicMakeQuickSwitch(phone,safe,side,center,count,&quick,height),
+                        "all supported handle heights can retain a separate compact chooser");
+                    Check(quick.reservedHandle.height==height,"the real handle height is used, not a44pt assumption");
+                    QuickFits(quick);
+                    for (double offset : {0.0,quick.contentHeight-quick.list.height}) {
+                        const double x=quick.visibleList.x+quick.visibleList.width/2;
+                        for (double y=quick.reservedHandle.y;y<=quick.reservedHandle.y+height;y+=0.5)
+                            Check(!PPOClassicQuickSwitchItemAtPoint(quick,x,y,offset,&hit),
+                                "scrolling either end cannot capture any point of the selected-handle band");
+                    }
+                }
+    for (double height : {nan,inf,-inf,0.0,43.999,72.001,8192.0}) {
+        Check(!PPOClassicMakeQuickSwitch(phone,safe,PPOEdgeDrawerSide::Right,453,5,&quick,height),
+            "invalid selected-handle heights cannot define row hit regions");
+        Cleared(quick);
+    }
+    Check(PPOClassicMakeQuickSwitch(phone,safe,PPOEdgeDrawerSide::Right,453,5,&quick),"reserved-band mutation fixture");
+    for (unsigned fault=0;fault<5;fault++) {
+        auto bad=quick;
+        if(fault==0)bad.reservedHandle.height=0;
+        if(fault==1)bad.reservedHandle.y=nan;
+        if(fault==2)bad.reservedHandle.x+=1;
+        if(fault==3)bad.reservedHandle.y=bad.list.y;
+        if(fault==4)bad.touchList.y=bad.reservedHandle.y;
+        Check(!PPOClassicQuickSwitchItemAtPoint(bad,389,497,0,&hit),
+            "malformed cached reserved bands cannot redirect an explicit selected-handle tap");
     }
 
     std::mt19937_64 random(0x5030434c41535349ULL);
@@ -208,7 +260,8 @@ int main() {
                 handle.touch.y+handle.touch.height<=screen.y+screen.height-insets.bottom+1e-8,"random handle remains reachable");
             Check(PPOClassicAppPanelFrame(screen,insets,side,width,height,&panel),"random native-aspect app panel");
             AppFits(panel,screen,insets,side,width,height);
-            Check(PPOClassicMakeQuickSwitch(screen,insets,side,handle.centerY,count,&quick),"random bounded compact list");
+            const double actualTouchHeight=44+random()%29;
+            Check(PPOClassicMakeQuickSwitch(screen,insets,side,handle.centerY,count,&quick,actualTouchHeight),"random bounded compact list and actual44to72point handle");
             QuickFits(quick);
         }
     }

@@ -71,6 +71,25 @@ int main(void) {
             Check(!Prepare(nil) && identityFactories == 1, "closed cold requests cannot be replayed");
             SourceUnchanged();
         }
+        ResetCold(@"com.apple.MobileSMS");
+        NSMutableDictionary *messagesProof = [requestedCapability mutableCopy];
+        messagesProof[@"reason"] = @"declared-messages-programmatic-scenes"; requestedCapability = messagesProof;
+        Check(Prepare(nil) && identityFactories == 1 && specificationFactories == 1 && sourceProbes == 0 &&
+              [current.snapshot[@"admission"][@"sceneCapability"][@"reason"] isEqual:@"declared-messages-programmatic-scenes"] &&
+              [current.snapshot[@"componentBinding"][@"matchesCreatedScene"] boolValue],
+              "Messages advisory proof uses the same normal-role factory, owned namespace and exact proxy binding");
+        Check([current close] && current.closed && !current.poisoned && controllerInvalidations == 1 && workspaceInvalidations == 1,
+              "cold Messages proof does not weaken own cleanup");
+        SourceUnchanged();
+        ResetCold(); messagesProof = [requestedCapability mutableCopy];
+        messagesProof[@"reason"] = @"declared-messages-programmatic-scenes"; requestedCapability = messagesProof;
+        Check(!Prepare(nil) && current.closed && identityFactories == 0 && specificationFactories == 0 && constructors == 0,
+              "Messages reason bound to another cold app refuses before either factory");
+        ResetCold(@"com.apple.MobileSMS"); messagesProof = [requestedCapability mutableCopy];
+        messagesProof[@"reason"] = @"declared-messages-programmatic-scenes";
+        messagesProof[@"policy"] = @"installed-basic-multiscene-v3"; requestedCapability = messagesProof;
+        Check(!Prepare(nil) && current.closed && identityFactories == 0 && specificationFactories == 0,
+              "previous v3 cannot authorize cold Messages construction");
         for (NSString *identifier in @[@"com.apple.mobilesafari", @"com.apple.reminders", @"com.apple.MobileAddressBook", @"com.example.coldapp"]) {
             for (unsigned fault = 0; fault < 8; fault++) {
                 ResetCold(identifier);

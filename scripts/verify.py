@@ -16,7 +16,7 @@ def require(condition, message):
         raise SystemExit(message)
 
 
-source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOKeyboardMonitor.mm', 'PPOClassicQuickSwitchView.mm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm', 'PPOFavoriteApps.mm', 'PPOFavoritesStore.mm', 'PPOPickerState.mm'])
+source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOCapabilityDiagnostics.mm', 'PPOKeyboardMonitor.mm', 'PPOClassicQuickSwitchView.mm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm', 'PPOFavoriteApps.mm', 'PPOFavoritesStore.mm', 'PPOPickerState.mm'])
 for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'NSSelectorFromString', r'valueForKey:', r'launchApplication',
                 r'method_getImplementation', r'method_invoke', r'dlopen', r'dlsym',
@@ -149,6 +149,14 @@ require(target_ids == {'com.apple.mobilesafari', 'com.apple.reminders', 'com.app
         'Only the three selected exact-firmware targets may bypass selected-app inspection')
 admission_source = (ROOT / 'PPOOwnedAdmission.mm').read_text()
 capability_source = (ROOT / 'PPOSceneCapability.mm').read_text()
+require('CapabilityMessagesProfile(raw, manifest)' in capability_source and
+        'declared-messages-programmatic-scenes' in capability_source and
+        '![raw[@"bundleIdentifier"] isEqual:@"com.apple.MobileSMS"]' in capability_source and
+        '@"1448.100.1.2.102"' in capability_source and '@"SMSApplication"' in capability_source and
+        'CapabilityBoolean(manifest[@"UIApplicationSupportsSceneItemProviders"])' in capability_source and
+        '[manifest isEqual:expected]' in capability_source,
+        'Messages advisory eligibility must retain the exact audited profile and identifier-bound reason')
+
 bundle_reader = (ROOT / 'tools/bridge/PPOBundleSceneReader.mm').read_text()
 require('PPOSceneCapabilityNormalize(capability)' in admission_source and
         'PPOSceneCapabilityFresh(observed, now)' in admission_source and
@@ -156,7 +164,7 @@ require('PPOSceneCapabilityNormalize(capability)' in admission_source and
         'Dynamic admission must be copied, fresh and bound to the selected identifier')
 require('object_getClass(specification)' in owned_source and 'object_getClass(childSpecification)' in owned_source,
         'Dynamic source and child specifications must reject unreviewed subclasses')
-require('CFBooleanGetTypeID()' in capability_source and 'installed-basic-multiscene-v3' in capability_source and
+require('CFBooleanGetTypeID()' in capability_source and 'installed-basic-multiscene-v4' in capability_source and
         'observed + 5.0' in capability_source,
         'Capability policy must use explicit booleans and short-lived normalized metadata')
 require(bundle_reader.count('objc_msgSend') == 1 and 'GetterOwner(object_getClass(proxy)' in bundle_reader and
@@ -211,7 +219,7 @@ require('if (!_presentation.minimized()) {' in owned_trial and
         'Minimized geometry must preserve a positive expanded viewport without fitting a zero-height bar')
 require('[(NSDictionary *)manifest count] == 1 && !manifest[@"UISceneConfigurations"]' in capability_source and
         'declared-programmatic-application-scenes' in capability_source and
-        'installed-basic-multiscene-v3' in capability_source,
+        'installed-basic-multiscene-v4' in capability_source,
         'Programmatic eligibility must require the exact absent-key shape under the new policy')
 programmatic_facts = json.loads((ROOT / 'PROGRAMMATIC_SCENE_TARGETS_23A355.json').read_text())
 require(programmatic_facts['runtimeCompatibilityConfirmed'] is False and
@@ -310,9 +318,14 @@ require('@"keyboardAvoiding": @NO' in prefs_source and
         '@"keyboardAvoiding"' in settings_source and '@"Evită tastatura"' in settings_source,
         'Keyboard avoidance must be an explicit default-off Boolean in the own settings domain')
 require('PPOInteractionIntent _intent' in picker_source and '_intent.current(intent)' in picker_source and
-        '_intent.held(intent)' in picker_source and '_intent.consume(intent)' in picker_source and
-        '_intent.commit(_panIntent)' in picker_source,
-        'Cancelled or held user gestures must not construct an owned scene')
+        '_intent.consume(intent)' in picker_source and 'PPOHandleInteraction' in picker_source and
+        '_handleInteraction.tap' in picker_source and '_handleInteraction.finishPan' in picker_source and
+        '_handleInteraction.rowSelection' in picker_source,
+        'Separate handle reveal from explicit app selection while preserving one-shot scene intent')
+pan_body = re.search(r'- \(void\)panned:\(UIPanGestureRecognizer \*\)recognizer \{(.*?)\n\}', picker_source, re.S)
+require(pan_body is not None and 'inspectSelectedForIntent' not in pan_body.group(1) and
+        'openPreparedApplication' not in pan_body.group(1),
+        'Handle dragging may reveal choices or move an existing drawer, never request a new app scene')
 require('PPOEdgeOverlayWindow' in picker_source and 'PPOOwnedPassthroughWindow' in owned_trial and
         'PPOEdgeDrawerPanelTranslation' in owned_trial and 'self.panelBaseFrame' in owned_trial,
         'Public fullscreen overlays must pass through and retain untransformed panel geometry')
@@ -328,7 +341,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.2~rc3', 'Unexpected version')
+    require(field('Version') == '1.0.3~rc4', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')

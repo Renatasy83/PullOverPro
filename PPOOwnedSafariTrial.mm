@@ -309,7 +309,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.2~rc3",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.3~rc4",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"replacementAllowed": @(self.replacementAllowed), @"coldPreparation": @(self.coldStart),
         @"activationGraceSeconds": @(self.coldStart ? PPOWindowLifetime::ColdActivationGraceSeconds : PPOWindowLifetime::ActivationGraceSeconds),
@@ -358,11 +358,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.2.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.3.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.2] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.3] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;

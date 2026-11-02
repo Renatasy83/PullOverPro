@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Fixture contract: synthetic policy v3 descriptors, bounded JSON transport and nonce binding.
+// Fixture contract: synthetic policy v4 descriptors, bounded JSON transport and nonce binding.
 // Named Files/Mail fixtures do not read Apple bundles/binaries or call private APIs.
 // Decoding binds only the nonce; callers separately bind the selected identifier and freshness.
 static unsigned checks;
@@ -131,10 +131,10 @@ int main(void) {
 
         NSDictionary *capability = Capability(@"com.example.window", 100);
         Check([capability[@"status"] isEqual:@"eligible"] &&
-              [capability[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
+              [capability[@"policy"] isEqual:@"installed-basic-multiscene-v4"] &&
               [capability[@"reason"] isEqual:@"declared-programmatic-application-scenes"] &&
               [PPOSceneCapabilityNormalize(capability) isEqual:capability],
-              "synthetic programmatic capability satisfies the v3 data policy");
+              "synthetic programmatic capability satisfies the v4 data policy");
         NSData *inspectedData = PPOBridgeCapabilityResponseData(nonce, capability, 102, NULL);
         NSDictionary *inspected = PPOBridgeResponseFromData(inspectedData, nonce, NULL);
         Check(inspectedData.length <= PPOBridgeMessageLimit &&
@@ -151,23 +151,42 @@ int main(void) {
               !PPOSceneCapabilityFresh(inspected[@"sceneCapability"], 105.0001) &&
               !PPOSceneCapabilityFresh(inspected[@"sceneCapability"], 99.8999),
               "transport preserves the existing capability freshness boundaries");
+        NSMutableDictionary *messages = [Capability(@"com.apple.MobileSMS",100) mutableCopy];
+        messages[@"reason"] = @"declared-messages-programmatic-scenes";
+        NSData *messagesData = PPOBridgeCapabilityResponseData(nonce,messages,102,NULL);
+        NSDictionary *messagesReply = PPOBridgeResponseFromData(messagesData,nonce,NULL);
+        Check(messagesData.length <= PPOBridgeMessageLimit &&
+              [messagesReply[@"status"] isEqual:@"inspected"] &&
+              [messagesReply[@"detail"] isEqual:@"declared-messages-programmatic-scenes"] &&
+              [messagesReply[@"sceneCapability"] isEqual:messages] && [messagesReply[@"sceneCapability"] count] == 7,
+              "Messages profile reason round trips under v4 with exactly seven identity-bound scalars");
+        Check(PPOBridgeResponseFromData(messagesData,other,NULL) == nil &&
+              PPOSceneCapabilityFresh(messagesReply[@"sceneCapability"],105) &&
+              !PPOSceneCapabilityFresh(messagesReply[@"sceneCapability"],105.000001),
+              "Messages transport preserves nonce and short observed-clock freshness");
+        NSMutableDictionary *wrongMessages = [messages mutableCopy]; wrongMessages[@"bundleIdentifier"] = @"com.facebook.Messenger";
+        RejectCapability(nonce,inspected,wrongMessages);
+        for (NSString *oldPolicy in @[@"installed-basic-multiscene-v1",@"installed-basic-multiscene-v2",@"installed-basic-multiscene-v3"]) {
+            NSMutableDictionary *oldMessages = [messages mutableCopy]; oldMessages[@"policy"] = oldPolicy;
+            RejectCapability(nonce,inspected,oldMessages);
+        }
         NSDictionary *staticCapability = StaticCapability(@"com.example.window", 100);
         NSDictionary *staticReply = PPOBridgeResponseFromData(
             PPOBridgeCapabilityResponseData(nonce, staticCapability, 102, NULL), nonce, NULL);
-        Check([staticCapability[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
+        Check([staticCapability[@"policy"] isEqual:@"installed-basic-multiscene-v4"] &&
               [staticReply[@"sceneCapability"] isEqual:staticCapability] &&
               [staticReply[@"detail"] isEqual:@"declared-single-application-scene"],
-              "the existing single static application configuration still round trips under v3");
+              "the existing single static application configuration still round trips under v4");
         NSDictionary *filesCapability = NamedCapability(@"com.example.FixtureFiles",
             @[@"Files Browser", @"Files Document"], NO, 100);
         NSDictionary *mailCapability = NamedCapability(@"com.example.FixtureMail",
             @[@"Mail Viewer", @"Mail Compose", @"Mail Message", @"Mail Search"], YES, 100);
         for (NSDictionary *named in @[filesCapability, mailCapability]) {
-            Check([named[@"policy"] isEqual:@"installed-basic-multiscene-v3"] &&
+            Check([named[@"policy"] isEqual:@"installed-basic-multiscene-v4"] &&
                   [named[@"reason"] isEqual:@"declared-named-application-configurations"] &&
                   [named[@"status"] isEqual:@"eligible"] &&
                   [PPOSceneCapabilityNormalize(named) isEqual:named],
-                  "synthetic Files two-name and Mail four-name metadata produces a canonical v3 proof");
+                  "synthetic Files two-name and Mail four-name metadata produces a canonical v4 proof");
             NSData *namedData = PPOBridgeCapabilityResponseData(nonce, named, 102, NULL);
             NSDictionary *namedReply = PPOBridgeResponseFromData(namedData, nonce, NULL);
             Check(namedData.length <= PPOBridgeMessageLimit && namedReply.count == inspected.count &&
@@ -202,10 +221,10 @@ int main(void) {
               !PPOSceneCapabilityFresh(staleReply[@"sceneCapability"], 1000),
               "response uptime cannot freshen the separate observed capability clock");
         for (NSDictionary *current in @[capability, staticCapability, filesCapability, mailCapability])
-            for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+            for (NSString *policy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"installed-basic-multiscene-v3"]) {
                 NSMutableDictionary *legacy = [current mutableCopy]; legacy[@"policy"] = policy;
                 Check(PPOSceneCapabilityNormalize(legacy) == nil && !PPOSceneCapabilityFresh(legacy, 100),
-                      "v1 and v2 descriptors are rejected without translation into v3 proofs");
+                      "v1, v2 and v3 descriptors are rejected without translation into v4 proofs");
                 RejectCapability(nonce, inspected, legacy);
             }
         for (NSDictionary *fields in @[
@@ -292,7 +311,7 @@ int main(void) {
         Check([normalizedNamed isEqual:mailCapability] &&
               [namedSnapshotReply[@"sceneCapability"] isEqual:mailCapability],
               "normalization and JSON encoding snapshot mutable named descriptor scalars");
-        printf("Bridge protocol tests passed: %u checks; policy v3 synthetic metadata, JSON transport and caller binding\n", checks);
+        printf("Bridge protocol tests passed: %u checks; policy v4 synthetic metadata, JSON transport and caller binding\n", checks);
     }
     return 0;
 }

@@ -351,7 +351,7 @@ static void ResetForApplication(NSString *application) {
     [(OwnedFixtureClient *)definition.clientIdentity setBundleIdentifier:originalApplication];
 }
 static NSDictionary *DynamicCapability(NSString *application, NSString *status = @"eligible") {
-    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v3",
+    return @{@"schema": @1, @"policy": @"installed-basic-multiscene-v4",
         @"bundleIdentifier": application, @"status": status,
         @"eligible": [status isEqual:@"eligible"] ? @YES : @NO,
         @"reason": [status isEqual:@"eligible"] ? @"declared-single-application-scene" :
@@ -696,7 +696,22 @@ int main(void) {
         Check([current close] && current.closed && !current.poisoned && controllerInvalidations == 1 && workspaceInvalidations == 1,
               "named proof preserves verified controller/workspace cleanup");
         SourceUnchanged();
-        for (NSString *oldPolicy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2"]) {
+        ResetForApplication(@"com.apple.MobileSMS");
+        NSMutableDictionary *messagesProof = [DynamicCapability(originalApplication) mutableCopy];
+        messagesProof[@"reason"] = @"declared-messages-programmatic-scenes"; requestedCapability = messagesProof;
+        Check(Prepare(sourceScene) && [current.snapshot[@"admission"][@"basis"] isEqual:@"installed-info"] &&
+              [current.snapshot[@"admission"][@"sceneCapability"][@"reason"] isEqual:@"declared-messages-programmatic-scenes"],
+              "Messages profile enters the same independently owned warm-source constructor without a baseline bypass");
+        Check([current close] && current.closed && !current.poisoned && controllerInvalidations == 1 && workspaceInvalidations == 1,
+              "Messages advisory reason preserves explicit own controller/workspace cleanup");
+        SourceUnchanged();
+        ResetDynamic();
+        messagesProof = [DynamicCapability(originalApplication) mutableCopy];
+        messagesProof[@"reason"] = @"declared-messages-programmatic-scenes"; requestedCapability = messagesProof;
+        Check(!Prepare(sourceScene) && current.closed && constructors == 0 && workspaceConstructions == 0 && sourceProbes == 0,
+              "Messages-only reason with another selected identifier refuses before private work");
+        SourceUnchanged();
+        for (NSString *oldPolicy in @[@"installed-basic-multiscene-v1", @"installed-basic-multiscene-v2", @"installed-basic-multiscene-v3"]) {
             ResetDynamic();
             NSMutableDictionary *oldProof = [DynamicCapability(originalApplication) mutableCopy];
             oldProof[@"policy"] = oldPolicy;
