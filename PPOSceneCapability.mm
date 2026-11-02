@@ -57,6 +57,8 @@ static NSArray<NSString *> *CapabilityUnknownReasons(void) {
     return @[@"unsupported-framework", @"unsupported-abi", @"app-unavailable", @"ambiguous-app",
         @"no-bundle-url", @"bundle-unavailable", @"file-unavailable", @"file-invalid", @"file-too-large",
         @"plist-invalid", @"manifest-unknown", @"manifest-complex", @"identifier-mismatch",
+        @"scene-manifest-missing", @"scene-manifest-invalid",
+        @"multiple-scenes-undeclared", @"multiple-scenes-invalid",
         @"request-expired", @"service-unavailable"];
 }
 static NSArray<NSString *> *CapabilityIneligibleReasons(void) {
@@ -192,10 +194,13 @@ NSDictionary *PPOSceneCapabilityFromInfo(id info, NSString *identifier, NSTimeIn
         }
         if (!iPhone) return CapabilityResult(identifier, @"ineligible", @"not-iphone", observedUptime);
         id manifest = raw[@"UIApplicationSceneManifest"];
+        // Diagnostic distinctions only: none of these unknown states permits hosting.
+        if (!manifest) return PPOSceneCapabilityUnknown(identifier, @"scene-manifest-missing", observedUptime);
         if (![manifest isKindOfClass:NSDictionary.class])
-            return PPOSceneCapabilityUnknown(identifier, @"manifest-unknown", observedUptime);
+            return PPOSceneCapabilityUnknown(identifier, @"scene-manifest-invalid", observedUptime);
         id multiple = manifest[@"UIApplicationSupportsMultipleScenes"];
-        if (!CapabilityBoolean(multiple)) return PPOSceneCapabilityUnknown(identifier, @"manifest-unknown", observedUptime);
+        if (!multiple) return PPOSceneCapabilityUnknown(identifier, @"multiple-scenes-undeclared", observedUptime);
+        if (!CapabilityBoolean(multiple)) return PPOSceneCapabilityUnknown(identifier, @"multiple-scenes-invalid", observedUptime);
         if (![multiple boolValue]) return CapabilityResult(identifier, @"ineligible", @"multiple-scenes-disabled", observedUptime);
 
         // Explicit hard negatives above must not be hidden by an unknown layout.

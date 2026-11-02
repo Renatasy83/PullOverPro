@@ -1,3 +1,15 @@
+## Messenger diagnostic refinement — pending CI
+
+Active branch: debug/two-stage-handle-messages. Based on 4f9c082ce257bcf757cc3db8e3c2d3469664ad48; no intervening OpenCode changes were found on resume.
+
+A scoped metadata-only change distinguishes missing versus malformed UIApplicationSceneManifest, and absent versus non-Boolean UIApplicationSupportsMultipleScenes. All four results remain unknown/eligible=false. Explicit false remains multiple-scenes-disabled. No application gains eligibility, no private call or host/owner/launcher/lifecycle path changes, and no raw plist or new personal information enters reports. Existing wire shape/policy stay unchanged; old clients reject unfamiliar negative reasons safely. Existing synthetic negative cases and JSON/status-forgery tests cover the distinctions.
+
+Local source-policy verification passed. Native Foundation tests, sanitizers, Clang analysis and Theos build are pending GitHub Actions; do not claim success or recommend this development artifact for installation. Package version is deliberately unchanged because this is an investigation checkpoint, not a new delivered release. The permanent RC4 DEB and stable/recovery refs remain the supported recovery choices.
+
+Messenger's installed manifest and app version remain unavailable. The old manifest-unknown report cannot be retroactively assigned a more specific cause. Next: complete Actions, record results here, then obtain only the installed Messenger Info.plist metadata if necessary. Do not bypass admission or apply the Messages exception to Messenger. Messages already works per user confirmation.
+
+---
+
 ## Current tandem checkpoint — user-confirmed Messages
 
 The user explicitly confirms that the real Messages application now works on RC4 after selecting the correct identifier, com.apple.MobileSMS. The earlier failed attempt targeted com.apple.mobilesms.compose. This is human functional confirmation, not a new host trace; exact input/cleanup operations beyond the user's statement are not inferred. Do not request another ordinary Messages test or installation just to repeat it.
@@ -56,9 +68,9 @@ RC3 supplied reports contain four clean source-free sessions (Safari118.584s, Fi
 
 User corrected RC3's immediate app opening and reported Messages/Messenger showed “Suportul pentru fereastra nu poate fi verificat”. Uploaded capability contained Safari only; no failed Messages/Messenger host was present.
 
-RC4 has NOT yet received a phone result. Necessary next gate: verify first gesture reveals without opening, separate action opens; attempt Messages and Messenger once each. Collect interface-1.0.3.json, host-1.0.3.json and capability-1.0.3.json from /var/mobile/Library/Logs/PullOverPro/. A pre-host refusal may update capability only.
+RC4 received phone reports and subsequent user confirmation that Messages works with com.apple.MobileSMS. See the current tandem checkpoint and RC4_MESSAGING_DEVICE_RESULT.md. Do not repeat ordinary Messages testing.
 
-Messenger remains unresolved: do not infer its installed manifest or apply the Messages exception to it. Do not declare actual Messages rendering, every-app support or general Dopamine/ElleKit compatibility based on compilation.
+Messenger remains unresolved: do not infer its installed manifest or apply the Messages exception to it. Messages functionality is user-confirmed; do not declare every-app support or general Dopamine/ElleKit compatibility based on compilation.
 
 ## Recovery and constraints
 
@@ -76,3 +88,4 @@ Raw phone reports and Apple firmware bytes were kept outside the repository and 
 ## Subsequent RC4 messaging reports
 
 Read [RC4_MESSAGING_DEVICE_RESULT.md](RC4_MESSAGING_DEVICE_RESULT.md) before changing messaging support. The attempted Messages identifier was com.apple.mobilesms.compose; the audited com.apple.MobileSMS profile has not yet been exercised in these reports. Messenger is unknown/manifest-unknown before host creation.
+

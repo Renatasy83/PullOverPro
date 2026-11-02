@@ -159,7 +159,7 @@ static void MessagesProfileCases(void) {
         changed = MessagesInfo(); Manifest(changed)[@"UIApplicationSupportsSceneItemProviders"] = impostor;
         MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
         changed = MessagesInfo(); Manifest(changed)[@"UIApplicationSupportsMultipleScenes"] = impostor;
-        MessagesResult(MessagesRead(changed), @"unknown", @"manifest-unknown");
+        MessagesResult(MessagesRead(changed), @"unknown", @"multiple-scenes-invalid");
     }
     changed = MessagesInfo(); Manifest(changed)[@"UIApplicationSupportsSceneItemProviders"] = @NO;
     MessagesResult(MessagesRead(changed), @"unknown", @"manifest-complex");
@@ -396,11 +396,11 @@ int main(void) {
         for (id multiple in @[@1, @0, @"true", NSNull.null]) {
             NSMutableDictionary *metadata = FilesInfo();
             Manifest(metadata)[@"UIApplicationSupportsMultipleScenes"] = multiple;
-            Result(Read(metadata), @"unknown", @"manifest-unknown");
+            Result(Read(metadata), @"unknown", @"multiple-scenes-invalid");
         }
         NSMutableDictionary *namedMissingSupport = MailInfo();
         [Manifest(namedMissingSupport) removeObjectForKey:@"UIApplicationSupportsMultipleScenes"];
-        Result(Read(namedMissingSupport), @"unknown", @"manifest-unknown");
+        Result(Read(namedMissingSupport), @"unknown", @"multiple-scenes-undeclared");
         for (NSString *rootKey in @[@"system-windows-secure", @"UnexpectedSCENEOption", @"UIWindowOptions"])
             for (NSNumber *flag in @[@YES, @NO]) {
                 NSMutableDictionary *metadata = FilesInfo(); metadata[rootKey] = flag;
@@ -488,20 +488,20 @@ int main(void) {
             Result(Read(info), @"unknown", @"manifest-unknown");
         }
 
-        info = Info(); [info removeObjectForKey:@"UIApplicationSceneManifest"]; Result(Read(info), @"unknown", @"manifest-unknown");
+        info = Info(); [info removeObjectForKey:@"UIApplicationSceneManifest"]; Result(Read(info), @"unknown", @"scene-manifest-missing");
         for (id malformed in @[@YES, @[], NSNull.null]) {
-            info = Info(); info[@"UIApplicationSceneManifest"] = malformed; Result(Read(info), @"unknown", @"manifest-unknown");
+            info = Info(); info[@"UIApplicationSceneManifest"] = malformed; Result(Read(info), @"unknown", @"scene-manifest-invalid");
         }
         for (id malformed in @[@1, @0, @"true", NSNull.null]) {
             info = Info(); Manifest(info)[@"UIApplicationSupportsMultipleScenes"] = malformed;
-            Result(Read(info), @"unknown", @"manifest-unknown");
+            Result(Read(info), @"unknown", @"multiple-scenes-invalid");
             info = ProgrammaticInfo(); Manifest(info)[@"UIApplicationSupportsMultipleScenes"] = malformed;
-            Result(Read(info), @"unknown", @"manifest-unknown");
+            Result(Read(info), @"unknown", @"multiple-scenes-invalid");
         }
         info = Info(); [Manifest(info) removeObjectForKey:@"UIApplicationSupportsMultipleScenes"];
-        Result(Read(info), @"unknown", @"manifest-unknown");
+        Result(Read(info), @"unknown", @"multiple-scenes-undeclared");
         info = ProgrammaticInfo(); [Manifest(info) removeObjectForKey:@"UIApplicationSupportsMultipleScenes"];
-        Result(Read(info), @"unknown", @"manifest-unknown");
+        Result(Read(info), @"unknown", @"multiple-scenes-undeclared");
         info = Info(); Manifest(info)[@"UIApplicationSupportsMultipleScenes"] = @NO;
         info[@"system-windows-secure"] = @YES;
         Result(Read(info), @"ineligible", @"multiple-scenes-disabled");
@@ -550,9 +550,20 @@ int main(void) {
         NSArray *unknownReasons = @[@"unsupported-framework", @"unsupported-abi", @"app-unavailable", @"ambiguous-app",
             @"no-bundle-url", @"bundle-unavailable", @"file-unavailable", @"file-invalid", @"file-too-large",
             @"plist-invalid", @"manifest-unknown", @"manifest-complex", @"identifier-mismatch",
-            @"request-expired", @"service-unavailable"];
-        for (NSString *reason in unknownReasons)
-            Result(PPOSceneCapabilityUnknown(Identifier, reason, 100), @"unknown", reason);
+            @"request-expired", @"service-unavailable", @"scene-manifest-missing", @"scene-manifest-invalid",
+            @"multiple-scenes-undeclared", @"multiple-scenes-invalid"];
+        for (NSString *reason in unknownReasons) {
+            NSDictionary *unknown = PPOSceneCapabilityUnknown(Identifier, reason, 100);
+            Result(unknown, @"unknown", reason);
+            NSDictionary *wire = [NSJSONSerialization JSONObjectWithData:
+                [NSJSONSerialization dataWithJSONObject:unknown options:0 error:NULL] options:0 error:NULL];
+            Check([PPOSceneCapabilityNormalize(wire) isEqual:unknown], "unknown diagnostics survive the JSON bridge");
+            for (NSString *status in @[@"eligible", @"ineligible"]) {
+                NSMutableDictionary *forged = [unknown mutableCopy]; forged[@"status"] = status;
+                forged[@"eligible"] = @([status isEqual:@"eligible"]);
+                Check(PPOSceneCapabilityNormalize(forged) == nil, "diagnostic reasons cannot grant app eligibility");
+            }
+        }
         Check(PPOSceneCapabilityUnknown(Identifier, @"made-up", 100) == nil, "unknown reason cannot expand the protocol");
         for (NSString *reason in @[@"declared-single-application-scene", @"declared-programmatic-application-scenes",
                 @"declared-named-application-configurations"]) {
