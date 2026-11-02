@@ -1,3 +1,9 @@
+## Subsequent user confirmation
+
+The user confirms that Messages works when the correct com.apple.MobileSMS entry is selected. The earlier compose identifier was the selection error. No new per-session trace was supplied, so individual rendering/input/cleanup operations are not newly inferred.
+
+The user confirms Messenger has only one identifier and remains nonfunctional. Existing evidence is com.facebook.Messenger / unknown / manifest-unknown before scene creation; installed manifest details are still needed. No new package or runtime change accompanies this note.
+
 # RC4 device result: messaging refusals
 
 The latest capability-1.0.3.json contains inspected, canonical policy-v4 unknown/manifest-unknown results for:

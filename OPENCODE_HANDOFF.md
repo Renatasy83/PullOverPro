@@ -1,3 +1,26 @@
+## Current tandem checkpoint — user-confirmed Messages
+
+The user explicitly confirms that the real Messages application now works on RC4 after selecting the correct identifier, com.apple.MobileSMS. The earlier failed attempt targeted com.apple.mobilesms.compose. This is human functional confirmation, not a new host trace; exact input/cleanup operations beyond the user's statement are not inferred. Do not request another ordinary Messages test or installation just to repeat it.
+
+Messenger has a single observed identifier, com.facebook.Messenger, and still does not work. The earlier RC4 capability report records unknown/manifest-unknown before host creation. This is NOT proof of explicit multiple-scenes=false, a black rendering failure or an exception. Its installed scene-manifest structure/version remain missing. Investigate that bounded metadata before any eligibility relaxation or alternative host route.
+
+Runtime/package unchanged: RC4 executable8bd812121489f896f4e38d578da10ba0ce284039; existing34-suite/Clang/Theos evidence and permanent DEB remain applicable. No new runtime change/build was needed to record this confirmation. Do not claim every-app or general Dopamine/ElleKit compatibility.
+
+## Required ChatGPT / OpenCode tandem workflow
+
+The user requests that OPENCODE_HANDOFF.md ALWAYS be updated at each meaningful checkpoint, including completed work, exact branch/source/package/build/test references, new device evidence, unresolved issues and the next concrete action.
+
+At the start of either tool's resumed session:
+1. Fetch the current remote branch head and read this file before editing. Do not assume the previous chat or local checkout is current.
+2. Inspect intervening commits and the working tree; preserve the other tool's changes. Never force-push, reset away work or overwrite an unexpected remote head.
+3. Work on the active development branch or a documented new branch; main and existing stable/recovery refs remain preserved.
+4. Commit scoped changes and update this handoff with the resulting checkpoint. Use a fresh ref/CAS or ordinary non-forced push. If branch, source or artifacts change, record them explicitly.
+5. Separate runtime modifications, automated results and actual phone confirmations. Never present pending builds/tests as successful.
+
+Current active branch: debug/two-stage-handle-messages. Remaining priority: Messenger's real installed metadata and safe hosting route; improve picker identity visibility so compose/helper entries cannot be confused with the main app. No automatic phone install/respring, personal-data deletion or other-tweak modification.
+
+---
+
 # OpenCode handoff
 
 Continue on `debug/two-stage-handle-messages`. Main remains the Alpha4 reference; do not overwrite it.
