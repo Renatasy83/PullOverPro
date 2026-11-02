@@ -1,12 +1,12 @@
-## Messenger diagnostic refinement — pending CI
+## Messenger diagnostic refinement — CI passed; installed metadata required
 
 Active branch: debug/two-stage-handle-messages. Based on 4f9c082ce257bcf757cc3db8e3c2d3469664ad48; no intervening OpenCode changes were found on resume.
 
 A scoped metadata-only change distinguishes missing versus malformed UIApplicationSceneManifest, and absent versus non-Boolean UIApplicationSupportsMultipleScenes. All four results remain unknown/eligible=false. Explicit false remains multiple-scenes-disabled. No application gains eligibility, no private call or host/owner/launcher/lifecycle path changes, and no raw plist or new personal information enters reports. Existing wire shape/policy stay unchanged; old clients reject unfamiliar negative reasons safely. Existing synthetic negative cases and JSON/status-forgery tests cover the distinctions.
 
-Local source-policy verification passed. Native Foundation tests, sanitizers, Clang analysis and Theos build are pending GitHub Actions; do not claim success or recommend this development artifact for installation. Package version is deliberately unchanged because this is an investigation checkpoint, not a new delivered release. The permanent RC4 DEB and stable/recovery refs remain the supported recovery choices.
+Source d0303bd039aefe08817702fb737c85eae90336eb passed GitHub Actions run41521971944/job125540017169: all34 suites, native Foundation fixtures with AddressSanitizer/UndefinedBehaviorSanitizer, Clang analysis, pinned Theos rootless arm64/arm64e build and payload/binary inspection. Scene capability tests:3191 checks. Local source-policy and independent scoped-diff verification also passed. CI artifact13179350959 is investigation evidence, not a new release or an installation recommendation. No actual Messenger/iOS runtime test was performed. Package version is deliberately unchanged because this is an investigation checkpoint, not a new delivered release. The permanent RC4 DEB and stable/recovery refs remain the supported recovery choices.
 
-Messenger's installed manifest and app version remain unavailable. The old manifest-unknown report cannot be retroactively assigned a more specific cause. Next: complete Actions, record results here, then obtain only the installed Messenger Info.plist metadata if necessary. Do not bypass admission or apply the Messages exception to Messenger. Messages already works per user confirmation.
+Messenger's installed manifest and app version remain unavailable. The old manifest-unknown report cannot be retroactively assigned a more specific cause. Next indispensable phone input: only the installed Messenger Info.plist from its .app bundle via Filza (not its Data container). No new diagnostic installation/respring is needed for this collection. See MESSENGER_METADATA_DIAGNOSTICS.md. Continue static investigation from that exact version/manifest before proposing a runtime path. Do not bypass admission or apply the Messages exception to Messenger. Messages already works per user confirmation.
 
 ---
 
