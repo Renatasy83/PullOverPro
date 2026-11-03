@@ -1,3 +1,15 @@
+## RC5 launchd screenshots — registered/running; one fresh foreground observation next
+
+The user supplied launchctl print screenshots. Rootless launchctl redirects system/com.renatasy83.ppo.bridge to user/501/com.renatasy83.ppo.bridge, warning to use user/foreground/com.renatasy83.ppo.bridge. The shown job has state=running, pid523, runs1, execs1, last exit code=(never exited), mobile UID/group, --serve arguments, and the expected rootless daemon plist/program. This establishes registered/running state at capture, not responsiveness or previous-boot continuity. The warning is domain translation, not a proven failed bootstrap. Do not move domains or change the launch plist based on it.
+
+The screenshots also show6MB jetsam limits, but there is no shown termination/jetsam event. Do not diagnose memory pressure or raise limits from that configuration alone. There is no evidence of an alarm/restart in the shown job lifetime; do not claim one. Mailbox response nonce still differs from the old request, and boot/session continuity remains unresolved.
+
+NEXT indispensable phone action: a single NEW explicit Messenger inspection while Messenger is visibly full-screen, using already installed RC5. No reinstall/respring/service restart. Open Messenger normally, invoke the selected Messenger opening action in PPO once and allow at least2seconds for the existing observation cooldown. A new window is not expected; look for the diagnostic message and collect messenger-1.0.4.json. If the verification-unavailable message recurs, stop repeats and collect capability-1.0.4.json from that new attempt instead. This is a user-initiated new nonce-bound read-only request, not an automatic replay of the timed-out request. Running-state evidence justifies this one fresh inspection; it does not guarantee it will respond.
+
+No code/package changes or new automated test/build. Existing source ca1c56ba1937a815f8762552685ceb0c18b83c7b,35-suite CI and permanent RC5/RC4 archives remain unchanged. No Messenger hosting fix or general compatibility claim. Preserve main/stable/recovery and update this OpenCode handoff on subsequent evidence.
+
+---
+
 ## RC5 mailbox evidence — mismatched reply; service state required
 
 Uploaded request.json is inspect-scene/com.facebook.Messenger at createdUptime238.09916733333336. Uploaded response.json is an inspected/missing-manifest Messenger reply with a DIFFERENT nonce, uptime269064.2314720417 and capability observation269064.15757050004. It cannot validate this request. Uploaded heartbeat.json is ready/service-ready at uptime267.1975894166667 and is only startup evidence. No raw nonce/file contents are committed.
