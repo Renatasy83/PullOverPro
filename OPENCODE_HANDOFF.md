@@ -1,3 +1,15 @@
+## RC5 foreground gate completed — no repeated phone test needed
+
+The newly supplied messenger-1.0.4.json reports one foreground-marked Messenger source: observed, inspected10/matched1, normal specification/role=true, expected framework UUIDs all match, sampled3layers of type[1,1,1], settingsBackgrounded=false, sceneActive=true. Hosting/mutation requested=false. Prior separate report showed backgrounded=true and0layers. See RC5_MESSENGER_DEVICE_RESULT.md. Each file has one retained observation; do not assume one continuous scene/process/boot session or that3layers means3windows.
+
+The required read-only source comparison is now complete; do not request another foreground retry, installation/respring or unrelated app tests. A later diagnostic completed, but the previous timeout cause is still unresolved and must not be declared fixed. Messenger's normal source/foreground layers are established at the observation instants; its delegate adoption, second-scene content/admission/input and general Dopamine/ElleKit compatibility remain unproven.
+
+Next autonomous development: review a constrained explicit warm-source Messenger trial, grounded in the owned-scene lifecycle/cleanup audit; the owner reuses verified identity/specification to create its own namespace/child, not existing source render layers. No identifier-only/global missing-manifest exception, cold fallback, foreign-source mutation or permanent keep-mode authorization follows from this report. Any trial must be narrowly identity/version bound, runtime source revalidated, time bounded and fail closed with existing owner/proxy/cleanup/quarantine guarantees before a next device candidate. No new private signature may be guessed. This is a pending design/implementation gate, not a delivered Messenger fix.
+
+No code or package change in this documentation checkpoint. RC5 executable source ca1c56ba1937a815f8762552685ceb0c18b83c7b, Actions41578881921/35 suites/Clang/Theos/rootless inspection, and permanent archives remain as recorded. Preserve main/stable/recovery refs and update this file for OpenCode on every meaningful checkpoint.
+
+---
+
 ## RC5 launchd screenshots — registered/running; one fresh foreground observation next
 
 The user supplied launchctl print screenshots. Rootless launchctl redirects system/com.renatasy83.ppo.bridge to user/501/com.renatasy83.ppo.bridge, warning to use user/foreground/com.renatasy83.ppo.bridge. The shown job has state=running, pid523, runs1, execs1, last exit code=(never exited), mobile UID/group, --serve arguments, and the expected rootless daemon plist/program. This establishes registered/running state at capture, not responsiveness or previous-boot continuity. The warning is domain translation, not a proven failed bootstrap. Do not move domains or change the launch plist based on it.

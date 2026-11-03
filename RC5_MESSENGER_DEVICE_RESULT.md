@@ -1,3 +1,17 @@
+## Foreground comparison now received
+
+A second uploaded messenger-1.0.4.json contains exactly ONE retained observation: state=observed, inspected10, matched1, exact normal application specification=true, normal application role=true, all four expected23A355 framework UUIDs match. Layer probe status=sampled; layerTypes=[1,1,1], layerCount3, settingsBackgrounded=false, sceneActive=true. Hosting/mutation flags remain false. The previous separate report had inspected6, matched1, backgrounded=true, active=true and0layers.
+
+The requested read-only foreground/background comparison is now available across two supplied files. It confirms that the existing Messenger source can report normal scene metadata and published layers in the foreground. Layer counts are not window counts or proof of pixels/input. Each file contains one sample; no uninterrupted process/boot/session or continuity of the same scene token is established. These values do not demonstrate lifecycle delegate adoption, multiple scenes or independently owned Messenger content.
+
+The fresh observation path completed after the reported timeout, so a new foreground diagnostic request succeeded at some point; this does not explain or eliminate the earlier transport timeout. The earlier launchd job was registered/running, with no shown previous exit; no alarm/jetsam diagnosis is inferred. Do not ask the user to repeat the successful foreground test, reinstall or respring merely for more of the same evidence.
+
+Next development gate: review a narrowly scoped, explicit and bounded Messenger experiment against the owned-scene lifecycle/cleanup design. Existing-source presence/class/role/layers must not be promoted directly into general metadata eligibility or an identifier-only exception. The owner creates a fresh namespace/scene using source identity/specification; it does not copy or reparent the existing source layers. Therefore the scene content of a newly created child remains a separate unknown. Any eventual trial must preserve exact firmware/ABI/identity, verified fresh owner/child/proxy binding, no foreign-scene mutations and fail-closed cleanup/quarantine. No cold/no-source fallback or permanent keep mode should be inferred for an unproven Messenger route.
+
+No runtime/package changes or new build/test accompanied this report. RC5 source/35-suite evidence/permanent archive and main/stable/recovery refs remain unchanged. Raw user files stay outside GitHub.
+
+---
+
 # RC5 Messenger device result: one background-marked observation
 
 The supplied messenger-1.0.4.json reports version1.0.4~rc5 and exactly one observation. No raw device report is committed.
