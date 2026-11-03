@@ -1,3 +1,15 @@
+## RC5 capability result — timeout60 before scene observation
+
+The new capability-1.0.4.json contains one latest-per-app Messenger record: responseStatus=unavailable, capabilityIssue=response-unavailable, sceneCapability=null, errorCode60, observedUptime246.19693858333335, version1.0.4~rc5. On the target Darwin platform60 is ETIMEDOUT. PPOBridgeClient uses NSPOSIXErrorDomain and an8second matching-nonce response deadline; invalid/wrong-nonce or absent replies can also end in this timeout. Do not decode this target code with Linux errno values. This report does not establish which service-side condition caused the timeout or that SpringBoard crashed/hung.
+
+Source inspection confirms the request must obtain a validated inspect-scene response before the new Messenger observer can run. No foreground Messenger snapshot was collected by this failed verification. The earlier one background-marked snapshot remains the only Messenger scene evidence. A stopped/busy/restarted service, unmatched/invalid reply or other transport issue cannot be distinguished from the capability file alone. Do not increase timeouts or repeat launch/inspection automatically to hide this error.
+
+NEXT read-only evidence, without another phone test/install/respring/service restart: in Filza obtain request.json, response.json and heartbeat.json from /var/mobile/Library/Logs/PullOverPro/Bridge/ (zip those existing files; note any missing file). Compare schema/operation/nonce/request-created and response/heartbeat uptimes to the capability timestamp. Heartbeat is written only at service startup and is not proof of present liveness. A service restart intentionally suppresses preexisting requests; preserve that no-replay protection. Do not infer a startup race or blocked private getter as the cause without mailbox evidence. No personal Data-container files are needed. Raw reports stay outside GitHub.
+
+No runtime/package changes or new build/test in this documentation checkpoint. RC5 source ca1c56ba1937a815f8762552685ceb0c18b83c7b, archived DEB and35-suite/Clang/Theos inspection evidence remain unchanged. Preserve main/stable/recovery refs and update this handoff in tandem with OpenCode.
+
+---
+
 ## RC5 foreground attempt — verification unavailable; inspect existing capability error first
 
 The user reports the approximate UI message «Verificarea ferestrei nu e disponibilă» during the requested foreground comparison. Current source has «Verificarea ferestrei nu este disponibilă» in inspectSelectedForIntent when response is nil, before the Messenger read-only observer. This can follow a bridge transport/validation failure or a caught exception; it is not the missing-manifest refusal and does not prove that Messenger hosting failed, that the service stopped or that the app lacks support.
