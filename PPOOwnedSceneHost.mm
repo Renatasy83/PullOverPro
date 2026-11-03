@@ -1,6 +1,7 @@
 #import "PPOOwnedSceneHost.h"
 #import "PPOOwnedApplicationPolicy.h"
 #import "PPOOwnedAdmission.h"
+#import "PPOSceneCapability.h"
 #import "tools/app-launch/PPOLaunchABI.h"
 #import <objc/message.h>
 
@@ -196,6 +197,9 @@ static BOOL HostConstructible(Class cls, const char *initializer) {
         if (!self.admission) { self.state = @"application-not-eligible"; return NO; }
         self.expectedBundleIdentifier = self.admission[@"bundleIdentifier"];
         BOOL cold = source == nil;
+        if (cold && PPOSceneCapabilityIsMessengerTrial(self.admission[@"sceneCapability"])) {
+            self.state=@"messenger-trial-requires-existing-source"; return NO;
+        }
         BOOL strictSpecification = cold || !PPOOwnedApplicationAllowed(self.expectedBundleIdentifier);
         if (![self classesSupported]) { self.state = @"unsupported-owned-host-abi"; return NO; }
         id identity = nil, specification = nil, sourceIdentifier = nil;

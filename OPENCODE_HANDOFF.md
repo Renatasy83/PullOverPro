@@ -1,3 +1,15 @@
+## RC6 implementation pending CI — exact-profile Messenger warm owned-child trial
+
+User explicitly requires autonomous work until a necessary DEB/device gate; do not end at a research status update. Based on6de5fbf4cd6f08a45a164cd858a1cc5d6e9c7aa9. Candidate1.0.5~rc6. The installed bundle reader SHA256-checks Messenger Info.plist against the previously supplied585.0.0/build1101076820 bytes (hash741517f9808a10ac225c6490d2af5bd835ff56b112464c5d53ce670d7ff92e30) plus scalar/profile checks. Only that exact profile yields unknown/eligible=false reviewed-messenger585-warm-trial. Ordinary absent manifests remain refused. The reserved wire reason is Messenger-only; strict nonce/capability/freshness checks remain.
+
+Admission freezes explicit reviewed-messenger-warm-trial provenance; owner refuses a missing source before cold factories/workspace allocation. UI revalidates a unique existing normal Messenger source, active/foreground with published layers, before the existing independent workspace/controller/child path. No new private method/signature, foreign-scene mutation or source-layer copying. Exact framework/class/ABI/identity/normal role/child proxy/cleanup/quarantine still apply. Trial forces local nonpersistent standard-size/timed preferences, no Keep/resize/minimize/pan; auto15s close,8s render deadline, existing2s activation grace, closeX available. Existing other-app behavior stays unchanged. Reports use1.0.5 and include messengerWarmTrial.
+
+Tests added: synthetic exact-digest/profile/negative mutations/wire binding/admission; warm owned-child creation and cleanup with source unchanged; cold trial denial before factories/allocation. Source-policy/Python syntax checks passed locally. Full36-suite native sanitizer/Clang/Theos/payload CI pending; do not recommend install until it passes and the actual DEB is independently checked/archived. Raw earlier Info.zip is no longer mounted this turn; hash/version are taken from previously computed local evidence and published derived audit, not claimed freshly re-hashed. No raw app plist is published. Actual installed reader recomputes SHA256 before the trial, refusing drift.
+
+Next: complete automation, fix any failures autonomously, archive one DEB with exact source/run/hash, update this handoff, then deliver the necessary short Messenger foreground trial and host-1.0.5.json collection. Do not claim Messenger second-window success or general compatibility before actual phone evidence. Preserve main/stable/RC5/RC4/recovery refs.
+
+---
+
 ## RC5 foreground gate completed — no repeated phone test needed
 
 The newly supplied messenger-1.0.4.json reports one foreground-marked Messenger source: observed, inspected10/matched1, normal specification/role=true, expected framework UUIDs all match, sampled3layers of type[1,1,1], settingsBackgrounded=false, sceneActive=true. Hosting/mutation requested=false. Prior separate report showed backgrounded=true and0layers. See RC5_MESSENGER_DEVICE_RESULT.md. Each file has one retained observation; do not assume one continuous scene/process/boot session or that3layers means3windows.

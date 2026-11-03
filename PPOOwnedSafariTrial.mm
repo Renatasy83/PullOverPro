@@ -5,6 +5,7 @@
 #import "PPOScreenLockState.h"
 #import "PPOOwnedApplicationPolicy.h"
 #import "PPOOwnedAdmission.h"
+#import "PPOSceneCapability.h"
 #import "PPOUserPreferences.h"
 #include "PPOHostGeometry.h"
 #include "PPOFloatingWindowGeometry.h"
@@ -110,6 +111,8 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 @property(nonatomic,copy) NSDictionary *presentationPreferences;
 @property(nonatomic) double presentedDrawerProgress;
 @property(nonatomic) BOOL keepPreferenceAttempted;
+@property(nonatomic) BOOL messengerTrial;
+@property(nonatomic) NSTimeInterval messengerRenderDeadline;
 @property(nonatomic,strong) UIWindowScene *windowScene;
 @property(nonatomic,strong) UIView *content;
 @property(nonatomic,strong) UIView *scalingWrapper;
@@ -309,8 +312,9 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.4~rc5",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.5~rc6",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
+        @"messengerWarmTrial":@(self.messengerTrial), @"messengerRenderDeadline":@(self.messengerRenderDeadline),
         @"replacementAllowed": @(self.replacementAllowed), @"coldPreparation": @(self.coldStart),
         @"activationGraceSeconds": @(self.coldStart ? PPOWindowLifetime::ColdActivationGraceSeconds : PPOWindowLifetime::ActivationGraceSeconds),
         @"coldRenderObserved": @(_lifetime.observedRendered()),
@@ -358,11 +362,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.4.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.5.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.4] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.5] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -418,7 +422,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     if (!NSThread.isMainThread || !self.running || self.closed || self.closing || self.closePending) return NO;
     @try {
         NSTimeInterval probeNow = NSProcessInfo.processInfo.systemUptime;
-        if (self.coldStart && !_lifetime.observedRendered() && !self.opening && probeNow >= self.nextColdLayerProbe) {
+        if ((self.coldStart || self.messengerTrial) && !_lifetime.observedRendered() && !self.opening && probeNow >= self.nextColdLayerProbe) {
             self.nextColdLayerProbe = probeNow + 0.5;
             [self sampleObservations];
         }
@@ -426,6 +430,9 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         if (!self.running || self.closed || self.closing || self.closePending) return NO;
         conditions.renderReady = [self.lastSourceSample[@"status"] isEqual:@"sampled"] &&
             [self.lastSourceSample[@"layerCount"] unsignedIntegerValue] > 0;
+        if (self.messengerTrial && !conditions.renderReady && probeNow>=self.messengerRenderDeadline) {
+            [self closeBecause:@"messenger-render-timeout"]; return NO;
+        }
         PPOWindowStop stop = _lifetime.evaluate(conditions);
         if (_lifetime.observedRendered()) [self.startupSpinner stopAnimating];
         if (stop != PPOWindowStop::None) { [self closeBecause:PPOWindowStopName(stop)]; return NO; }
@@ -435,7 +442,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         // The configured presentation preference uses the same guarded Keep policy,
         // once after the newly owned scene has actually become active. It does
         // not extend activation grace or repeatedly restart a deadline.
-        if (!self.opening && !self.keepPreferenceAttempted && _lifetime.observedActive() &&
+        if (!self.messengerTrial && !self.opening && !self.keepPreferenceAttempted && _lifetime.observedActive() &&
             (!self.coldStart || _lifetime.observedRendered()) &&
             [self.presentationPreferences[@"keepWindowOpen"] boolValue]) {
             self.keepPreferenceAttempted = YES;
@@ -452,7 +459,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 }
 - (void)keepFromButton:(UIButton *)sender {
     (void)sender;
-    if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing || self.closePending) return;
+    if (self.messengerTrial || !NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing || self.closePending) return;
     @try {
         if (![self checkLifetime]) return;
         PPOWindowConditions conditions = [self lifetimeConditions];
@@ -467,6 +474,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     }
 }
 - (void)updateActionsMenu {
+    if (self.messengerTrial) { self.actionsButton.menu=nil; self.actionsButton.enabled=NO; return; }
     __weak PPOOwnedSafariTrial *weakSelf = self;
     UIAction *keep = [UIAction actionWithTitle:_lifetime.kept() ? @"Păstrată" : @"Păstrează"
         image:nil identifier:nil handler:^(__kindof UIAction *action) {
@@ -501,6 +509,13 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         return @"Aplicația nu poate fi deschisă în fereastră";
     }
     self.sceneCapability = admission[@"sceneCapability"] == NSNull.null ? nil : admission[@"sceneCapability"];
+    self.messengerTrial=PPOSceneCapabilityIsMessengerTrial(self.sceneCapability);
+    if (self.messengerTrial) {
+        NSMutableDictionary *limited=[self.presentationPreferences mutableCopy];
+        limited[@"keepWindowOpen"]=@NO; limited[@"windowSize"]=@1;
+        self.presentationPreferences=PPOUserPreferencesNormalize(limited);
+        preferredSize=1; _sizePreset=PPOFloatingSize::Standard;
+    }
     if (![self.frameworks[@"matches"] boolValue]) {
         [self record:@"framework-refused"]; return @"Firmware diferit; probă refuzată";
     }
@@ -525,6 +540,15 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
             ![self.sceneCapability[@"status"] isEqual:@"eligible"])) {
             [self record:@"cold-admission-refused"];
             return @"Pornirea directă necesită verificarea aplicației instalate";
+        }
+        if (self.messengerTrial) {
+            NSDictionary *source=PPOReadSceneLayerState(foreignScene,objc_lookUpClass("FBScene"),
+                objc_lookUpClass("FBSceneLayerManager"),objc_lookUpClass("FBSceneLayer"),objc_lookUpClass("FBSSceneSettings"));
+            if (![source[@"status"] isEqual:@"sampled"] || ![source[@"sceneActive"] boolValue] ||
+                [source[@"settingsBackgrounded"] boolValue] || [source[@"layerCount"] unsignedIntegerValue]==0) {
+                [self record:@"messenger-foreground-source-required"];
+                return @"Deschide Messenger normal și lasă-l pe tot ecranul înainte de probă";
+            }
         }
         self.originalScene = foreignScene;
         self.windowScene = scene;
@@ -617,6 +641,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         title.lineBreakMode = NSLineBreakByTruncatingTail; title.textColor = UIColor.labelColor;
         title.font = [UIFont systemFontOfSize:12]; title.userInteractionEnabled = YES;
         title.accessibilityHint = @"Trage pentru a muta fereastra";
+        title.userInteractionEnabled=!self.messengerTrial;
         [title addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)]];
         [panel addSubview:title];
         UIButton *actions = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -631,6 +656,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         size.accessibilityValue = _sizePreset == PPOFloatingSize::Large ? @"Mare"
             : (_sizePreset == PPOFloatingSize::Compact ? @"Mică" : @"Medie");
         [size addTarget:self action:@selector(resizeFromButton:) forControlEvents:UIControlEventTouchUpInside];
+        size.enabled=!self.messengerTrial;
         self.sizeButton = size; [panel addSubview:size];
         UIButton *restore = [UIButton buttonWithType:UIButtonTypeSystem];
         restore.frame = CGRectMake(width - 88, 0, 44, 44);
@@ -680,6 +706,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         if (!(self.coldStart ? _lifetime.startForApplicationIdentity(startedAt) : _lifetime.start(startedAt)))
             return @"Temporizator indisponibil";
         self.nextColdLayerProbe = startedAt + 0.25;
+        self.messengerRenderDeadline=startedAt+8.0;
         if (self.coldStart) {
             self.startupSpinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
             self.startupSpinner.center = CGPointMake(CGRectGetMidX(self.content.bounds),CGRectGetMidY(self.content.bounds));
@@ -780,6 +807,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     return [self fitPresentation];
 }
 - (void)resizeFromButton:(UIButton *)sender {
+    if (self.messengerTrial) return;
     (void)sender;
     if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
         self.closePending || _presentation.minimized()) return;
@@ -799,6 +827,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     }
 }
 - (void)minimizeFromButton:(UIButton *)sender {
+    if (self.messengerTrial) return;
     (void)sender;
     if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
         self.closePending || _presentation.minimized()) return;
@@ -817,6 +846,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     }
 }
 - (void)restoreFromButton:(UIButton *)sender {
+    if (self.messengerTrial) return;
     (void)sender;
     if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
         self.closePending || !_presentation.minimized()) return;
@@ -985,6 +1015,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf closeBecause:reason]; });
 }
 - (void)pan:(UIPanGestureRecognizer *)pan {
+    if (self.messengerTrial) return;
     if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
         self.closePending || !self.window) return;
     @try {

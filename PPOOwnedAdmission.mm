@@ -21,6 +21,8 @@ NSDictionary *PPOOwnedAdmissionSnapshot(NSString *identifier,
             !PPOSceneCapabilityFresh(observed, now)) return nil;
         NSString *status = observed[@"status"];
         if ([status isEqual:@"ineligible"]) return nil;
+        if (PPOSceneCapabilityIsMessengerTrial(observed))
+            return @{@"bundleIdentifier":selected,@"basis":@"reviewed-messenger-warm-trial",@"sceneCapability":observed};
         if ([status isEqual:@"eligible"]) {
             return @{@"bundleIdentifier": selected, @"basis": @"installed-info",
                 @"sceneCapability": observed};

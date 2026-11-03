@@ -58,7 +58,7 @@ static NSArray<NSString *> *CapabilityUnknownReasons(void) {
         @"no-bundle-url", @"bundle-unavailable", @"file-unavailable", @"file-invalid", @"file-too-large",
         @"plist-invalid", @"manifest-unknown", @"manifest-complex", @"identifier-mismatch",
         @"scene-manifest-missing", @"scene-manifest-invalid",
-        @"multiple-scenes-undeclared", @"multiple-scenes-invalid",
+        @"multiple-scenes-undeclared", @"multiple-scenes-invalid", @"reviewed-messenger585-warm-trial",
         @"request-expired", @"service-unavailable"];
 }
 static NSArray<NSString *> *CapabilityIneligibleReasons(void) {
@@ -80,6 +80,8 @@ static NSDictionary *CapabilityResult(NSString *identifier, NSString *status, NS
 
 NSDictionary *PPOSceneCapabilityUnknown(NSString *identifier, NSString *reason, NSTimeInterval observedUptime) {
     if (!PPOSceneApplicationIdentifierAllowed(identifier) || !CapabilityTime(observedUptime)) return nil;
+    if ([reason isEqual:@"reviewed-messenger585-warm-trial"] &&
+        ![identifier isEqual:@"com.facebook.Messenger"]) return nil;
     NSString *canonical = CapabilityCanonicalReason(reason, CapabilityUnknownReasons());
     return canonical ? CapabilityResult(identifier, @"unknown", canonical, observedUptime) : nil;
 }
@@ -110,6 +112,8 @@ NSDictionary *PPOSceneCapabilityNormalize(id value) {
             status = @"unknown";
             reason = CapabilityCanonicalReason(raw[@"reason"], CapabilityUnknownReasons());
         }
+        if ([reason isEqual:@"reviewed-messenger585-warm-trial"] &&
+            ![raw[@"bundleIdentifier"] isEqual:@"com.facebook.Messenger"]) return nil;
         if (!status || !reason) return nil;
         return CapabilityResult(raw[@"bundleIdentifier"], status, reason, [raw[@"observedUptime"] doubleValue]);
     } @catch (NSException *exception) { (void)exception; return nil; }
@@ -264,4 +268,27 @@ NSDictionary *PPOSceneCapabilityFromInfo(id info, NSString *identifier, NSTimeIn
     } @catch (NSException *exception) {
         (void)exception; return PPOSceneCapabilityUnknown(identifier, @"plist-invalid", observedUptime);
     }
+}
+
+BOOL PPOSceneCapabilityIsMessengerTrial(id value) {
+    NSDictionary *proof=PPOSceneCapabilityNormalize(value);
+    return [proof[@"bundleIdentifier"] isEqual:@"com.facebook.Messenger"] &&
+        [proof[@"status"] isEqual:@"unknown"] &&
+        [proof[@"reason"] isEqual:@"reviewed-messenger585-warm-trial"];
+}
+NSDictionary *PPOSceneCapabilityFromInfoWithDigest(id info, NSString *identifier,
+    NSTimeInterval observedUptime, NSString *sha256) {
+    NSDictionary *base=PPOSceneCapabilityFromInfo(info,identifier,observedUptime);
+    if (![base[@"status"] isEqual:@"unknown"] || ![base[@"reason"] isEqual:@"scene-manifest-missing"] ||
+        ![identifier isEqual:@"com.facebook.Messenger"] ||
+        ![sha256 isKindOfClass:NSString.class] ||
+        ![sha256 isEqual:@"741517f9808a10ac225c6490d2af5bd835ff56b112464c5d53ce670d7ff92e30"])
+        return base;
+    NSDictionary *expected=@{@"CFBundleIdentifier":@"com.facebook.Messenger",@"CFBundleExecutable":@"Messenger",
+        @"CFBundlePackageType":@"APPL",@"CFBundleVersion":@"1101076820",@"CFBundleShortVersionString":@"585.0.0"};
+    for (NSString *key in expected) if (![info[key] isEqual:expected[key]]) return base;
+    if (![info[@"UIDeviceFamily"] isEqual:@[@1,@2]]) return base;
+    for (NSString *key in info) if ([key rangeOfString:@"scene" options:NSCaseInsensitiveSearch].location!=NSNotFound ||
+        [key rangeOfString:@"window" options:NSCaseInsensitiveSearch].location!=NSNotFound) return base;
+    return PPOSceneCapabilityUnknown(identifier,@"reviewed-messenger585-warm-trial",observedUptime);
 }

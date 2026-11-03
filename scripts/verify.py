@@ -348,7 +348,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.4~rc5', 'Unexpected version')
+    require(field('Version') == '1.0.5~rc6', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')

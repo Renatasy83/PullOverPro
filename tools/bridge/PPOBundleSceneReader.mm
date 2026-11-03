@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <cmath>
+#import <CommonCrypto/CommonDigest.h>
 
 namespace {
 constexpr size_t InfoLimit = 256 * 1024;
@@ -143,7 +144,13 @@ NSDictionary *PPOReadBundleSceneCapability(NSURL *bundleURL, NSString *identifie
         id info = [NSPropertyListSerialization propertyListWithData:data
             options:NSPropertyListImmutable format:NULL error:NULL];
         if (!info) return Unknown(identifier, @"plist-invalid", now);
-        return PPOSceneCapabilityFromInfo(info, identifier, now);
+        if (![identifier isEqual:@"com.facebook.Messenger"])
+            return PPOSceneCapabilityFromInfo(info,identifier,now);
+        unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+        CC_SHA256(data.bytes,(CC_LONG)data.length,digest);
+        NSMutableString *hex=[NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH*2];
+        for (unsigned i=0;i<CC_SHA256_DIGEST_LENGTH;i++) [hex appendFormat:@"%02x",digest[i]];
+        return PPOSceneCapabilityFromInfoWithDigest(info, identifier, now, hex);
     } @catch (NSException *exception) {
         (void)exception;
         return Unknown(identifier, @"file-invalid", now);

@@ -246,6 +246,10 @@ jobs:
             -framework Foundation -framework CoreFoundation tests/OwnedAdmissionTests.mm \
             PPOOwnedAdmission.mm PPOSceneCapability.mm -o "$RUNNER_TEMP/ppo-owned-admission-tests"
           "$RUNNER_TEMP/ppo-owned-admission-tests" | tee diagnostics/owned-admission-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation -framework CoreFoundation tests/MessengerTrialProfileTests.mm \
+            PPOSceneCapability.mm PPOOwnedAdmission.mm PPOBridgeProtocol.mm -o "$RUNNER_TEMP/ppo-messenger-trial-tests"
+          "$RUNNER_TEMP/ppo-messenger-trial-tests" | tee diagnostics/messenger-trial-tests.log
       - name: Analyze and test edge UI and shared preferences
         shell: bash
         run: |
@@ -330,7 +334,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-1.0.4-rc5-${{ github.sha }}
+          name: PullOverPro-1.0.5-rc6-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

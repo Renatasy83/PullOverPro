@@ -7,6 +7,7 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'messenger-trial-tests.log': 'Messenger trial profile tests passed:',
     'scene-observation-tests.log': 'Scene observation tests passed:',
     'handle-interaction-tests.log': 'Handle interaction tests passed:',
     'capability-diagnostics-tests.log': 'Capability diagnostics tests passed:',
@@ -48,10 +49,10 @@ for name, marker in markers.items():
         raise SystemExit(f'Missing successful test evidence: {name}')
 
 not_run = [
-    'RC5 Messenger read-only foreground/background source observations on the actual phone',
+    'RC6 Messenger owned-child admission/rendering/input/automatic timeout/cleanup on actual23A355',
     'RC4 first-touch/inward-pull chooser-only flow, distinct second-tap/row app opening and already-open window toggling on iOS',
     'RC4 bounded per-app refusal history in the actual SpringBoard file-writing context',
-    'Messenger scene topology/lifecycle/rendering: installed plist lacks a scene manifest; RC5 observations require the real device. Messages works per the user after selecting com.apple.MobileSMS.',
+    'Messenger app delegate and independent-scene behavior remain unproven; RC5 foreground/background source samples are available and do not prove multiple scenes.',
     'Actual public keyboard visibility, handle/compact-chooser avoidance and restoration on iOS: RC3 received47 public events but retained samples show hidden only',
     'Physical manual outward nub/reveal and automatic-nub integration: RC3 records one commit counter but no retained commit/reveal sequence',
     'Cold owned-scene process bootstrap, first rendered layer, input and cleanup on actual23A355',
@@ -74,10 +75,11 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'Existing independent app windows and RC4 two-stage selection remain. Messages is separately user-confirmed. RC5 adds only a bounded read-only Messenger refusal snapshot, without authorizing or creating a Messenger window; actual scene topology remains a device gate.',
+    'floating_application_hosting_implemented': 'Existing independent windows remain. RC6 adds an exact installed-plist-fingerprint/version Messenger warm-source experiment only, with15second timeout,8second render deadline, no cold start/Keep/resize/minimize and existing strict ownership/cleanup gates. Messenger child rendering/input/cleanup require a real-device test.',
     'prior_device_baseline': 'RC3 supplied reports: four source-independent kept sessions (Safari118.583783s, Files10.076879s, Calendar282.295437s, Safari7.937405s), all closed/unpinned/unpoisoned with controller/workspace invalidations returned and replacement allowed. Interface received47 public keyboard events and manualNubCount1; all15 retained post-startup samples are hidden/not-adjusted, so visible movement/restoration is not demonstrated and older discarded observations are unknown. User requested correction of first-touch/pull app opening and reported unverified-window-support refusals for Messages/Messenger; neither app appears in the supplied host/capability files. RC2 Safari: user confirmed visible page, web navigation, keyboard and X; three source-independent scenes with active nonempty layers, Keep, sampled headerless drawer geometry and clean own controller/workspace teardown. Source1392af09d382be746ea8ece2a86380a1914fef29 is preserved as the scoped stable baseline. Process termination before launch and global compatibility are not established. RC1 Safari report: manual close after34.83s in Keep;7completed resizes/3moves; clean own controller/workspace cleanup. User reports RC1 works. 0.17.0 Files named-configuration admission/rendering with two clean default-timeout sessions;0.16.0 Calendar programmatic owned-window/kept/minimize/restore/resize/manual/default-timeout;0.15.0 own favorites store read/long-press access with1favorite;0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,
+    'rc6_scope': 'Exact installed Messenger585.0.0/build1101076820 plist SHA256 profile only, unknown/eligible=false proof with explicit warm-trial admission. Unique normal existing foreground source/layers required, no cold fallback; same verified owned-child API, automatic15s close,8s render deadline, no Keep/resize/minimize. No Messenger runtime success is inferred.',
     'rc5_scope': 'Read-only Messenger missing-manifest source observation only; no Messenger hosting authorization or fix. No launch/create/activate/present/mutation; max4 explicit snapshots per SpringBoard process,2 retained. Existing floating windows remain implemented.',
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
 }
@@ -85,7 +87,7 @@ report = {
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**RC5 diagnostic candidate. Existing floating windows remain; this change only observes an existing Messenger scene after an explicit missing-manifest refusal. No Messenger launch, scene creation, activation, presentation or mutation is requested. Messages works per user confirmation with com.apple.MobileSMS. The installed Messenger585.0.0 plist lacks UIApplicationSceneManifest; its live topology and lifecycle remain unverified. Native fixtures do not execute iOS private frameworks or establish pixels/input. General Dopamine/ElleKit compatibility is not confirmed.**\n\n'
+    '**RC6 bounded Messenger trial candidate. Exact reviewed installed plist SHA256 and version are required; metadata remains unknown/eligible=false with explicit experimental warm-only provenance. The app must already have a unique normal foreground source with layers. Existing owned-scene APIs create a fresh child; no foreign scene is mutated. No cold fallback or permanent Keep/resize/minimize. Automatic15second close and8second child-render deadline apply. Messenger child admission, content/input and cleanup are untested on the phone. Native fixtures do not execute private iOS frameworks; general Dopamine/ElleKit compatibility is not confirmed.**\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)
