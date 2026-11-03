@@ -1,3 +1,15 @@
+## RC5 preparation — read-only Messenger observation; CI pending
+
+The user reports persistent phone slowdown and attributes it to the battery; attribution remains unverified. The user authorizes continuing to the next indispensable device-test DEB. No phone action was performed by the assistant.
+
+Based on b367eddc3b227eb351c4724e9875b894cdc355c9; no intervening OpenCode work found. Version1.0.4~rc5 adds PPOSceneObservation: explicit Messenger/unknown/scene-manifest-missing/fresh-proof gating, exact firmware and class/ABI checks, unique same-app enumeration, normal specification/role flags and existing layer-state reads. No source token, content, paths or pointer values are retained. No launch/create/activate/present/mutation; normal host/admission/cleanup methods unchanged. Caller enforces existing overlay/selection intent/epoch guards, max4 observations per SpringBoard process,2s cooldown, last2 snapshots retained, worker-only atomic JSON write. No polling or automatic retries. New file: /var/mobile/Library/Logs/PullOverPro/messenger-1.0.4.json.
+
+Native fixtures cover normal/background, missing/ambiguous source, wrong specification/role/layers, wrong app/reason/stale proof, disable/framework/class/thread rejection and no token disclosure. Source-policy and Python syntax checks passed locally. Full35-suite/ASan/UBSan/Clang/Theos/rootless payload CI is pending. Do not recommend installation yet. Candidate version strings/report paths updated; permanent RC4/stable/main/recovery refs remain intact.
+
+Next: finish CI, inspect/archive one DEB and record exact source/run/hash. The indispensable phone gate is one explicit Messenger refusal with Messenger full-screen, followed by one over NewTerm (wait2seconds); collect only messenger-1.0.4.json. A refusal is expected; observations narrow existing-scene topology, not another process's delegate or actual second-window content. Do not claim Messenger fixed or bypass missing-manifest admission. Preserve the current remote head and this handoff for OpenCode.
+
+---
+
 ## Messenger legacy lifecycle audit completed — no new runtime experiment
 
 Read MESSENGER_LEGACY_AUDIT_23A355.md. Offline23A355 UIKit inspection shows that lifecycle adoption depends on declared scene configurations OR delegate callback-support flags. Missing UIApplicationSceneManifest alone does not establish that Messenger's runtime lifecycle is legacy. The false-adoption branch can still construct a UIScene wrapper; it does not establish independent app content. Application-level main-interface initialization and defaultSceneToken are distinct from an arbitrary PPO-owned scene. Messenger declares neither a main storyboard/nib nor its actual delegate class. LaunchScreen is not interactive app content.

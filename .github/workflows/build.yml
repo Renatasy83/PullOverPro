@@ -167,6 +167,18 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc -framework Foundation \
             tests/SceneLayerProbeTests.mm PPOSceneLayerProbe.mm -o "$RUNNER_TEMP/ppo-layer-probe-tests"
           "$RUNNER_TEMP/ppo-layer-probe-tests" | tee diagnostics/layer-probe-tests.log
+      - name: Analyze and test read-only Messenger observations
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -Xanalyzer -analyzer-output=text \
+            PPOSceneObservation.mm 2>&1 | tee diagnostics/scene-observation-analysis.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation -framework CoreFoundation tests/SceneObservationTests.mm PPOSceneObservation.mm \
+            PPOScenePreflight.mm PPOSceneLayerProbe.mm PPOBridgeProtocol.mm PPOSceneCapability.mm \
+            -o "$RUNNER_TEMP/ppo-scene-observation-tests"
+          "$RUNNER_TEMP/ppo-scene-observation-tests" | tee diagnostics/scene-observation-tests.log
       - name: Test owned wrapper geometry
         shell: bash
         run: |
@@ -318,7 +330,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-1.0.3-rc4-${{ github.sha }}
+          name: PullOverPro-1.0.4-rc5-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

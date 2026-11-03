@@ -23,6 +23,13 @@ for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'\bsystem\s*\(', r'\bpopen\s*\(', r'\bfork\s*\(', r'\bkill\s*\(',
                 r'performSelector', r'NSInvocation', r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\('):
     require(not re.search(pattern, source), f'Unexpected runtime operation: {pattern}')
+observation_source = (ROOT / 'PPOSceneObservation.mm').read_text()
+require(observation_source.count('objc_msgSend') == 1, 'Unexpected observation dispatch surface')
+require(set(re.findall(r'ObservationGet\([^\n]*?"(\w+)"', observation_source)) ==
+        {'definition', 'specification', 'uiSceneSessionRole'}, 'Unexpected observation accessor')
+for token in ['activate', 'createPresenter', 'updateSettings', 'setForeground', 'setBackgrounded',
+              'createScene', 'invalidate', 'performSelector', 'NSInvocation', 'method_getImplementation']:
+    require(token not in observation_source, 'Unexpected mutating observation operation: ' + token)
 picker_source = (ROOT / 'Tweak.xm').read_text()
 require('PPOPickerState *picker' in picker_source and
         'return self.picker.selectionGeneration' in picker_source and
@@ -341,7 +348,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.3~rc4', 'Unexpected version')
+    require(field('Version') == '1.0.4~rc5', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
