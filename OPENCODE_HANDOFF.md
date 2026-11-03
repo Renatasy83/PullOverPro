@@ -1,3 +1,13 @@
+## RC5 foreground attempt — verification unavailable; inspect existing capability error first
+
+The user reports the approximate UI message «Verificarea ferestrei nu e disponibilă» during the requested foreground comparison. Current source has «Verificarea ferestrei nu este disponibilă» in inspectSelectedForIntent when response is nil, before the Messenger read-only observer. This can follow a bridge transport/validation failure or a caught exception; it is not the missing-manifest refusal and does not prove that Messenger hosting failed, that the service stopped or that the app lacks support.
+
+The existing code normally calls PPOWriteCapabilityObservation immediately after PPOBridgeSend, retaining bounded response status/issue/errorCode in /var/mobile/Library/Logs/PullOverPro/capability-1.0.4.json. Request that current file from this attempt first. No repeat action, install, respring or service restart until its evidence is read. If absent/stale, investigate the exception/write path rather than assuming the recorded error belongs to this attempt. The previous messenger-1.0.4.json has one background-marked sample only; the foreground comparison remains missing.
+
+No runtime/package changes or new tests in this documentation checkpoint. Keep RC5 source/archive and35-suite evidence below; preserve main/stable/recovery refs and update this handoff for OpenCode.
+
+---
+
 ## RC5 first Messenger phone observation received — foreground comparison missing
 
 Uploaded messenger-1.0.4.json contains exactly ONE observation, version1.0.4~rc5: state=observed, inspected6, matched1, normalApplicationSpecification=true, normalApplicationRole=true. All four observed framework UUIDs match their expected23A355 values. Existing layer probe status=sampled, layerCount0, layerTypes empty, settingsBackgrounded=true, sceneActive=true. hostingRequested=false and sceneMutationRequested=false at both report and observation levels.
