@@ -1,3 +1,9 @@
+## RC5 phone follow-up — handle not visible; cause not confirmed
+
+The user reports that the PPO handle is not visible after receiving RC5. Exact installed version, completion of respring, the disable marker and Settings enabled state have not yet been checked. Earlier the assistant recommended creating /var/mobile/.ppo_disable while the phone was slow; the user never confirmed whether that command was executed. Check that marker first rather than inferring a loader failure or asking for repeated installations. Remove only that PPO disable marker if the user deliberately wants to re-enable PPO, then one manual respring. If it is absent, verify installed package version and preferences/injection status before changing code. No crash or RC5 Messenger observation has been supplied. Runtime/package/archive/test evidence below remains unchanged; no compatibility or fix claim.
+
+---
+
 ## RC5 ready — indispensable Messenger observation gate
 
 Package1.0.4~rc5; tested executable source ca1c56ba1937a815f8762552685ceb0c18b83c7b/tree9a060bb4da8f2bb11f2d7cff6121909e9370ed99. Actions41578881921/job125728758066 succeeded: all35 suites, including63 new read-only scene-observation checks, ASan/UBSan fixtures, Clang analysis, pinned Theos rootless arm64/arm64e compilation and payload/binary inspection. Artifact13204834146. Independent ZIP/DEB hashes,35 logs, fat-binary architecture/production policy and new observation markers in both dylib slices were checked. Rootless payload verification passed again locally.
