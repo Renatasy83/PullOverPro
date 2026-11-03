@@ -1,3 +1,15 @@
+## RC5 mailbox evidence — mismatched reply; service state required
+
+Uploaded request.json is inspect-scene/com.facebook.Messenger at createdUptime238.09916733333336. Uploaded response.json is an inspected/missing-manifest Messenger reply with a DIFFERENT nonce, uptime269064.2314720417 and capability observation269064.15757050004. It cannot validate this request. Uploaded heartbeat.json is ready/service-ready at uptime267.1975894166667 and is only startup evidence. No raw nonce/file contents are committed.
+
+The capability error at246.19693858333335 is8.09777125seconds after the supplied request, consistent with the client's8second deadline. If request/error/heartbeat share one boot, heartbeat is29.09842208seconds after request and21.00065083seconds after timeout. But these files persist across restarts and carry no boot/service-instance ID, so do not assert a common boot or that the heartbeat proves current liveness. The much larger unrelated-response uptime is consistent with a different session, but not proof of one. Distinguish evidence from hypotheses.
+
+Current source correctly ignores a different-nonce response. The service ignores preexisting requests at startup intentionally, uses alarm20 around private operations and launchd KeepAlive; absence/delay/restart/blocked private work remain possibilities, not diagnosed causes. Do not remove replay/nonce protections, extend waits, retry automatically, or launch a second --serve process. Next indispensable read-only phone input: /var/jb/usr/bin/launchctl print system/com.renatasy83.ppo.bridge. Inspect state/pid/runs/last exit/termination signal before any restart/respring/new app test; this may distinguish an absent job from a running or repeatedly terminated service. No new code/build/phone action was performed by the assistant.
+
+Foreground Messenger comparison remains absent. Prior RC5 snapshot establishes only a background-marked unique normal-specification/role scene with0layers. Runtime, DEB/archive and35-suite evidence remain unchanged. Keep main/stable/recovery refs and this OpenCode handoff current.
+
+---
+
 ## RC5 capability result — timeout60 before scene observation
 
 The new capability-1.0.4.json contains one latest-per-app Messenger record: responseStatus=unavailable, capabilityIssue=response-unavailable, sceneCapability=null, errorCode60, observedUptime246.19693858333335, version1.0.4~rc5. On the target Darwin platform60 is ETIMEDOUT. PPOBridgeClient uses NSPOSIXErrorDomain and an8second matching-nonce response deadline; invalid/wrong-nonce or absent replies can also end in this timeout. Do not decode this target code with Linux errno values. This report does not establish which service-side condition caused the timeout or that SpringBoard crashed/hung.
