@@ -1,3 +1,21 @@
+## RC8 infrastructure checkpoint — no installable candidate yet
+
+RC8 1.0.7~rc8 runtime is published. Local source policy, Python syntax and 171 ASan/UBSan Messenger return-state checks passed. Full37-suite/macOS Clang/Theos/rootless package validation has NOT run for RC8. Do not present an old DEB as RC8, recommend installation, claim runtime restoration or compatibility, or describe queued workflow configuration as executed tests.
+
+GitHub run41858380306 (bc0f1777b8ad51a8e9fd2855adeef8c8e57a500f, macos-15-intel) now reports completed/failure before runner acquisition. Public check annotation: "The job was not acquired by Runner of type hosted even after multiple attempts". Earlier polling described this as canceled; the latest run API says failure. No compiler/test failure was observed.
+
+Pending identical-runtime builds (only runner differs):
+- active branch debug/two-stage-handle-messages: source eeb63bb60aa7f13635076bc6d42853deb7249999, run41860264937, macos-26-intel;
+- debug/rc8-arm64-build: source981d01e02f245495c2e7cee1577297e12b9d607d, run41861533175, macos-26;
+- debug/rc8-arm64-macos15: source a458d0a0a282f1015d2fd12f5e2e462715b6a97c, run41862714790, macos-15.
+All three were queued at this checkpoint, with no completed validation or artifact. These are standard hosted pools, no paid larger runner requested. macos-14 is retired; do not use it. GitHub status reported Actions operational, which does not establish runner availability for this repository. Hosted ARM64 is not an accessible physical Mac or evidence vphone-cli can run.
+
+NEXT AUTONOMOUS ACTION: fresh-fetch branch heads/handoff and all three runs. Inspect any real failure and correct it without weakening tests. Select a fully successful build, independently verify artifact,37 logs,source/report/hash/rootless payload/four fat binaries and v2 producer/consumer markers, archive exact DEB immutably, update this handoff and validation with actual runner/source/run/hash/download. Only then request the one indispensable phone gate described in RC8_MESSENGER_CURRENT_ROOT_RETURN.md. Preserve intervening OpenCode edits via explicit tree delta/CAS. Main/stable/RC7/previous archives remain untouched. No new phone action required while CI is unavailable.
+
+RC7 uploaded report proves observed agent injection/transport/PPO session recognition and refusal on old-root mismatch (v1 phase4/flags147; no migration4 or return8). It does NOT provide a new visual result. RC8 preserves exact original UIWindow but validates its current attached public root rather than resurrecting the old root, retains that window for one bounded handoff, uses schema2/channelv2, and retains no-cold/15second/strict cleanup guards. Read the RC8 guide and the prior checkpoint below.
+
+---
+
 ## RC8 parallel standard ARM64 build — no weakened checks
 
 macos-15-intel and macos-26-intel remained queued with no assigned runner. Official actions/runner-images table lists standard macos-26 as Arm64 (no -large/-xlarge selected). A separate debug/rc8-arm64-build branch at981d01e02f245495c2e7cee1577297e12b9d607d changes ONLY the runner label from eeb63bb60aa7f13635076bc6d42853deb7249999. Runtime source/pinned Theos/SDK16.5/deployment15.0/all37 suites/sanitizers/analysis/payload guards remain unchanged. ARM host ABI differences must be investigated if tests fail, not ignored. No completed result or device/vphone-cli capability is assumed. The active development runtime remains eeb63bb60aa7f13635076bc6d42853deb7249999 until a fully checked candidate is selected; preserve both branches and any intervening OpenCode work.
