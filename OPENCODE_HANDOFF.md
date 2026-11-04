@@ -1,3 +1,9 @@
+## RC8 CI runner fallback — production code unchanged
+
+The macos-15-intel job for bc0f1777b8ad51a8e9fd2855adeef8c8e57a500f stayed queued with no assigned runner for over10minutes. Official actions/runner-images README lists macos-26-intel as a supported standard x64 label; macos-14 was retired November2,2026 and was deliberately not used. Switch CI to macos-26-intel, preserving Intel native ABI, pinned Theos/SDK16.5, deployment15.0 and all37 suites/sanitizer/analysis/package checks. No paid large/xlarge runner or assumption of vphone-cli/nested virtualization. Actual native/compiler environment changes must be recorded in final evidence. No production behavior change from this runner-only checkpoint; full new-head CI still required before delivery.
+
+---
+
 ## RC8 pending CI — preserve the current root owned by the exact original window
 
 New uploaded host-1.0.6.json has3 sessions: companion unavailable refusal; stale captured readiness refusal; then one timed owned Messenger trial with helper phase4/flags147 (v1). Decode147=1captured+2owned scope+16old-root mismatch+128unsupported close. No migration/return flags4/8. In RC7, bit16 is set only when the exact captured primary UIWindow is observed in a distinct identified PPO session but the pre-trial weak root is missing/different. Thus component injection/state transport/owned session identification worked, and old-root matching prevented the return. A new visual outcome was NOT supplied; do not infer current pixels from this telemetry. Own proxy/controller/workspace again closed/unpinned/unpoisoned/replacementAllowed=true, timeout. Raw user reports remain outside GitHub.
