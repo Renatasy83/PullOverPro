@@ -51,6 +51,12 @@ static BOOL Owned(UIWindowScene *scene) {
         [[NSUUID alloc] initWithUUIDString:[name substringFromIndex:prefix.length]]!=nil;
 }
 @interface PPOMessengerReturnAgent:NSObject
+- (void)publish;
+- (void)sample;
+- (void)restoreAfterDisconnect:(UIWindowScene *)scene;
+- (void)disconnect:(NSNotification *)notification;
+- (void)stopTimer;
+- (void)event:(NSNotification *)notification;
 @end
 @implementation PPOMessengerReturnAgent {
     __weak UIWindow *_primaryWindow;
@@ -109,8 +115,7 @@ static BOOL Owned(UIWindowScene *scene) {
         [self publish];
     } @catch (NSException *e) { (void)e;_state.flags|=64;_state.phase=PPOReturnPhase::Refused;[self publish]; }
 }
-- (void)disconnect:(NSNotification *)notification {
-    UIWindowScene *closed=notification.object;
+- (void)restoreAfterDisconnect:(UIWindowScene *)closed {
     if (!Owned(closed) || (_movedScene && closed!=_movedScene)) return;
     [self sample];
     UIWindow *window=_primaryWindow;UIWindowScene *target=_primaryScene;
@@ -122,7 +127,7 @@ static BOOL Owned(UIWindowScene *scene) {
         // Public UIKit API, inside Messenger, only its exact previously tracked window.
         // Do not request a key window, app activation, input focus or change any FBScene.
         window.hidden=YES; window.windowScene=target;
-        BOOL verified=window.windowScene==target && window.rootViewController==_primaryRoot;
+        BOOL verified=window.windowScene==target && _primaryRoot && window.rootViewController==_primaryRoot;
         _needsUnhide=verified;
         if (verified && UIApplication.sharedApplication.applicationState==UIApplicationStateActive &&
             UIApplication.sharedApplication.protectedDataAvailable && target.activationState==UISceneActivationStateForegroundActive)
@@ -134,6 +139,14 @@ static BOOL Owned(UIWindowScene *scene) {
         _state.phase=PPOReturnPhase::Refused;_state.flags|=128;
     }
     [self stopTimer];[self publish];
+}
+- (void)disconnect:(NSNotification *)notification {
+    UIWindowScene *closed=notification.object;
+    if (!Owned(closed)) return;
+    // Revalidate after UIKit/app disconnection callbacks have unwound.
+    // Keep only this already identified closing scene for one queue turn.
+    __weak PPOMessengerReturnAgent *weakSelf=self;
+    dispatch_async(dispatch_get_main_queue(),^{ [weakSelf restoreAfterDisconnect:closed]; });
 }
 - (void)stopTimer { if (_timer) { dispatch_source_cancel(_timer);_timer=nil; } }
 - (void)event:(NSNotification *)notification {
