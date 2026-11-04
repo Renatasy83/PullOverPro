@@ -1,3 +1,15 @@
+## RC8 Linux fallback in progress — preserve full macOS gate
+
+All three prior fallback runs41860264937/41861533175/41862714790 ended before executing any step; annotations confirm hosted runner acquisition failure, with extra capacity warnings for ARM64. No source/compiler failure was demonstrated by those runs.
+
+A separate ubuntu-22.04 workflow now supplements (does not remove or weaken) the existing37-suite macOS workflow. It pins Theos304e079 and SDK0222fd54/16.5, SHA256836280038efc4fcc7195019cf9e2cd21b188200a38a47bbda5d26c4d0e9dee82 of the official Theos-installer-linked Swift5.8 Linux toolchain archive (Apple LLVM13), runs12 existing portable C++ ASan/UBSan suites,46 lifecycle checks, source policy, cross-target Clang analysis, Theos rootless packaging and six-binary modern arm64e/signature-bounds checks. Report explicitly marks native macOS Objective-C fixtures/full37 validation/device test/compatibility/install recommendation FALSE. Wait for actual results; configuration is not execution.
+
+Local Linux already passed all12 portable suites (4,843,140 assertions including171 Messenger return checks),46 lifecycle checks and source policy. Cross-target analysis/build ongoing. First downloaded non-Swift LLVM11 toolchain produced incompatible old arm64e ABI warnings; it must NEVER be shipped. New validator rejects legacy subtype0x2 and requires0x80000002 like RC7. Rebuilding cleanly with Apple LLVM13. Two initial local setup attempts also exposed missing rsync, driver linker selection and restrictive source-extraction directory modes; these are build-host setup issues, not diagnosed phone defects. All tools/files changed belong to the assistant workspace; no phone action performed.
+
+NEXT: inspect both new workflow runs. Continue correcting build/tooling failures, independently inspect exact artifact, and retain actual test scope. Do not claim37 suites passed based on portable fallback or recycle an old DEB as RC8. The existing macOS workflow remains mandatory before install recommendation. Keep current-root return policy/strict owner guards unchanged. Update handoff and permanent candidate evidence when results exist.
+
+---
+
 ## RC8 infrastructure checkpoint — no installable candidate yet
 
 RC8 1.0.7~rc8 runtime is published. Local source policy, Python syntax and 171 ASan/UBSan Messenger return-state checks passed. Full37-suite/macOS Clang/Theos/rootless package validation has NOT run for RC8. Do not present an old DEB as RC8, recommend installation, claim runtime restoration or compatibility, or describe queued workflow configuration as executed tests.

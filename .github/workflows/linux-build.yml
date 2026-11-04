@@ -1,0 +1,105 @@
+name: Linux portable tests and rootless cross-build
+on:
+  workflow_dispatch:
+  push:
+    branches: [beta-development, 'debug/**']
+  pull_request:
+    branches: [beta-development]
+permissions:
+  contents: read
+jobs:
+  linux-validation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      LC_ALL: C
+      LANG: C
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential fakeroot rsync libtinfo6 libxml2
+          echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+      - name: Install pinned Theos, SDK and modern arm64e toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --no-checkout https://github.com/theos/theos.git "$THEOS"
+          git -C "$THEOS" checkout 304e0799973e8145f32e4ca2de6c747a84b758ce
+          git -C "$THEOS" submodule update --init --recursive
+          git clone --filter=blob:none --no-checkout https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
+          git -C "$RUNNER_TEMP/sdks" sparse-checkout set iPhoneOS16.5.sdk
+          git -C "$RUNNER_TEMP/sdks" checkout 0222fd5413cf4b9af096f37b4621afa2688572f7
+          ln -s "$RUNNER_TEMP/sdks/iPhoneOS16.5.sdk" "$THEOS/sdks/iPhoneOS16.5.sdk"
+          curl --fail --location --retry 2 -o "$RUNNER_TEMP/toolchain.tar.xz" https://github.com/kabiroberai/swift-toolchain-linux/releases/download/v2.3.0/swift-5.8-ubuntu22.04.tar.xz
+          echo "836280038efc4fcc7195019cf9e2cd21b188200a38a47bbda5d26c4d0e9dee82  $RUNNER_TEMP/toolchain.tar.xz" | sha256sum --check
+          mkdir -p "$THEOS/toolchain"
+          tar -xJf "$RUNNER_TEMP/toolchain.tar.xz" -C "$THEOS/toolchain"
+      - name: Source policy and portable sanitized fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics
+          python3 scripts/verify.py | tee diagnostics/source-policy.log
+          python3 tests/LifecycleTests.py | tee diagnostics/lifecycle-tests.log
+          python3 scripts/validate-portable.py --output diagnostics/portable | tee diagnostics/portable.log
+      - name: Cross-target Clang static analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          perl "$THEOS/vendor/logos/bin/logos.pl" Tweak.xm > diagnostics/Tweak.mm
+          compiler="$THEOS/toolchain/linux/iphone/bin/clang++"
+          {
+            for source in diagnostics/Tweak.mm *.mm preferences/*.mm tools/*/*.mm tools/*/*.m; do
+              test -f "$source" || continue
+              echo "Analyzing $source"
+              "$compiler" --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+                -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -I "$THEOS/vendor/include" -I "$THEOS/include" -I . \
+                -Xanalyzer -analyzer-output=text -x objective-c++ "$source"
+            done
+          } 2>&1 | tee diagnostics/linux-clang-analysis.log
+      - name: Build and inspect rootless package
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            git rev-parse HEAD
+            git -C "$THEOS" rev-parse HEAD
+            "$THEOS/toolchain/linux/iphone/bin/clang" --version
+            echo "Linux cross-build; SDK16.5; deployment15.0; rootless; no iOS execution"
+          } > diagnostics/linux-build-environment.txt
+          make SHELL=/bin/bash clean
+          make SHELL=/bin/bash -j2 package FINALPACKAGE=1 2>&1 | tee diagnostics/linux-build.log
+          if grep -E 'incompatible arm64e ABI|error:' diagnostics/linux-build.log; then exit 1; fi
+          python3 scripts/verify.py packages/*.deb | tee diagnostics/package-policy.log
+          python3 scripts/verify-linux-package.py packages/*.deb | tee diagnostics/linux-package-inspection.json
+          sha256sum packages/*.deb > diagnostics/SHA256SUMS
+      - name: Record actual validation scope
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          pathlib.Path('diagnostics/LINUX_VALIDATION.json').write_text(json.dumps({
+            'commit': os.environ['GITHUB_SHA'], 'host': 'ubuntu-22.04',
+            'portableSuitesPassed': 12, 'lifecycleChecksPassed': 46,
+            'crossTargetStaticAnalysis': True, 'rootlessCrossBuild': True,
+            'macOSObjectiveCTestsExecuted': False, 'full37SuiteValidation': False,
+            'deviceRuntimeTested': False, 'dopamineEllekitCompatibilityConfirmed': False,
+            'installRecommendation': False,
+            'limitations': ['macOS native fixtures await hosted runner', 'UIKit scene return needs real device']
+          }, indent=2)+'\n')
+          PY
+      - name: Upload package and scoped evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: PullOverPro-RC8-linux-${{ github.sha }}
+          path: |
+            packages/*.deb
+            diagnostics/*.log
+            diagnostics/*.json
+            diagnostics/*.txt
+            diagnostics/SHA256SUMS
+            diagnostics/portable/*.log
+            diagnostics/portable/portable-results.json
+          if-no-files-found: error
