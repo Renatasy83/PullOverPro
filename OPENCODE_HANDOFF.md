@@ -1,3 +1,17 @@
+## RC8 ABI probe result and separate Linux evidence
+
+The Linux fallback now explicitly probes capabilities BEFORE allowing a package build. Both tested Linux compilers (L1ghtmann11.1 and official-installer-linked Apple LLVM13/Swift5.8) produced arm64e CPU subtype0x2, while the previously verified RC7 macOS binary uses0x80000002. The local ABI validator correctly rejected the produced DEB. Earlier wording "modern toolchain" described compiler version only and MUST NOT be read as ABI support. No unsafe artifact was recommended/installed/published as a candidate. No Mach-O header relabeling/ABI check weakening is allowed.
+
+Local completed evidence:12 existing C++ suites,4,843,140 assertions under ASan/UBSan;46 lifecycle checks; source policy; all32 cross-target Clang analyzed files passed with no diagnostics. New portable-runner wrapper also executed all12 successfully. These remain separate from full37 macOS native fixtures.
+
+First Ubuntu run41902949126/job126829923224, source102c08da8a4b625d1aed5acb51912a1575a0b340, actually acquired a runner and completed source/portable fixtures plus cross-target Clang analysis successfully. It is/was building with the unsupported LLVM13 arm64e ABI; the existing package check rejects it. Inspect final conclusion; do not archive or install any DEB from this attempt. The new workflow skips package generation when ABI is unsupported, always uploads actual-scope evidence and uploads DEB only on a successful build+ABI/payload verification. A green evidence-only run means portable/static checks passed; it NEVER means full37/native/runtime compatibility passed.
+
+The existing macOS37-suite workflow is preserved and retried using standard macos-15-intel after hours of capacity failure on26Intel/ARM pools. No paid runner requested. Native macOS gate remains required before an install recommendation. New source commit changes only CI/handoff, not RC8 runtime.
+
+NEXT: inspect new Linux evidence artifact and actual macOS runner acquisition/build. If macOS completes, finish37-suite artifact validation and immutable DEB archive, update handoff and give the single phone gate. If hosted Mac remains unavailable, report the concrete external blocker; do not ask the user to perform intermediate tests or claim an installable final RC8.
+
+---
+
 ## RC8 Linux fallback in progress — preserve full macOS gate
 
 All three prior fallback runs41860264937/41861533175/41862714790 ended before executing any step; annotations confirm hosted runner acquisition failure, with extra capacity warnings for ARM64. No source/compiler failure was demonstrated by those runs.
