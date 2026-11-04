@@ -1,3 +1,9 @@
+## RC8 parallel standard ARM64 build — no weakened checks
+
+macos-15-intel and macos-26-intel remained queued with no assigned runner. Official actions/runner-images table lists standard macos-26 as Arm64 (no -large/-xlarge selected). A separate debug/rc8-arm64-build branch at981d01e02f245495c2e7cee1577297e12b9d607d changes ONLY the runner label from eeb63bb60aa7f13635076bc6d42853deb7249999. Runtime source/pinned Theos/SDK16.5/deployment15.0/all37 suites/sanitizers/analysis/payload guards remain unchanged. ARM host ABI differences must be investigated if tests fail, not ignored. No completed result or device/vphone-cli capability is assumed. The active development runtime remains eeb63bb60aa7f13635076bc6d42853deb7249999 until a fully checked candidate is selected; preserve both branches and any intervening OpenCode work.
+
+---
+
 ## RC8 CI runner fallback — production code unchanged
 
 The macos-15-intel job for bc0f1777b8ad51a8e9fd2855adeef8c8e57a500f stayed queued with no assigned runner for over10minutes. Official actions/runner-images README lists macos-26-intel as a supported standard x64 label; macos-14 was retired November2,2026 and was deliberately not used. Switch CI to macos-26-intel, preserving Intel native ABI, pinned Theos/SDK16.5, deployment15.0 and all37 suites/sanitizer/analysis/package checks. No paid large/xlarge runner or assumption of vphone-cli/nested virtualization. Actual native/compiler environment changes must be recorded in final evidence. No production behavior change from this runner-only checkpoint; full new-head CI still required before delivery.
