@@ -53,6 +53,16 @@ for pattern in (r'%hook\b', r'%init\b', r'valueForKey:', r'method_getImplementat
                 r'method_invoke', r'dlopen', r'dlsym', r'performSelector',
                 r'dispatch_sync', r'dispatch_semaphore_wait', r'\bsleep\s*\('):
     require(not re.search(pattern, scene_source), f'Unexpected scene operation: {pattern}')
+return_agent = (ROOT / 'PPOMessengerReturnAgent.mm').read_text()
+for token in ['objc_msgSend', 'NSSelectorFromString', 'NSClassFromString', 'method_getImplementation',
+              'performSelector', 'makeKeyAndVisible', 'makeKeyWindow', 'becomeFirstResponder',
+              '%hook', 'setForeground', 'updateSettings', 'writeToFile', 'snapshotView', 'UIGraphics']:
+    require(token not in return_agent, 'Unexpected Messenger agent operation: ' + token)
+require('window.windowScene=target' in return_agent and 'rootViewController==_primaryRoot' in return_agent and
+        'com.renatasy83.ppo.scene.' in return_agent and 'CC_SHA256' in return_agent,
+        'App-side restoration requires exact original window/root, owned session and profile')
+require(re.sub(r'\s+', '', (ROOT / 'PPOMessengerReturnAgent.plist').read_text()) ==
+        '{Filter={Bundles=("com.facebook.Messenger");};}', 'Messenger companion must have its own exact app-only filter')
 probe_source = (ROOT / 'PPOSceneLayerProbe.mm').read_text()
 require(probe_source.count('objc_msgSend') == 1, 'Unexpected layer probe dispatch surface')
 require(set(re.findall(r'ProbeGet<[^>]+>\([^\n]*?"(\w+)"', probe_source)) ==
@@ -348,13 +358,14 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.5~rc6', 'Unexpected version')
+    require(field('Version') == '1.0.6~rc7', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
     payload = subprocess.check_output(['dpkg-deb', '--fsys-tarfile', str(deb)])
     base = 'var/jb/Library/MobileSubstrate/DynamicLibraries/'
     required = {base + 'PullOverProDiagnostic.dylib', base + 'PullOverProDiagnostic.plist',
+                base + 'PPOMessengerReturnAgent.dylib', base + 'PPOMessengerReturnAgent.plist',
                 'var/jb/usr/bin/ppo-apps', 'var/jb/usr/bin/ppo-open', 'var/jb/usr/bin/ppo-bridge',
                 'var/jb/Library/LaunchDaemons/com.renatasy83.ppo.bridge.plist',
                 'var/jb/usr/share/doc/com.renatasy83.pulloverpro.diagnostic/copyright',
@@ -389,10 +400,12 @@ for arg in sys.argv[1:]:
             elif name.endswith('.plist'):
                 raw = archive.extractfile(member).read()
                 if raw.startswith(b'bplist') or raw.lstrip().startswith(b'<?xml'):
-                    require(plistlib.loads(raw) == {'Filter': {'Bundles': ['com.apple.springboard']}},
+                    bundle = 'com.facebook.Messenger' if name.endswith('PPOMessengerReturnAgent.plist') else 'com.apple.springboard'
+                    require(plistlib.loads(raw) == {'Filter': {'Bundles': [bundle]}},
                             'Packaged binary/XML filter mismatch')
                 else:
-                    require(re.sub(r'\s+', '', raw.decode()) == expected_filter,
+                    expected = '{Filter={Bundles=("com.facebook.Messenger");};}' if name.endswith('PPOMessengerReturnAgent.plist') else expected_filter
+                    require(re.sub(r'\s+', '', raw.decode()) == expected,
                             'Packaged OpenStep filter mismatch')
     require(found == required, f'Missing payload: {required - found}')
     metadata = subprocess.check_output(['dpkg-deb', '--ctrl-tarfile', str(deb)])

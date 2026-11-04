@@ -179,6 +179,17 @@ jobs:
             PPOScenePreflight.mm PPOSceneLayerProbe.mm PPOBridgeProtocol.mm PPOSceneCapability.mm \
             -o "$RUNNER_TEMP/ppo-scene-observation-tests"
           "$RUNNER_TEMP/ppo-scene-observation-tests" | tee diagnostics/scene-observation-tests.log
+      - name: Analyze Messenger companion and test return policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/MessengerReturnStateTests.cpp -o "$RUNNER_TEMP/ppo-messenger-return-tests"
+          "$RUNNER_TEMP/ppo-messenger-return-tests" | tee diagnostics/messenger-return-tests.log
+          for source in PPOMessengerReturn.mm PPOMessengerReturnAgent.mm; do
+            xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+              -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -Xanalyzer -analyzer-output=text "$source"
+          done 2>&1 | tee diagnostics/messenger-return-analysis.log
       - name: Test owned wrapper geometry
         shell: bash
         run: |
@@ -310,6 +321,10 @@ jobs:
           dpkg-deb -x packages/*.deb "$RUNNER_TEMP/ppo-package"
           dylib="$RUNNER_TEMP/ppo-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverProDiagnostic.dylib"
           xcrun lipo "$dylib" -verify_arch arm64 arm64e
+          agent="$RUNNER_TEMP/ppo-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PPOMessengerReturnAgent.dylib"
+          xcrun lipo "$agent" -verify_arch arm64 arm64e
+          xcrun otool -L "$agent" | tee diagnostics/messenger-agent-dependencies.txt
+          xcrun dwarfdump --uuid "$agent" | tee diagnostics/messenger-agent-uuids.txt
           xcrun otool -L "$dylib" | tee diagnostics/dependencies.txt
           xcrun dwarfdump --uuid "$dylib" | tee diagnostics/uuids.txt
           helper="$RUNNER_TEMP/ppo-package/var/jb/usr/bin/ppo-apps"
@@ -334,7 +349,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-1.0.5-rc6-${{ github.sha }}
+          name: PullOverPro-1.0.6-rc7-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

@@ -23,7 +23,7 @@ static id ObservationGet(id receiver, const char *name) {
 }
 NSDictionary *PPOReadMessengerSceneObservation(NSDictionary<NSString *, Class> *classes,
     NSDictionary *capability, NSTimeInterval now, BOOL frameworkMatches, BOOL enabled) {
-    NSMutableDictionary *report=[@{@"schema":@1,@"version":@"1.0.5~rc6",
+    NSMutableDictionary *report=[@{@"schema":@1,@"version":@"1.0.6~rc7",
         @"hostingRequested":@NO,@"sceneMutationRequested":@NO} mutableCopy];
     if (!NSThread.isMainThread) { report[@"state"]=@"wrong-thread"; return report; }
     if (!enabled) { report[@"state"]=@"disabled"; return report; }

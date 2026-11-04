@@ -6,6 +6,7 @@
 #import "PPOOwnedApplicationPolicy.h"
 #import "PPOOwnedAdmission.h"
 #import "PPOSceneCapability.h"
+#import "PPOMessengerReturn.h"
 #import "PPOUserPreferences.h"
 #include "PPOHostGeometry.h"
 #include "PPOFloatingWindowGeometry.h"
@@ -312,8 +313,9 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.5~rc6",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.6~rc7",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
+        @"messengerReturnHelper":self.messengerTrial?PPOMessengerReturnSnapshot():@{},
         @"messengerWarmTrial":@(self.messengerTrial), @"messengerRenderDeadline":@(self.messengerRenderDeadline),
         @"replacementAllowed": @(self.replacementAllowed), @"coldPreparation": @(self.coldStart),
         @"activationGraceSeconds": @(self.coldStart ? PPOWindowLifetime::ColdActivationGraceSeconds : PPOWindowLifetime::ActivationGraceSeconds),
@@ -362,11 +364,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.5.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.6.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.5] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.6] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -542,6 +544,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
             return @"Pornirea directă necesită verificarea aplicației instalate";
         }
         if (self.messengerTrial) {
+            NSDictionary *helper=PPOMessengerReturnSnapshot();
+            if (![helper[@"ready"] boolValue]) {
+                [self record:@"messenger-return-helper-required"];
+                return @"Închide Messenger din aplicațiile recente și redeschide-l pentru modulul de revenire";
+            }
             NSDictionary *source=PPOReadSceneLayerState(foreignScene,objc_lookUpClass("FBScene"),
                 objc_lookUpClass("FBSceneLayerManager"),objc_lookUpClass("FBSceneLayer"),objc_lookUpClass("FBSSceneSettings"));
             if (![source[@"status"] isEqual:@"sampled"] || ![source[@"sceneActive"] boolValue] ||
@@ -1102,6 +1109,13 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         self.sourceScene = nil; self.originalScene = nil;
         self.closing = NO;
         [self record:uiClean ? @"close-returned" : @"cleanup-unconfirmed"];
+        if (self.messengerTrial) {
+            __weak PPOOwnedSafariTrial *weakSelf=self;
+            for (NSNumber *delay in @[@0.2,@0.8,@2.0]) dispatch_after(
+                dispatch_time(DISPATCH_TIME_NOW,(int64_t)(delay.doubleValue*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
+                    PPOOwnedSafariTrial *trial=weakSelf;if (trial && trial.closed) [trial record:@"messenger-return-observation"];
+                });
+        }
     } else if (self.session.poisoned) {
         self.closing = NO;
         [self record:@"cleanup-unconfirmed"];
