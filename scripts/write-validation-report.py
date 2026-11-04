@@ -50,7 +50,7 @@ for name, marker in markers.items():
         raise SystemExit(f'Missing successful test evidence: {name}')
 
 not_run = [
-    'RC7 app-side migration identification, original-window return and restored visible background on actual Messenger',
+    'RC8 current-root ownership, public original-window return and restored visible background on actual Messenger',
     'RC4 first-touch/inward-pull chooser-only flow, distinct second-tap/row app opening and already-open window toggling on iOS',
     'RC4 bounded per-app refusal history in the actual SpringBoard file-writing context',
     'Messenger app delegate and independent-scene behavior remain unproven; RC5 foreground/background source samples are available and do not prove multiple scenes.',

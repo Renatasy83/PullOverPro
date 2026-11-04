@@ -1,6 +1,6 @@
 # RC8 Messenger current-root window return
 
-Candidate1.0.7~rc8. This is the next necessary original-UI return test, not a confirmed restoration or a promise of duplicated Messenger content while a small window is active. Final source/run/hash/download evidence is recorded in OPENCODE_HANDOFF.md and validation after CI completes.
+Candidate1.0.7~rc8. This is the next necessary original-UI return test, not a confirmed restoration or a promise of duplicated Messenger content while a small window is active. Validated source e92284e6e2679cfc11235273da367b5a32dc50a1: macOS15Intel Actions41903532726 succeeded with all37 suites, Clang analysis and pinned Theos/SDK16.5 rootless packaging. Exact package/hash/permanent download evidence is recorded in OPENCODE_HANDOFF.md and VALIDATION_1.0.7_RC8.md. The phone gate below is now the next necessary step.
 
 ## New RC7 evidence
 
@@ -24,7 +24,7 @@ The Messenger-only hookless component, exact installed585.0.0/build1101076820 In
 
 ## Automated evidence and limits
 
-The updated pure state/transport suite has171 local ASan/UBSan checks, including legitimately replaced current roots, waiting unowned/unattached roots, foreign-window refusal, all restoration conditions, failed readback/replay/clocks and rejection of old v1 state. Source policy rejects root assignments, screenshots/focus/private selectors and enforces current ownership/exact window gates. Full37-suite/Clang/Theos/two-dylib/filter/rootless evidence is recorded after CI, not assumed from configuration.
+The updated pure state/transport suite has171 local ASan/UBSan checks, including legitimately replaced current roots, waiting unowned/unattached roots, foreign-window refusal, all restoration conditions, failed readback/replay/clocks and rejection of old v1 state. Source policy rejects root assignments, screenshots/focus/private selectors and enforces current ownership/exact window gates. Full37-suite/Clang/Theos/two-dylib/filter/rootless evidence was completed on macOS and independently inspected, including all six fat binaries with modern arm64e ABI. The separate Ubuntu validation correctly skipped package generation on unsupported ABI; it is not the delivered build.
 
 These fixtures cannot create Messenger's real UIKit hierarchy. Actual loaded/current-root attachment, window lifetime after release, protected visibility, scene disconnect order, source return and touch remain untested for RC8. General Dopamine/ElleKit or complete Messenger compatibility is not confirmed. No compatible physical Apple Silicon Mac is available for vphone-cli. No raw user report or app plist is published.
 
