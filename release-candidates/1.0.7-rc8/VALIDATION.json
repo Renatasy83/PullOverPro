@@ -1,0 +1,190 @@
+{
+  "version": "1.0.7~rc8",
+  "source": "e92284e6e2679cfc11235273da367b5a32dc50a1",
+  "macOSActions": {
+    "source": "e92284e6e2679cfc11235273da367b5a32dc50a1",
+    "run": 41903532726,
+    "job": 126831969127,
+    "artifact": 13358429186,
+    "host": "macos-15-intel",
+    "conclusion": "success",
+    "secondaryMacRun": {
+      "source": "102c08da8a4b625d1aed5acb51912a1575a0b340",
+      "run": 41902948991,
+      "host": "macos-26-intel",
+      "conclusion": "success",
+      "runtimeFilesIdentical": true
+    }
+  },
+  "deb": {
+    "name": "com.renatasy83.pulloverpro.diagnostic_1.0.7~rc8_iphoneos-arm64.deb",
+    "sha256": "6a2784f8a3194220669a96a68e2cfdbec10ea42799c957d73477f48f70632c69",
+    "bytes": 316630,
+    "gitBlobSHA": "1ff2d9873af94685a61411f381463e4f496dbe4c"
+  },
+  "ciReport": {
+    "commit": "e92284e6e2679cfc11235273da367b5a32dc50a1",
+    "host": "macOS-15.7.9-x86_64-i386-64bit-Mach-O",
+    "successful_test_logs": [
+      "messenger-return-tests.log",
+      "messenger-trial-tests.log",
+      "scene-observation-tests.log",
+      "handle-interaction-tests.log",
+      "capability-diagnostics-tests.log",
+      "keyboard-avoidance-tests.log",
+      "handle-nub-tests.log",
+      "classic-geometry-tests.log",
+      "owned-cold-scene-tests.log",
+      "edge-drawer-tests.log",
+      "interaction-intent-tests.log",
+      "user-preferences-tests.log",
+      "favorite-apps-tests.log",
+      "favorites-store-tests.log",
+      "picker-state-tests.log",
+      "floating-presentation-tests.log",
+      "floating-geometry-tests.log",
+      "scene-capability-tests.log",
+      "bundle-reader-tests.log",
+      "owned-admission-tests.log",
+      "lock-state-tests.log",
+      "window-lifetime-tests.log",
+      "owned-scene-tests.log",
+      "visibility-tests.log",
+      "layer-probe-tests.log",
+      "geometry-tests.log",
+      "host-slot-tests.log",
+      "presenter-tests.log",
+      "scene-tests.log",
+      "lifecycle-tests.log",
+      "appdata-tests.log",
+      "launcher-tests.log",
+      "process-tests.log",
+      "bridge-io-tests.log",
+      "bridge-protocol-tests.log",
+      "bridge-service-tests.log",
+      "bridge-integration-tests.log"
+    ],
+    "build": "Theos rootless; arm64 and arm64e; SDK16.5; deployment15.0",
+    "package_inspection": "payload, lifecycle scripts, license and architecture checks passed",
+    "sha256sums": "6a2784f8a3194220669a96a68e2cfdbec10ea42799c957d73477f48f70632c69  packages/com.renatasy83.pulloverpro.diagnostic_1.0.7~rc8_iphoneos-arm64.deb",
+    "not_executed": [
+      "RC7 app-side migration identification, original-window return and restored visible background on actual Messenger",
+      "RC4 first-touch/inward-pull chooser-only flow, distinct second-tap/row app opening and already-open window toggling on iOS",
+      "RC4 bounded per-app refusal history in the actual SpringBoard file-writing context",
+      "Messenger app delegate and independent-scene behavior remain unproven; RC5 foreground/background source samples are available and do not prove multiple scenes.",
+      "Actual public keyboard visibility, handle/compact-chooser avoidance and restoration on iOS: RC3 received47 public events but retained samples show hidden only",
+      "Physical manual outward nub/reveal and automatic-nub integration: RC3 records one commit counter but no retained commit/reveal sequence",
+      "Cold owned-scene process bootstrap, first rendered layer, input and cleanup on actual23A355",
+      "Classic headerless drawer, moving handle, compact quick switch and outside tap on iOS",
+      "iOS launchd bootstrap/removal and service permissions",
+      "SpringBoard sandbox access to the file mailbox",
+      "LaunchServices app launching from the new service context",
+      "Application scene rendering, touch/keyboard routing and teardown",
+      "Lock/unlock, orientation, process death and watchdog integration",
+      "Keep mode beyond fifteen seconds and lock-transition frame exposure",
+      "New full-scene passthrough drawer pixels/input, left/right gestures and Settings PreferenceLoader discovery/live controls/favorite editor on iOS",
+      "Dopamine and ElleKit runtime compatibility",
+      "vphone-cli: no compatible physical Apple Silicon Mac is accessible"
+    ],
+    "floating_application_hosting_implemented": "RC6 content/touch/scroll were confirmed. RC7 module injection, state transport and owned-session detection were observed, but it refused when the old root no longer matched (phase4/flags147). RC8 preserves exact window identity and validates current UIKit root ownership rather than reinstalling old UI state; visible return is untested.",
+    "prior_device_baseline": "RC3 supplied reports: four source-independent kept sessions (Safari118.583783s, Files10.076879s, Calendar282.295437s, Safari7.937405s), all closed/unpinned/unpoisoned with controller/workspace invalidations returned and replacement allowed. Interface received47 public keyboard events and manualNubCount1; all15 retained post-startup samples are hidden/not-adjusted, so visible movement/restoration is not demonstrated and older discarded observations are unknown. User requested correction of first-touch/pull app opening and reported unverified-window-support refusals for Messages/Messenger; neither app appears in the supplied host/capability files. RC2 Safari: user confirmed visible page, web navigation, keyboard and X; three source-independent scenes with active nonempty layers, Keep, sampled headerless drawer geometry and clean own controller/workspace teardown. Source1392af09d382be746ea8ece2a86380a1914fef29 is preserved as the scoped stable baseline. Process termination before launch and global compatibility are not established. RC1 Safari report: manual close after34.83s in Keep;7completed resizes/3moves; clean own controller/workspace cleanup. User reports RC1 works. 0.17.0 Files named-configuration admission/rendering with two clean default-timeout sessions;0.16.0 Calendar programmatic owned-window/kept/minimize/restore/resize/manual/default-timeout;0.15.0 own favorites store read/long-press access with1favorite;0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.",
+    "dopamine_ellekit_compatibility_confirmed": false,
+    "final_candidate": false,
+    "rc8_scope": "Exact same captured UIWindow is preserved; only the current root actually owned by that window may travel back. No old root is reinstalled. Schema2/channelv2 distinguishes legitimate root replacement from old root-mismatch refusal. Bounded handoff retention/polling and all exact-profile/owner/lock/target gates remain. Actual return remains a phone gate.",
+    "rc7_scope": "Exact-profile Messenger-only public UIKit companion conditionally returns only the same original UIWindow/root from an exact PPO-prefix disconnected session to its still-connected original scene. No screenshots, focus/key-window request or direct FBScene mutation. Bounded state telemetry via libnotify. Trial refuses missing/stale companion readiness. Actual public session-name mapping, migration and restored pixels require the phone.",
+    "rc6_scope": "Exact installed Messenger585.0.0/build1101076820 plist SHA256 profile only, unknown/eligible=false proof with explicit warm-trial admission. Unique normal existing foreground source/layers required, no cold fallback; same verified owned-child API, automatic15s close,8s render deadline, no Keep/resize/minimize. No Messenger runtime success is inferred.",
+    "rc5_scope": "Read-only Messenger missing-manifest source observation only; no Messenger hosting authorization or fix. No launch/create/activate/present/mutation; max4 explicit snapshots per SpringBoard process,2 retained. Existing floating windows remain implemented.",
+    "emergency_disable": "Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested."
+  },
+  "independentInspection": {
+    "commit": "e92284e6e2679cfc11235273da367b5a32dc50a1",
+    "zipSHA256": "28bcb30cfde51e83bf482e4a1f2774eab30df157acc53d3f1dd3e38b86545fbc",
+    "debSHA256": "6a2784f8a3194220669a96a68e2cfdbec10ea42799c957d73477f48f70632c69",
+    "successfulSuites": 37,
+    "binaryChecks": {
+      "var/jb/Library/MobileSubstrate/DynamicLibraries/PPOMessengerReturnAgent.dylib": "arm64+arm64e; production metadata policy present",
+      "var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverProDiagnostic.dylib": "arm64+arm64e; production metadata policy present",
+      "var/jb/Library/PreferenceBundles/PullOverProPortPreferences.bundle/PullOverProPortPreferences": "arm64+arm64e; expected preference domain/controller present",
+      "var/jb/usr/bin/ppo-bridge": "arm64+arm64e; production metadata policy present"
+    }
+  },
+  "additionalBinaryInspection": {
+    "checkedBinaries": {
+      "var/jb/Library/MobileSubstrate/DynamicLibraries/PPOMessengerReturnAgent.dylib": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverProDiagnostic.dylib": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/Library/PreferenceBundles/PullOverProPortPreferences.bundle/PullOverProPortPreferences": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/usr/bin/ppo-apps": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/usr/bin/ppo-bridge": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/usr/bin/ppo-open": [
+        "0x0",
+        "0x80000002"
+      ]
+    },
+    "runtimeTest": false,
+    "signatureTrustVerified": false
+  },
+  "linuxEvidence": {
+    "commit": "e92284e6e2679cfc11235273da367b5a32dc50a1",
+    "host": "ubuntu-22.04",
+    "portableSuitesPassed": 12,
+    "sourceAndLifecyclePassed": true,
+    "crossTargetStaticAnalysis": true,
+    "abiProbe": {
+      "cpuSubtype": "0x2",
+      "requiredSubtype": "0x80000002",
+      "supportsRequiredABI": false,
+      "headerPatchingAllowed": false,
+      "packageBuildAllowed": false
+    },
+    "rootlessCrossBuild": false,
+    "macOSObjectiveCTestsExecuted": false,
+    "full37SuiteValidation": false,
+    "deviceRuntimeTested": false,
+    "dopamineEllekitCompatibilityConfirmed": false,
+    "installRecommendation": false,
+    "limitations": [
+      "macOS native fixtures await hosted runner",
+      "Toolchain version alone does not prove arm64e ABI compatibility",
+      "No package when arm64e ABI probe is unsupported",
+      "UIKit scene return needs real device"
+    ]
+  },
+  "localEvidence": {
+    "portableSuites": 12,
+    "portableAssertions": 4843140,
+    "lifecycleChecks": 46,
+    "crossAnalyzedFiles": 32
+  },
+  "deviceRuntimeTested": false,
+  "messengerOriginalUIRestorationConfirmed": false,
+  "dopamineEllekitCompatibilityConfirmed": false,
+  "requiredDeviceGate": "Manual install/respring; manually close/reopen Messenger to load v2; immediately open one timed PPO window, wait for expiry and two seconds, observe original UI/touch; host-1.0.7.json",
+  "knownLimits": [
+    "During-trial black original surface may remain",
+    "Logical window return is not visual/input proof",
+    "Only exact reviewed Messenger585 profile and firmware are admitted",
+    "No general app/platform compatibility claim"
+  ],
+  "retainedGuards": [
+    "exact original UIWindow/current public root ownership",
+    "v2 transport/freshness/no replay",
+    "foreground warm source only",
+    "15second trial/no Keep/no cold fallback",
+    "strict owned child/proxy/workspace cleanup and quarantine"
+  ]
+}
