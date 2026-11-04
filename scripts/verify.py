@@ -56,9 +56,10 @@ for pattern in (r'%hook\b', r'%init\b', r'valueForKey:', r'method_getImplementat
 return_agent = (ROOT / 'PPOMessengerReturnAgent.mm').read_text()
 for token in ['objc_msgSend', 'NSSelectorFromString', 'NSClassFromString', 'method_getImplementation',
               'performSelector', 'makeKeyAndVisible', 'makeKeyWindow', 'becomeFirstResponder',
-              '%hook', 'setForeground', 'updateSettings', 'writeToFile', 'snapshotView', 'UIGraphics']:
+              '%hook', 'setForeground', 'updateSettings', 'writeToFile', 'snapshotView', 'UIGraphics', 'setRootViewController:']:
     require(token not in return_agent, 'Unexpected Messenger agent operation: ' + token)
-require('window.windowScene=target' in return_agent and 'rootViewController==_primaryRoot' in return_agent and
+require(not re.search(r'\.rootViewController\s*=(?!=)', return_agent), 'Agent must not assign a root controller')
+require('window.windowScene=target' in return_agent and 'CurrentRootOwned(window)' in return_agent and 'window==_handoffWindow' in return_agent and
         'com.renatasy83.ppo.scene.' in return_agent and 'CC_SHA256' in return_agent,
         'App-side restoration requires exact original window/root, owned session and profile')
 require(re.sub(r'\s+', '', (ROOT / 'PPOMessengerReturnAgent.plist').read_text()) ==
@@ -358,7 +359,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.6~rc7', 'Unexpected version')
+    require(field('Version') == '1.0.7~rc8', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')

@@ -326,7 +326,7 @@ static NSArray<NSArray<NSDictionary *> *> *PPOSettingsRows(void) {
                 @{@"title": @"Evită tastatura mută temporar doar mânerul și comutatorul de aplicații într-o zonă liberă când se suprapun cu tastatura. Poziția memorată revine când tastatura dispare; dimensiunea ferestrei aplicației nu se schimbă.", @"kind": @"info"},
                 @{@"title": @"Favoritele se aleg și se reordonează pe această pagină sau în lista de aplicații PPO. Lista și favoritele existente sunt păstrate.", @"kind": @"info"},
                 @{@"title": @"Recuperare: creează /var/mobile/.ppo_disable și fă respring. Dacă SpringBoard nu pornește, dezactivează tweak injection în Dopamine și dezinstalează doar PPO.", @"kind": @"info"},
-                @{@"title": @"PullOver Pro · 1.0.6 RC7\nOriginal: c1d3r / Will Smillie\nPort: Renatasy83 · GPL-3.0", @"kind": @"info"},
+                @{@"title": @"PullOver Pro · 1.0.7 RC8\nOriginal: c1d3r / Will Smillie\nPort: Renatasy83 · GPL-3.0", @"kind": @"info"},
                 @{@"title": @"Cod sursă și licență", @"kind": @"source"}
             ]
         ];

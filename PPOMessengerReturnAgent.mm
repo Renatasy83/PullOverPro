@@ -50,16 +50,23 @@ static BOOL Owned(UIWindowScene *scene) {
     return [name hasPrefix:prefix] && name.length==prefix.length+36 &&
         [[NSUUID alloc] initWithUUIDString:[name substringFromIndex:prefix.length]]!=nil;
 }
+// Observe UIKit's current ownership; never assign a root controller or force-load its view.
+static BOOL CurrentRootOwned(UIWindow *window) {
+    UIViewController *root=window.rootViewController;
+    return window && root && root.parentViewController==nil && root.viewIfLoaded && root.viewIfLoaded.window==window;
+}
 @interface PPOMessengerReturnAgent:NSObject
 - (void)publish;
 - (void)sample;
 - (void)restoreAfterDisconnect:(UIWindowScene *)scene;
 - (void)disconnect:(NSNotification *)notification;
 - (void)stopTimer;
+- (void)startTimer;
 - (void)event:(NSNotification *)notification;
 @end
 @implementation PPOMessengerReturnAgent {
     __weak UIWindow *_primaryWindow;
+    UIWindow *_handoffWindow; // Exact captured object, retained only through the bounded disconnect handoff.
     __weak UIWindowScene *_primaryScene;
     __weak UIViewController *_primaryRoot;
     __weak UIWindowScene *_movedScene;
@@ -93,7 +100,7 @@ static BOOL Owned(UIWindowScene *scene) {
         BOOL ownedConnected=NO;
         for (UIScene *scene in app.connectedScenes) if (Owned((UIWindowScene *)scene)) { ownedConnected=YES;_state.flags|=2; }
         // A legitimate app root replacement before any PPO connection becomes
-        // the current baseline. Never adopt a changed root during the trial.
+        // the comparison baseline. Never assign that old root back to a window.
         if (_state.phase==PPOReturnPhase::Captured && !ownedConnected && !(_state.flags&2) &&
             _primaryWindow.windowScene==_primaryScene && _primaryWindow.rootViewController)
             _primaryRoot=_primaryWindow.rootViewController;
@@ -103,11 +110,14 @@ static BOOL Owned(UIWindowScene *scene) {
         }
         if (_state.phase==PPOReturnPhase::Captured && Owned(_primaryWindow.windowScene)) {
             UIWindowScene *current=_primaryWindow.windowScene;
-            if (_state.migration(true,_primaryWindow && _primaryRoot && _primaryWindow.rootViewController==_primaryRoot,current!=_primaryScene))
-                _movedScene=current;
+            UIWindow *window=_primaryWindow;
+            if (_state.migration(true,window!=nil,CurrentRootOwned(window),current!=_primaryScene,
+                !_primaryRoot || window.rootViewController!=_primaryRoot)) {
+                _movedScene=current;_handoffWindow=window;[self startTimer];
+            }
         }
-        if (_state.phase==PPOReturnPhase::Restored && _needsUnhide && _primaryWindow && _primaryRoot &&
-            _primaryWindow.windowScene==_primaryScene && _primaryWindow.rootViewController==_primaryRoot &&
+        if (_state.phase==PPOReturnPhase::Restored && _needsUnhide && _primaryWindow &&
+            _primaryWindow.windowScene==_primaryScene && CurrentRootOwned(_primaryWindow) &&
             app.applicationState==UIApplicationStateActive && app.protectedDataAvailable &&
             _primaryScene.activationState==UISceneActivationStateForegroundActive) {
             _primaryWindow.hidden=_originalHidden;_needsUnhide=NO;_state.flags&=~32u;
@@ -119,15 +129,18 @@ static BOOL Owned(UIWindowScene *scene) {
     if (!Owned(closed) || (_movedScene && closed!=_movedScene)) return;
     [self sample];
     UIWindow *window=_primaryWindow;UIWindowScene *target=_primaryScene;
-    BOOL safe=_state.canRestore(closed==_movedScene,window!=nil,_primaryRoot && window.rootViewController==_primaryRoot,
+    BOOL safe=_state.canRestore(closed==_movedScene,window && window==_handoffWindow,CurrentRootOwned(window),
         target && [UIApplication.sharedApplication.connectedScenes containsObject:target],
         target && !Owned(target) && [target.session.role isEqual:UIWindowSceneSessionRoleApplication],
         target && target.screen==closed.screen,window && (!window.windowScene || window.windowScene==closed));
     if (safe) @try {
         // Public UIKit API, inside Messenger, only its exact previously tracked window.
         // Do not request a key window, app activation, input focus or change any FBScene.
-        window.hidden=YES; window.windowScene=target;
-        BOOL verified=window.windowScene==target && _primaryRoot && window.rootViewController==_primaryRoot;
+        BOOL visibilityAllowed=UIApplication.sharedApplication.applicationState==UIApplicationStateActive &&
+            UIApplication.sharedApplication.protectedDataAvailable && target.activationState==UISceneActivationStateForegroundActive;
+        if (!visibilityAllowed) window.hidden=YES;
+        window.windowScene=target;
+        BOOL verified=window.windowScene==target && CurrentRootOwned(window);
         _needsUnhide=verified;
         if (verified && UIApplication.sharedApplication.applicationState==UIApplicationStateActive &&
             UIApplication.sharedApplication.protectedDataAvailable && target.activationState==UISceneActivationStateForegroundActive)
@@ -148,26 +161,37 @@ static BOOL Owned(UIWindowScene *scene) {
     __weak PPOMessengerReturnAgent *weakSelf=self;
     dispatch_async(dispatch_get_main_queue(),^{ [weakSelf restoreAfterDisconnect:closed]; });
 }
-- (void)stopTimer { if (_timer) { dispatch_source_cancel(_timer);_timer=nil; } }
-- (void)event:(NSNotification *)notification {
-    [self sample];
-    UIWindowScene *scene=[notification.object isKindOfClass:UIWindowScene.class]?notification.object:nil;
-    if (Owned(scene) && !_timer && _state.phase==PPOReturnPhase::Captured) {
-        _state.flags|=2;_deadline=NSProcessInfo.processInfo.systemUptime+20;
+- (void)stopTimer {
+    if (_timer) { dispatch_source_cancel(_timer);_timer=nil; }
+    _handoffWindow=nil;
+}
+- (void)startTimer {
+    if (_timer) return;
+        _deadline=NSProcessInfo.processInfo.systemUptime+20;
         _timer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_get_main_queue());
-        if (!_timer) return;
+        if (!_timer) { _state.phase=PPOReturnPhase::Refused;_state.flags|=128;_handoffWindow=nil;[self publish];return; }
         __weak PPOMessengerReturnAgent *weakSelf=self;
         dispatch_source_set_timer(_timer,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/4),NSEC_PER_SEC/4,NSEC_PER_MSEC*25);
         dispatch_source_set_event_handler(_timer,^{
             PPOMessengerReturnAgent *agent=weakSelf;if (!agent) return;[agent sample];
-            if (NSProcessInfo.processInfo.systemUptime>=agent->_deadline) [agent stopTimer];
+            if (NSProcessInfo.processInfo.systemUptime>=agent->_deadline) {
+                if (agent->_state.phase!=PPOReturnPhase::Restored) { agent->_state.phase=PPOReturnPhase::Refused;agent->_state.flags|=128; }
+                [agent stopTimer];[agent publish];
+            }
         });dispatch_resume(_timer);
+
+}
+- (void)event:(NSNotification *)notification {
+    [self sample];
+    UIWindowScene *scene=[notification.object isKindOfClass:UIWindowScene.class]?notification.object:nil;
+    if (Owned(scene) && (_state.phase==PPOReturnPhase::Captured || _state.phase==PPOReturnPhase::Migrated)) {
+        _state.flags|=2;[self startTimer];
     }
     [self publish];
 }
 - (instancetype)init {
     if (!(self=[super init])) return nil;
-    _token=-1;if (notify_register_check("com.renatasy83.ppo.messenger.return.v1",&_token)!=NOTIFY_STATUS_OK) return nil;
+    _token=-1;if (notify_register_check("com.renatasy83.ppo.messenger.return.v2",&_token)!=NOTIFY_STATUS_OK) return nil;
     [self publish];
     NSNotificationCenter *center=NSNotificationCenter.defaultCenter;NSMutableArray *tokens=[NSMutableArray array];
     __weak PPOMessengerReturnAgent *weakSelf=self;
