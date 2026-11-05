@@ -66,6 +66,8 @@ require('_state.prepare(true' in return_agent and 'window.isKeyWindow && !window
         '!_timer && !_handoffWindow && !_needsUnhide' in return_agent and
         'acceptsDisconnect(ticket' in return_agent and 'notify_register_dispatch' in return_agent,
         'Repeat readiness needs explicit notification, settled original UI and generation/scene checks')
+require('acceptsTimer(timerGeneration,agent->_timer && agent->_deadline==timerDeadline)' in return_agent,
+        'Cancelled or previous-generation timer callback must not mutate a later trial')
 return_client = (ROOT / 'PPOMessengerReturn.mm').read_text()
 require('PollPrepared(20,completion)' in return_client and 'NSEC_PER_MSEC*50' in return_client and
         'dispatch_after' in return_client and 'return.prepare.v3' in return_client and

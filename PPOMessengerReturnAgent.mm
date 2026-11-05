@@ -198,9 +198,13 @@ static BOOL CurrentRootOwned(UIWindow *window) {
         _timer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_get_main_queue());
         if (!_timer) { _state.phase=PPOReturnPhase::Refused;_state.flags|=128;_handoffWindow=nil;[self publish];return; }
         __weak PPOMessengerReturnAgent *weakSelf=self;
+        uint64_t timerGeneration=_state.generation;
+        double timerDeadline=_deadline;
         dispatch_source_set_timer(_timer,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC/4),NSEC_PER_SEC/4,NSEC_PER_MSEC*25);
         dispatch_source_set_event_handler(_timer,^{
-            PPOMessengerReturnAgent *agent=weakSelf;if (!agent) return;[agent sample];
+            PPOMessengerReturnAgent *agent=weakSelf;
+            if (!agent || !agent->_state.acceptsTimer(timerGeneration,agent->_timer && agent->_deadline==timerDeadline)) return;
+            [agent sample];
             if (NSProcessInfo.processInfo.systemUptime>=agent->_deadline) {
                 if (agent->_state.phase!=PPOReturnPhase::Restored) { agent->_state.phase=PPOReturnPhase::Refused;agent->_state.flags|=128; }
                 [agent stopTimer];[agent publish];

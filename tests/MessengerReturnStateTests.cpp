@@ -56,6 +56,7 @@ int main() {
     PPOReturnState repeat;repeat.capture(true,true);
     for (unsigned cycle=0;cycle<100;cycle++) {
         uint64_t ticket=repeat.generation;
+        Check(repeat.acceptsTimer(ticket,true) && !repeat.acceptsTimer(ticket,false),"cancelled timer callback cannot act even in same generation");
         Check(!repeat.acceptsDisconnect(ticket,true,false),"stale/foreign closing scene rejected before migration");
         Check(repeat.acceptsDisconnect(ticket,false,true),"exact captured window may identify its actual closing scope");
         Check(repeat.migration(true,true,true,true,false),"fresh cycle migration");
@@ -64,6 +65,7 @@ int main() {
         Check(!repeat.acceptsDisconnect(ticket,true,true),"duplicate callback after completion rejected");
         Check(repeat.prepare(true,true,true,true,true,true,true,true),"explicit verified repeat preparation");
         Check(!repeat.acceptsDisconnect(ticket,true,true),"queued previous-generation callback rejected after rearm");
+        Check(!repeat.acceptsTimer(ticket,true) && repeat.acceptsTimer(repeat.generation,true),"old timer callback cannot expire or cancel the next cycle");
         Check(!repeat.acceptsDisconnect(repeat.generation,true,false),"old notification arriving after rearm rejected by scene/window association");
         Check(PPOReturnReady(repeat.packed(500),500),"repeat readiness freshly published");
     }
