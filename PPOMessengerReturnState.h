@@ -47,12 +47,12 @@ struct PPOReturnState {
     } }
     uint64_t packed(double now) const {
         if (!std::isfinite(now) || now<0 || now>4294967295.0) return 0;
-        return (uint64_t(0x5050)<<48)|(uint64_t(3)<<44)|(uint64_t(phase)<<40)|
+        return (uint64_t(0x5050)<<48)|(uint64_t(4)<<44)|(uint64_t(phase)<<40)|
             (uint64_t(flags&255)<<32)|uint64_t(now);
     }
 };
 static inline bool PPOReturnReady(uint64_t value,double now) {
-    return (value>>48)==0x5050 && ((value>>44)&15)==3 &&
+    return (value>>48)==0x5050 && ((value>>44)&15)==4 &&
         ((value>>40)&15)==unsigned(PPOReturnPhase::Captured) && ((value>>32)&1) && !((value>>32)&2) &&
         std::isfinite(now) && now>=double(uint32_t(value)) && now-double(uint32_t(value))<=30;
 }

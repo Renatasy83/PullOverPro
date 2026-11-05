@@ -70,9 +70,12 @@ require('acceptsTimer(timerGeneration,agent->_timer && agent->_deadline==timerDe
         'Cancelled or previous-generation timer callback must not mutate a later trial')
 require('acceptsScopeEvent([UIApplication.sharedApplication.connectedScenes containsObject:scene])' in return_agent,
         'Old disconnected activation/deactivation notification must not consume new readiness')
+require('PPOMessengerKeepPolicy::CompanionMaximumSeconds' in return_agent and
+        'com.renatasy83.ppo.messenger.return.v4' in return_agent,
+        'Long bounded Keep requires the coordinated v4 companion, never old20second helper')
 return_client = (ROOT / 'PPOMessengerReturn.mm').read_text()
 require('PollPrepared(20,completion)' in return_client and 'NSEC_PER_MSEC*50' in return_client and
-        'dispatch_after' in return_client and 'return.prepare.v3' in return_client and
+        'dispatch_after' in return_client and 'return.prepare.v4' in return_client and
         'dispatch_semaphore_wait' not in return_client and 'dispatch_sync' not in return_client,
         'Explicit prepare wait must be asynchronous and bounded; never block SpringBoard')
 require('self.messengerPreparationIntent==intent' in (ROOT / 'Tweak.xm').read_text(),
@@ -295,6 +298,11 @@ require('self.cleanupPolls >= 8' in owned_trial and 'NSEC_PER_SEC / 4' in owned_
         '_lifetime.evaluate(conditions)' in owned_trial and
         '_lifetime.keep(conditions)' in owned_trial,
         'Guarded explicit Keep policy and bounded asynchronous cleanup required')
+require(owned_trial.index('_messengerBudget.start(') < owned_trial.index('[self.session prepareScene:') and
+        '_messengerBudget.evaluate(conditions.now)' in owned_trial and 'messenger-session-limit' in owned_trial and
+        'Păstrează (max. 2 min)' in owned_trial and 'children:self.messengerTrial?@[keep]:@[keep, minimize]' in owned_trial and
+        'if (!self.messengerTrial && !self.opening && !self.keepPreferenceAttempted' in owned_trial,
+        'Messenger Keep must start its absolute cap before prepare, remain explicit, omit minimize and retain all safety checks')
 lifetime = (ROOT / 'PPOWindowLifetime.h').read_text()
 require('TimedSeconds = 15.0' in lifetime and 'ActivationGraceSeconds = 2.0' in lifetime and
         'if (!kept_ && elapsed >= TimedSeconds)' in lifetime,
@@ -374,7 +382,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.8~rc9', 'Unexpected version')
+    require(field('Version') == '1.0.9~rc10', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')

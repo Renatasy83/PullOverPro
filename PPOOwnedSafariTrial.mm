@@ -14,6 +14,7 @@
 #include "PPOEdgeDrawerGeometry.h"
 #include "PPOClassicInterfaceGeometry.h"
 #include "PPOWindowLifetime.h"
+#include "PPOMessengerKeepPolicy.h"
 #import <objc/runtime.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -195,6 +196,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 @end
 @implementation PPOOwnedSafariTrial {
     PPOWindowLifetime _lifetime;
+    PPOMessengerKeepPolicy _messengerBudget;
     PPOFloatingSize _sizePreset;
     PPOFloatingWindowPresentation _presentation;
 }
@@ -313,10 +315,12 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.8~rc9",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.9~rc10",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"messengerReturnHelper":self.messengerTrial?PPOMessengerReturnSnapshot():@{},
         @"messengerWarmTrial":@(self.messengerTrial), @"messengerRenderDeadline":@(self.messengerRenderDeadline),
+        @"messengerMaximumSeconds":@(self.messengerTrial?PPOMessengerKeepPolicy::MaximumSeconds:0),
+        @"messengerAbsoluteDeadline":@(self.messengerTrial?_messengerBudget.deadline():0),
         @"replacementAllowed": @(self.replacementAllowed), @"coldPreparation": @(self.coldStart),
         @"activationGraceSeconds": @(self.coldStart ? PPOWindowLifetime::ColdActivationGraceSeconds : PPOWindowLifetime::ActivationGraceSeconds),
         @"coldRenderObserved": @(_lifetime.observedRendered()),
@@ -364,11 +368,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.8.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.9.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.8] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.9] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -432,12 +436,20 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         if (!self.running || self.closed || self.closing || self.closePending) return NO;
         conditions.renderReady = [self.lastSourceSample[@"status"] isEqual:@"sampled"] &&
             [self.lastSourceSample[@"layerCount"] unsignedIntegerValue] > 0;
-        if (self.messengerTrial && !conditions.renderReady && probeNow>=self.messengerRenderDeadline) {
+        if (self.messengerTrial) conditions.now=NSProcessInfo.processInfo.systemUptime;
+        if (self.messengerTrial && !conditions.renderReady && conditions.now>=self.messengerRenderDeadline) {
             [self closeBecause:@"messenger-render-timeout"]; return NO;
         }
         PPOWindowStop stop = _lifetime.evaluate(conditions);
         if (_lifetime.observedRendered()) [self.startupSpinner stopAnimating];
         if (stop != PPOWindowStop::None) { [self closeBecause:PPOWindowStopName(stop)]; return NO; }
+        if (self.messengerTrial) {
+            PPOMessengerKeepStop budget=_messengerBudget.evaluate(conditions.now);
+            if (budget!=PPOMessengerKeepStop::None) {
+                [self closeBecause:budget==PPOMessengerKeepStop::Limit?@"messenger-session-limit":@"messenger-budget-clock-invalid"];
+                return NO;
+            }
+        }
         if (!CGSizeEqualToSize(self.windowScene.coordinateSpace.bounds.size, self.fallbackNativeFrame.size)) {
             [self closeBecause:@"geometry-changed"]; return NO;
         }
@@ -461,10 +473,20 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 }
 - (void)keepFromButton:(UIButton *)sender {
     (void)sender;
-    if (self.messengerTrial || !NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing || self.closePending) return;
+    if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing || self.closePending) return;
     @try {
         if (![self checkLifetime]) return;
         PPOWindowConditions conditions = [self lifetimeConditions];
+        if (self.messengerTrial) {
+            [self sampleObservations];
+            conditions=[self lifetimeConditions];
+            conditions.now=NSProcessInfo.processInfo.systemUptime;
+            conditions.renderReady=[self.lastSourceSample[@"status"] isEqual:@"sampled"] &&
+                [self.lastSourceSample[@"layerCount"] unsignedIntegerValue]>0;
+            if (!conditions.renderReady || _messengerBudget.evaluate(conditions.now)!=PPOMessengerKeepStop::None) {
+                [self record:@"messenger-keep-refused"];return;
+            }
+        }
         if (!self.running || self.closed || self.closing || self.closePending) return;
         if (!_lifetime.keep(conditions)) { [self checkLifetime]; return; }
         [self updateActionsMenu];
@@ -476,16 +498,18 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     }
 }
 - (void)updateActionsMenu {
-    if (self.messengerTrial) { self.actionsButton.menu=nil; self.actionsButton.enabled=NO; return; }
+    self.actionsButton.enabled=YES;
     __weak PPOOwnedSafariTrial *weakSelf = self;
-    UIAction *keep = [UIAction actionWithTitle:_lifetime.kept() ? @"Păstrată" : @"Păstrează"
+    NSString *keepTitle=self.messengerTrial?(_lifetime.kept()?@"Păstrată (max. 2 min)":@"Păstrează (max. 2 min)"):
+        (_lifetime.kept()?@"Păstrată":@"Păstrează");
+    UIAction *keep = [UIAction actionWithTitle:keepTitle
         image:nil identifier:nil handler:^(__kindof UIAction *action) {
             (void)action; dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf keepFromButton:nil]; });
         }];
     if (_lifetime.kept()) { keep.attributes = UIMenuElementAttributesDisabled; keep.state = UIMenuElementStateOn; }
     UIAction *minimize = [UIAction actionWithTitle:@"Minimizează" image:nil identifier:nil
         handler:^(__kindof UIAction *action) { (void)action; dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf minimizeFromButton:nil]; }); }];
-    self.actionsButton.menu = [UIMenu menuWithTitle:@"" children:@[keep, minimize]];
+    self.actionsButton.menu = [UIMenu menuWithTitle:@"" children:self.messengerTrial?@[keep]:@[keep, minimize]];
     self.actionsButton.showsMenuAsPrimaryAction = YES;
 }
 - (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier
@@ -585,6 +609,10 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
             Class cls = objc_lookUpClass(name.UTF8String);
             if (cls) classes[name] = cls;
         }
+        // Start the absolute Messenger budget BEFORE any owned scene is created.
+        // Keep never restarts this budget or extends the companion observation cap.
+        if (self.messengerTrial && !_messengerBudget.start(NSProcessInfo.processInfo.systemUptime))
+            return @"Limita ferestrei Messenger nu poate fi inițializată";
         self.session = [[PPOOwnedSceneHost alloc] initWithClasses:classes];
         [self record:@"prepare-requested"];
         if (self.closePending || !PPOTrialAllowed() ||

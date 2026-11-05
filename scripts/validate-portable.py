@@ -32,6 +32,6 @@ for source in sorted((root / "tests").glob("*.cpp")):
     results.append(result)
     print(json.dumps(result), flush=True)
 (args.output / "portable-results.json").write_text(json.dumps(results, indent=2) + "\n")
-if len(results) != 12 or any(r["compileExit"] != 0 or r["testExit"] != 0 for r in results):
+if len(results) != 13 or any(r["compileExit"] != 0 or r["testExit"] != 0 for r in results):
     raise SystemExit("Portable fixtures failed or suite inventory changed; inspect logs")
-print("Portable suites passed: 12; macOS Objective-C/UIKit execution not performed")
+print("Portable suites passed: 13; macOS Objective-C/UIKit execution not performed")

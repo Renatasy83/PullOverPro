@@ -6,6 +6,7 @@
 #include <cstring>
 #import "PPOSceneCapability.h"
 #include "PPOMessengerReturnState.h"
+#include "PPOMessengerKeepPolicy.h"
 
 static BOOL AgentUIKitMatches(void) {
     const char *suffix="/UIKitCore.framework/UIKitCore";
@@ -194,7 +195,7 @@ static BOOL CurrentRootOwned(UIWindow *window) {
 }
 - (void)startTimer {
     if (_timer) return;
-        _deadline=NSProcessInfo.processInfo.systemUptime+20;
+        _deadline=NSProcessInfo.processInfo.systemUptime+PPOMessengerKeepPolicy::CompanionMaximumSeconds;
         _timer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_get_main_queue());
         if (!_timer) { _state.phase=PPOReturnPhase::Refused;_state.flags|=128;_handoffWindow=nil;[self publish];return; }
         __weak PPOMessengerReturnAgent *weakSelf=self;
@@ -223,11 +224,11 @@ static BOOL CurrentRootOwned(UIWindow *window) {
 - (instancetype)init {
     if (!(self=[super init])) return nil;
     _token=-1;_prepareToken=-1;
-    if (notify_register_check("com.renatasy83.ppo.messenger.return.v3",&_token)!=NOTIFY_STATUS_OK) return nil;
+    if (notify_register_check("com.renatasy83.ppo.messenger.return.v4",&_token)!=NOTIFY_STATUS_OK) return nil;
     [self publish];
     NSNotificationCenter *center=NSNotificationCenter.defaultCenter;NSMutableArray *tokens=[NSMutableArray array];
     __weak PPOMessengerReturnAgent *weakSelf=self;
-    if (notify_register_dispatch("com.renatasy83.ppo.messenger.return.prepare.v3",&_prepareToken,
+    if (notify_register_dispatch("com.renatasy83.ppo.messenger.return.prepare.v4",&_prepareToken,
         dispatch_get_main_queue(),^(int token){ (void)token;[weakSelf prepareForExplicitRequest]; })!=NOTIFY_STATUS_OK) {
         notify_cancel(_token);_token=-1;return nil;
     }

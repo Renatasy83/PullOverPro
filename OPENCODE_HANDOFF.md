@@ -1,3 +1,17 @@
+# RC10 bounded Messenger Keep — implementation/CI pending (2026-11-05)
+
+User confirmed RC9 repeated timed Messenger windows work; uploaded two clean15.025650/15.024213s sessions, schema3 phase3 flags31/15, original current-root gates/return readback and own cleanup. First bit16 proves absent/different old baseline, not which case. Same-process continuity is procedural user context, not independent PID evidence. See RC9_MESSENGER_DEVICE_RESULT.md. Preserve verified RC9 source d183e1b/archive3a1eecdbffba0c576ea7790af541bb2db68b192c/SHAfd50b7bcf8671903733f574a5103d5dc4786d8eab25e9b96121cdea32fe0a502.
+
+New1.0.9~rc10: explicit Messenger-only "Păstrează (max. 2 min)", normal15second default unchanged. New non-resettable120second root budget starts BEFORE owned allocation/prepare, fresh rendered/lifetime/time gates before Keep, all existing safety stop conditions retained. Companion125second scope observation (shared constant, starts later than root) provides nominal5second cleanup margin. No promise of frozen/private callback timing. Schema4/v4 isolates old20second v3 helper. Manual Messenger Keep only; global preference ignored, cold/resize/minimize/pan blocked. No new private API or focus/root reassignment. Read RC10_BOUNDED_MESSENGER_KEEP.md.
+
+Local policy598 ASan/UBSan assertions and state1804 passed; fresh-clock boundary and composed lifetime+budget tests cover default15, long Keep/cap120, late/crossing requests, no restart, locks/disable/invalid scenes, root-before-scope ordering. Modified Agent/client/Logos tweak/owner Clang analysis passed. Full39-suite macOS CI + pinned rootless package validation and13-suite portable Ubuntu evidence are pending, not assumed passed. Deliver ONLY exact final successful source/artifact after independent checks and immutable DEB archive.
+
+NEXT autonomous work: inspect CI, fix actual failures, verify source/report/39 logs/ZIP/DEB/rootless/fat ABI/v4 markers, archive ONE DEB, update handoff. Only then request one necessary real phone gate: initial load v4 via manual install/respring/close-reopen, open one Messenger window, press bounded Keep before15s, check remains usable past20s and auto-close at absolute2min cap, full-screen return, host-1.0.9.json. On refusal exact message/interface instead of loops. No unrelated app retests or redoing confirmed RC9. Do not claim long runtime/unlimited Keep/global compatibility. Main/stable/recovery/GPL preserved; no automatic phone actions.
+
+The RC9 checkpoint below is historical, now confirmed as scoped above and preserved for recovery.
+
+---
+
 # PullOver Pro — current OpenCode/ChatGPT handoff (2026-11-05)
 
 ## Current checkpoint: RC9 ready for one indispensable device gate

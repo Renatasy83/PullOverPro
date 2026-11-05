@@ -7,6 +7,7 @@ import sys
 directory = Path(sys.argv[1])
 commit = sys.argv[2]
 markers = {
+    'messenger-keep-tests.log': 'Messenger bounded Keep policy tests passed:',
     'messenger-prepare-tests.log': 'Messenger prepare client tests passed:',
     'messenger-return-tests.log': 'Messenger return state tests passed:',
     'messenger-trial-tests.log': 'Messenger trial profile tests passed:',
@@ -51,7 +52,7 @@ for name, marker in markers.items():
         raise SystemExit(f'Missing successful test evidence: {name}')
 
 not_run = [
-    'RC9 repeated same-process Messenger windows, explicit companion rearm and stale disconnect handling on actual UIKit',
+    'RC10 bounded120second Messenger Keep, later cleanup/return and v4 request delivery on actual UIKit',
     'RC4 first-touch/inward-pull chooser-only flow, distinct second-tap/row app opening and already-open window toggling on iOS',
     'RC4 bounded per-app refusal history in the actual SpringBoard file-writing context',
     'Messenger app delegate and independent-scene behavior remain unproven; RC5 foreground/background source samples are available and do not prove multiple scenes.',
@@ -77,7 +78,7 @@ report = {
     'package_inspection': 'payload, lifecycle scripts, license and architecture checks passed',
     'sha256sums': (directory / 'SHA256SUMS').read_text().strip(),
     'not_executed': not_run,
-    'floating_application_hosting_implemented': 'RC6 Messenger small-window content/touch/scroll and RC8 full-screen return after timed closure were user-confirmed. RC8 telemetry schema2 phase3/flags15 matched clean own-scene cleanup. RC9 adds explicitly requested guarded rearm for repeat trials, schema3 isolation and generation/scene-bound disconnect rejection; repeated same-process UIKit behavior is untested.',
+    'floating_application_hosting_implemented': 'User confirmed RC9 repeated timed Messenger windows work; supplied two clean15second sessions have schema3 phase3 flags31 then15, including accepted current-root ownership despite changed/absent old root baseline in first. Process continuity is procedural context, not independently authenticated telemetry. RC10 adds explicit bounded Keep with absolute120second root budget and125second companion observation cap under schema4; long UIKit behavior is untested.',
     'prior_device_baseline': 'RC3 supplied reports: four source-independent kept sessions (Safari118.583783s, Files10.076879s, Calendar282.295437s, Safari7.937405s), all closed/unpinned/unpoisoned with controller/workspace invalidations returned and replacement allowed. Interface received47 public keyboard events and manualNubCount1; all15 retained post-startup samples are hidden/not-adjusted, so visible movement/restoration is not demonstrated and older discarded observations are unknown. User requested correction of first-touch/pull app opening and reported unverified-window-support refusals for Messages/Messenger; neither app appears in the supplied host/capability files. RC2 Safari: user confirmed visible page, web navigation, keyboard and X; three source-independent scenes with active nonempty layers, Keep, sampled headerless drawer geometry and clean own controller/workspace teardown. Source1392af09d382be746ea8ece2a86380a1914fef29 is preserved as the scoped stable baseline. Process termination before launch and global compatibility are not established. RC1 Safari report: manual close after34.83s in Keep;7completed resizes/3moves; clean own controller/workspace cleanup. User reports RC1 works. 0.17.0 Files named-configuration admission/rendering with two clean default-timeout sessions;0.16.0 Calendar programmatic owned-window/kept/minimize/restore/resize/manual/default-timeout;0.15.0 own favorites store read/long-press access with1favorite;0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.',
     'dopamine_ellekit_compatibility_confirmed': False,
     'final_candidate': False,

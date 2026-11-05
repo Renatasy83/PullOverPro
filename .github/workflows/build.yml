@@ -186,6 +186,9 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
             tests/MessengerReturnStateTests.cpp -o "$RUNNER_TEMP/ppo-messenger-return-tests"
           "$RUNNER_TEMP/ppo-messenger-return-tests" | tee diagnostics/messenger-return-tests.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            tests/MessengerKeepPolicyTests.cpp -o "$RUNNER_TEMP/ppo-messenger-keep-tests"
+          "$RUNNER_TEMP/ppo-messenger-keep-tests" | tee diagnostics/messenger-keep-tests.log
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fobjc-arc -framework Foundation -framework CoreFoundation \
             -Dnotify_register_check=PPOReturnTestRegister -Dnotify_get_state=PPOReturnTestGet -Dnotify_post=PPOReturnTestPost \
             tests/MessengerPrepareTests.mm PPOMessengerReturn.mm -o "$RUNNER_TEMP/ppo-messenger-prepare-tests"
@@ -353,7 +356,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-1.0.8-rc9-${{ github.sha }}
+          name: PullOverPro-1.0.9-rc10-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

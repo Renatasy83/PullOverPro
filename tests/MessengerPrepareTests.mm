@@ -13,14 +13,14 @@ static void Check(bool value,const char *message) {
     ++checks;if(!value){std::fprintf(stderr,"FAIL: %s\n",message);std::exit(1);}
 }
 extern "C" uint32_t PPOReturnTestRegister(const char *name,int *token) {
-    Check(std::strcmp(name,"com.renatasy83.ppo.messenger.return.v3")==0,"read only versioned companion channel");
+    Check(std::strcmp(name,"com.renatasy83.ppo.messenger.return.v4")==0,"read only versioned companion channel");
     *token=17;return NOTIFY_STATUS_OK;
 }
 extern "C" uint32_t PPOReturnTestGet(int token,uint64_t *value) {
     Check(token==17,"registered token used");*value=published;return NOTIFY_STATUS_OK;
 }
 extern "C" uint32_t PPOReturnTestPost(const char *name) {
-    Check(std::strcmp(name,"com.renatasy83.ppo.messenger.return.prepare.v3")==0,"only explicit prepare channel posted");
+    Check(std::strcmp(name,"com.renatasy83.ppo.messenger.return.prepare.v4")==0,"only explicit prepare channel posted");
     ++posts;return postFails?NOTIFY_STATUS_FAILED:NOTIFY_STATUS_OK;
 }
 static void Pump(double seconds) {

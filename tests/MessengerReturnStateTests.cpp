@@ -35,6 +35,7 @@ int main() {
     PPOReturnState captured;captured.capture(true,true);uint64_t valid=captured.packed(200);
     Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(1)<<44),200),"old v1 root-mismatch semantics cannot authorize v3 trial");
     Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(2)<<44),200),"old one-shot v2 cannot authorize v3 repeat protocol");
+    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(3)<<44),200),"old v3 twenty-second companion cannot authorize bounded long Keep");
     for (unsigned mask=0;mask<256;mask++) {
         PPOReturnState cycle;cycle.capture(true,true);cycle.migration(true,true,true,true,false);cycle.finish(true);
         auto ticket=cycle.generation;
