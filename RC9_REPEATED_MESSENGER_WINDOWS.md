@@ -16,8 +16,10 @@ Schema3/channelsv3 isolate old one-shot v2 loaded components. Manual Messenger c
 
 ## Automation and actual limits
 
+Completed validated build: source d183e1b28caa7c4e1f380decab96608b74ff6cbf, macOS Actions41942732626/job126967316222/artifact13378540672. All38 suites passed, including1803 return-state checks and68 native prepare-client checks; exact DEB and archive are documented in VALIDATION_1.0.8_RC9.md and OPENCODE_HANDOFF.md. The two-cycle device gate below remains untested.
+
 Local ASan/UBSan state fixtures passed1803 assertions: eight-gate combinations, terminal/refusal/deferred/generation-overflow checks,100 repeat cycles and stale disconnect rejection. Modified Agent/client/Logos tweak cross-target Clang analysis passed. A new native macOS client fixture executes actual main-queue scheduling around stubbed notify boundaries, covering fresh capture, delayed acknowledgement, bounded no-ack timeout, stale-capture refresh, active/refused/missing producer and post failure. It does not simulate UIKit or execute real daemon authorization.
 
-Full macOS CI now requires38 suites, analysis, pinned Theos/SDK16.5 rootless arm64+arm64e packaging and payload inspection. Results, source/run/hash/archive are recorded in the handoff only after they actually complete. Ubuntu's existing ABI probe must still skip unsupported packaging; no binary relabeling or weaker checks.
+Full macOS CI completed38 suites, analysis, pinned Theos/SDK16.5 rootless arm64+arm64e packaging and payload inspection. Source/run/hash/archive are recorded in the handoff after independent artifact verification. Ubuntu's existing ABI probe must still skip unsupported packaging; no binary relabeling or weaker checks.
 
 A passing build cannot verify original-window key status, real notify delivery, UIKit session disconnect ordering, repeated input/rendering or locked transitions. Only one required phone test follows full artifact validation: with newly loaded companion, two consecutive timed Messenger PPO windows in the SAME app process, no app-switcher termination between them, observe full-screen recovery after each. Keep remains disabled. Collect host-1.0.8.json; on readiness refusal, retain its exact message and interface-1.0.8.json rather than repeated attempts. No other-app test or personal Data is needed.
