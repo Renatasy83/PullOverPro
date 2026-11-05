@@ -1,3 +1,15 @@
+## RC8 after-timeout Messenger return CONFIRMED by user (2026-11-05)
+
+The user explicitly confirms that, after automatic PPO window closure, the normal full-screen Messenger app displayed normal content and worked; it was not black. This answers the pending visual question for the SAME host-1.0.7 trial. Do not ask to repeat it, treat it as absent, or require another package merely to reconfirm this evidence.
+
+Combined evidence: one warm timed trial15.033808s, schema2 phase3/flags15 (capture/owned scope/accepted migration/public original-window return readback), clean distinct-child/controller/workspace teardown, closed/unpinned/unpoisoned/replacementAllowed=true, AND user-observed visible/working full-screen return. This is scoped RC8 Messenger after-timeout restoration on this reported device/profile. Root replacement was not observed at the accepted check (no16). No claim that every app, repeated same-process trial, manual-X/Keep/resize/minimize, lock/protected transition or general Dopamine/ElleKit compatibility is verified. During-trial original-background duplication remains outside this success claim.
+
+Read updated RC8_MESSENGER_DEVICE_RESULT.md. Existing exact recovery candidate remains e92284e6e2679cfc11235273da367b5a32dc50a1, macOS Actions41903532726/all37 suites, archivead0a2b4703d22e7a29588cbdbb8f15374126c58f, DEBSHA2566a2784f8a3194220669a96a68e2cfdbec10ea42799c957d73477f48f70632c69. Preserve it before any broader runtime/lifecycle changes. Current documentation update adds user evidence only: no runtime/package modification, repeated tests, installation or automatic phone action. Main, existing stable and previous archives remain unchanged.
+
+For subsequent development, fresh-fetch branch/head/handoff for OpenCode cooperation. Review the agent's intentionally consumed one-trial state before broadening repeat/Keep lifecycle; do not silently drop guards or assume existing one-cycle confirmation covers those cases. The older pending-question checkpoints below are historical and superseded by this confirmation.
+
+---
+
 ## RC8 device metadata — logical return succeeded; visual answer pending (2026-11-05)
 
 Latest uploaded host-1.0.7.json has ONE Messenger warm trial. Schema2 helper phase3/flags15 (captured1 + owned-session2 + accepted migration4 + public original-target/current-root return readback8), no refusal/exception/deferred-visibility flags. ready=false is expected after consuming/completing a session. This is newly observed v2 injection/transport/identified migration/public windowScene return+ownership readback, not a visual or input proof. No root replacement observed at the accepted check (no16); do not claim the replacement case was exercised.
