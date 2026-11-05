@@ -1,3 +1,17 @@
+# RC11 public Messenger move/resize — implementation/CI pending
+
+User confirmed existing RC10 over-NewTerm/manualX/laterforeground procedure works. New report's second kept/manual session has originalbg0layers vs ownedactive/nonbg2layers and schema4phase3flags47(deferred32), clean own cleanup/replacementAllowed. User supplies input/NewTerm/no-focus-steal/laternormalappearance observations; frozen flag32 is not a failed return. See RC10_MESSENGER_BACKGROUND_RESULT.md. No redo of that gate. Exact RC10 recovery remains fd8e3b24/archive50b1390a373052f90622b47376a59aaa92c56898/DEBSHAfd4a6aba30a603e5dcbb33efa9c6ee4b19a1aa6fa589e8727597fc685a9c72cf.
+
+New1.0.10~rc11 removes only four Messenger UI restrictions: title pan interaction, pan early return, disabled size button, resize early return. Existing public panel/viewport/wrapper geometry handles movement/scaling; native child dimensions/private scene remain unchanged. Minimize/restore guards and bounded-Keep-only menu, Standard initial size, cold block,120s root/125s agent/v4, profile/firmware/owner/root/cleanup/quarantine/render/lock guards stay. Agent/transport code unchanged; currently loaded v4 companion remains compatible, no protocol-driven app termination needed.
+
+Local13 portable suites/owner Clang/source wiring policy passed. Reuse existing geometry108812/presentation403376/aspect-fit tests; no redundant new geometry fixture. Full39 native suites/analysis/pinned rootless build, exact artifact/ABI/hash/v4/move-resize marker checks and immutable archive still required before giving one DEB. Do not claim transformed app input from pure geometry.
+
+NEXT autonomous work: finish CI, fix failures, verify exact artifact, archive onecandidate, update current handoff. Then ONLY necessary phone gate: install/respring, normalMessenger->PPOKeep->NewTerm; drag by title and cycle3 sizes, check app content/tap/scroll and outside NewTerm input, X then manualMessengernormalforeground. host-1.0.10.json. Stop onblack/refusal/auto close with exactmessage/interface. No other-app or repeated2minute test. No automatic phone actions. Read RC11_MESSENGER_MOVE_RESIZE.md.
+
+Previous checkpoint below is historical; RC10 foreground/background bounded use is now scoped user-confirmed.
+
+---
+
 # PullOver Pro — current OpenCode/ChatGPT handoff (2026-11-05)
 
 ## RC10 bounded Keep and normal return confirmed by user

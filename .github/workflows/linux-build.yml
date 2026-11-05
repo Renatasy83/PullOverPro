@@ -137,7 +137,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-RC10-linux-evidence-${{ github.sha }}
+          name: PullOverPro-RC11-linux-evidence-${{ github.sha }}
           path: |
             diagnostics/*.log
             diagnostics/*.json
@@ -150,6 +150,6 @@ jobs:
         if: steps.package.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-RC10-linux-deb-${{ github.sha }}
+          name: PullOverPro-RC11-linux-deb-${{ github.sha }}
           path: packages/*.deb
           if-no-files-found: error

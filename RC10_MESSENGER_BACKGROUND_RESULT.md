@@ -1,0 +1,29 @@
+# RC10 Messenger over NewTerm — user-confirmed background hosting and later return
+
+The user supplied a new `host-1.0.9.json` and confirmed that it works according to the requested procedure: start over visible Messenger, select bounded Keep, switch to NewTerm, use the small Messenger window and the surrounding app, close PPO with X while NewTerm remains foreground, then manually open Messenger normally. Only aggregate metadata and that scoped user confirmation are recorded here; no raw report, session identifiers, conversations or application Data are published.
+
+The report retains two distinct `1.0.9~rc10` Messenger sessions. Both close with reason `manual`, have a verified proxy matching the created child and not the borrowed original source, returned controller/workspace invalidations, `closed=true`, `pinned=false`, `poisoned=false` and `replacementAllowed=true`. Neither reports a preparation failure or a request to mutate the borrowed FBScene.
+
+## Retained sessions and timing
+
+The first session is timed. Its retained `window-shown` at82850.44703958333 and `close-returned` at82854.18723025 give approximately3.740191seconds between those events. Its last original sample is active/not backgrounded with2layers; the hosted child is active/not backgrounded with1layer. Helper schema4/phase3/flags31 records capture1 + owned-scope2 + accepted migration4 + public return/current-root readback8 + absent/different weak-root baseline16. Bit16 does not distinguish baseline release from replacement. This short session is not the background evidence.
+
+The second session is kept and manually closed. `messengerMaximumSeconds=120` and absolute deadline83045.91231533333 derive pre-prepare budget start82925.91231533333. The explicit `kept-by-user` event at82928.46334054167 is approximately2.551025seconds after that start. `close-returned` at82941.35855516668 is approximately15.446240seconds from budget start and12.895215seconds after Keep. It was manually closed before the absolute cap; this is not another measurement of the two-minute limit. Its window-shown event is no longer retained in the bounded history, so the budget interval must not be presented as an exact visible-window duration.
+
+In this second session, the retained original-source sample changes from active/not-backgrounded with nonempty layers to `settingsBackgrounded=true` and0layers by82933.96951416667. At the corresponding sample82933.96941275001 the separately hosted child remains active/not backgrounded with2layers. Further retained samples preserve that distinction. The final original/hosted samples at82941.21974287501/82941.219595 still show original backgrounded/0layers versus owned child active/not-backgrounded/2layers. Those retained original-background observations span approximately7.250229seconds. The report does not establish the exact switch time, the complete requested observation interval or the identity of the foreground app independently of the user procedure.
+
+## Deferred visibility is expected here
+
+The kept/background session's helper reports transportSchema4, phase3 and flags47: capture1 + owned-scope2 + accepted migration4 + verified public original-window/current-root return readback8 + deferred visibility32. There is no refusal128, exception64 or weak-baseline-change16 flag in this session. `ready=false` is expected after a completed/consumed trial.
+
+This snapshot is consistent with returning the tracked window to its original background scene while withholding visibility until Messenger is manually foregrounded. It is not evidence of a failed return. Root samples `messenger-return-observation` at82941.56672283333,82942.19460641667 and82943.396387625, ending about2.038seconds after close-returned. A later normal foreground/unhide is outside that bounded sampling window and need not replace the saved flag32. The companion's phase3/readback is logical state, not independent proof of pixels or input.
+
+The user's confirmation supplies the reported visible/functional outcome: Messenger remained usable in the small window over NewTerm, NewTerm worked outside it, manual X did not require forcing Messenger forward, and normal manually foregrounded Messenger worked afterward. The file alone cannot identify NewTerm as frontmost or verify touch/keyboard routing; its automatic `touchDeliveryVerified` and `keyboardRoutingVerified` fields remain false. It has no PID, boot identity or generation echo proving uninterrupted process continuity. Do not turn contextual user confirmation into independently authenticated telemetry.
+
+## Scoped result and retained limits
+
+This confirms the requested Messenger background-hosting/manual-X/later-normal-return procedure as reported on this device/profile. It adds evidence of a live independently hosted child while the original source is backgrounded, and of the expected deferred-visibility path. The earlier bounded two-minute Keep result remains a separate confirmed test. Do not ask to repeat either completed gate solely to reconfirm it.
+
+Not established: unlimited/renewable Keep, arbitrary long or repeated background sessions, every lock/protected transition, Messenger cold startup/resize/minimize/movement, every app/version or general Dopamine/ElleKit compatibility. The layer samples precede closure and cannot establish post-close pixels or continuous rendering/input between samples. Original-background duplication during the trial is not claimed.
+
+Exact recovery candidate remains source`fd8e3b24305624ccb984c9063ac0667e52f925af`, macOS Actions41946753360/all39 suites, immutable archive`50b1390a373052f90622b47376a59aaa92c56898`, DEB321086bytes/SHA256`fd4a6aba30a603e5dcbb33efa9c6ee4b19a1aa6fa589e8727597fc685a9c72cf`. This evidence document does not change runtime code, package, limits or tests. Main/stable/earlier recovery archives remain intact; no automatic phone action, personal-data deletion or other-tweak modification was performed.

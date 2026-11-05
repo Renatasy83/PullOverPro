@@ -315,7 +315,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.9~rc10",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.10~rc11",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"messengerReturnHelper":self.messengerTrial?PPOMessengerReturnSnapshot():@{},
         @"messengerWarmTrial":@(self.messengerTrial), @"messengerRenderDeadline":@(self.messengerRenderDeadline),
@@ -368,11 +368,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.9.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.10.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.9] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.10] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -676,7 +676,6 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         title.lineBreakMode = NSLineBreakByTruncatingTail; title.textColor = UIColor.labelColor;
         title.font = [UIFont systemFontOfSize:12]; title.userInteractionEnabled = YES;
         title.accessibilityHint = @"Trage pentru a muta fereastra";
-        title.userInteractionEnabled=!self.messengerTrial;
         [title addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)]];
         [panel addSubview:title];
         UIButton *actions = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -691,7 +690,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         size.accessibilityValue = _sizePreset == PPOFloatingSize::Large ? @"Mare"
             : (_sizePreset == PPOFloatingSize::Compact ? @"Mică" : @"Medie");
         [size addTarget:self action:@selector(resizeFromButton:) forControlEvents:UIControlEventTouchUpInside];
-        size.enabled=!self.messengerTrial;
+        size.enabled=YES;
         self.sizeButton = size; [panel addSubview:size];
         UIButton *restore = [UIButton buttonWithType:UIButtonTypeSystem];
         restore.frame = CGRectMake(width - 88, 0, 44, 44);
@@ -842,7 +841,6 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     return [self fitPresentation];
 }
 - (void)resizeFromButton:(UIButton *)sender {
-    if (self.messengerTrial) return;
     (void)sender;
     if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
         self.closePending || _presentation.minimized()) return;
@@ -1050,7 +1048,6 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf closeBecause:reason]; });
 }
 - (void)pan:(UIPanGestureRecognizer *)pan {
-    if (self.messengerTrial) return;
     if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
         self.closePending || !self.window) return;
     @try {

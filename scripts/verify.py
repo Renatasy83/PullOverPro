@@ -303,6 +303,22 @@ require(owned_trial.index('_messengerBudget.start(') < owned_trial.index('[self.
         'Păstrează (max. 2 min)' in owned_trial and 'children:self.messengerTrial?@[keep]:@[keep, minimize]' in owned_trial and
         'if (!self.messengerTrial && !self.opening && !self.keepPreferenceAttempted' in owned_trial,
         'Messenger Keep must start its absolute cap before prepare, remain explicit, omit minimize and retain all safety checks')
+for method in ['resizeFromButton:', 'pan:']:
+    definition=re.search(r'- \(void\)'+re.escape(method)+r'[^\n]*\{',owned_trial)
+    require(definition is not None, 'Missing public geometry method definition')
+    body=owned_trial[definition.start():]
+    body=body[:body.find('\n- (',1)] if '\n- (' in body else body
+    require('if (self.messengerTrial) return;' not in body,
+            'Messenger move/resize must use the existing guarded public presentation path')
+require('title.userInteractionEnabled=!self.messengerTrial' not in owned_trial and 'size.enabled=YES;' in owned_trial,
+        'Messenger public movement and resize controls must be enabled')
+for method in ['minimizeFromButton:', 'restoreFromButton:']:
+    definition=re.search(r'- \(void\)'+re.escape(method)+r'[^\n]*\{',owned_trial)
+    require(definition is not None, 'Missing guarded minimize method definition')
+    body=owned_trial[definition.start():]
+    body=body[:body.find('\n- (',1)] if '\n- (' in body else body
+    require('if (self.messengerTrial) return;' in body,
+            'Messenger minimize/restore remain outside this geometry stage')
 lifetime = (ROOT / 'PPOWindowLifetime.h').read_text()
 require('TimedSeconds = 15.0' in lifetime and 'ActivationGraceSeconds = 2.0' in lifetime and
         'if (!kept_ && elapsed >= TimedSeconds)' in lifetime,
@@ -382,7 +398,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.9~rc10', 'Unexpected version')
+    require(field('Version') == '1.0.10~rc11', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
