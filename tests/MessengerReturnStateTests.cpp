@@ -33,8 +33,41 @@ int main() {
     for(double now : {-1.0,std::numeric_limits<double>::quiet_NaN(),std::numeric_limits<double>::infinity(),4294967296.0})
         Check(s.packed(now)==0,"invalid producer clock not published");
     PPOReturnState captured;captured.capture(true,true);uint64_t valid=captured.packed(200);
-    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(1)<<44),200),"old v1 root-mismatch semantics cannot authorize v2 trial");
+    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(1)<<44),200),"old v1 root-mismatch semantics cannot authorize v3 trial");
+    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(2)<<44),200),"old one-shot v2 cannot authorize v3 repeat protocol");
+    for (unsigned mask=0;mask<256;mask++) {
+        PPOReturnState cycle;cycle.capture(true,true);cycle.migration(true,true,true,true,false);cycle.finish(true);
+        auto ticket=cycle.generation;
+        bool ok=cycle.prepare(mask&1,mask&2,mask&4,mask&8,mask&16,mask&32,mask&64,mask&128);
+        Check(ok==(mask==255),"all eight explicit rearm gates are required independently");
+        Check(ok?(cycle.generation==ticket+1 && cycle.phase==PPOReturnPhase::Captured && cycle.flags==1):
+            (cycle.generation==ticket && cycle.phase==PPOReturnPhase::Restored && cycle.flags==15),"denied preparation preserves completed evidence");
+    }
+    for (unsigned phase=0;phase<5;phase++) {
+        PPOReturnState state;state.phase=PPOReturnPhase(phase);state.flags=phase==1?1:15;
+        Check(state.prepare(true,true,true,true,true,true,true,true)==(phase==1 || phase==3),"never rearm waiting, active migration or refused state");
+    }
+    for (unsigned flag : {32u,64u,128u}) {
+        PPOReturnState state;state.phase=PPOReturnPhase::Restored;state.flags=15|flag;
+        Check(!state.prepare(true,true,true,true,true,true,true,true),"deferred visibility, exception or refusal cannot rearm");
+    }
+    PPOReturnState exhausted;exhausted.phase=PPOReturnPhase::Restored;exhausted.flags=15;exhausted.generation=UINT64_MAX;
+    Check(!exhausted.prepare(true,true,true,true,true,true,true,true),"generation exhaustion cannot wrap");
+    PPOReturnState repeat;repeat.capture(true,true);
+    for (unsigned cycle=0;cycle<100;cycle++) {
+        uint64_t ticket=repeat.generation;
+        Check(!repeat.acceptsDisconnect(ticket,true,false),"stale/foreign closing scene rejected before migration");
+        Check(repeat.acceptsDisconnect(ticket,false,true),"exact captured window may identify its actual closing scope");
+        Check(repeat.migration(true,true,true,true,false),"fresh cycle migration");
+        Check(repeat.acceptsDisconnect(ticket,true,false) && !repeat.acceptsDisconnect(ticket,false,true),"migrated cycle only accepts exact moved scene");
+        repeat.finish(true);
+        Check(!repeat.acceptsDisconnect(ticket,true,true),"duplicate callback after completion rejected");
+        Check(repeat.prepare(true,true,true,true,true,true,true,true),"explicit verified repeat preparation");
+        Check(!repeat.acceptsDisconnect(ticket,true,true),"queued previous-generation callback rejected after rearm");
+        Check(!repeat.acceptsDisconnect(repeat.generation,true,false),"old notification arriving after rearm rejected by scene/window association");
+        Check(PPOReturnReady(repeat.packed(500),500),"repeat readiness freshly published");
+    }
     for(unsigned bit=44;bit<64;bit++) Check(!PPOReturnReady(valid^(uint64_t(1)<<bit),200),"wrong signature/schema rejected");
     Check(!PPOReturnReady(0,200),"uninitialized channel not ready");
-    std::printf("Messenger return state tests passed: %u checks; current-root ownership transitions, not UIKit restoration\n",checks);
+    std::printf("Messenger return state tests passed: %u checks; explicit repeat preparation and stale callback rejection, not UIKit restoration\n",checks);
 }

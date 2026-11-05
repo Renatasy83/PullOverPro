@@ -45,14 +45,14 @@ with tarfile.open(fileobj=io.BytesIO(payload)) as archive:
             assert cursor == 32 + command_bytes and signature, (name, "missing bounded code signature")
             if name.endswith("PPOMessengerReturnAgent.dylib"):
                 for marker in (b"_notify_set_state\0", b"setWindowScene:\0", b"restoreAfterDisconnect:\0",
-                               b"com.renatasy83.ppo.messenger.return.v2\0",
+                               b"com.renatasy83.ppo.messenger.return.v3\0",
                                b"741517f9808a10ac225c6490d2af5bd835ff56b112464c5d53ce670d7ff92e30\0"):
                     assert marker in image, (name, marker)
                 for marker in (b"makeKeyWindow\0", b"makeKeyAndVisible\0", b"becomeFirstResponder\0", b"setRootViewController:\0"):
                     assert marker not in image, (name, "forbidden selector", marker)
             if name.endswith("PullOverProDiagnostic.dylib"):
                 assert b"_notify_get_state\0" in image
-                assert b"com.renatasy83.ppo.messenger.return.v2\0" in image
+                assert b"com.renatasy83.ppo.messenger.return.v3\0" in image
             assert b"PPO_BRIDGE_TEST_PATH" not in image
             architectures.append(hex(subtype))
         assert set(architectures) == {"0x0", "0x80000002"}

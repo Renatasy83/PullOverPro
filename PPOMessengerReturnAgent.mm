@@ -63,6 +63,7 @@ static BOOL CurrentRootOwned(UIWindow *window) {
 - (void)stopTimer;
 - (void)startTimer;
 - (void)event:(NSNotification *)notification;
+- (void)prepareForExplicitRequest;
 @end
 @implementation PPOMessengerReturnAgent {
     __weak UIWindow *_primaryWindow;
@@ -72,11 +73,31 @@ static BOOL CurrentRootOwned(UIWindow *window) {
     __weak UIWindowScene *_movedScene;
     PPOReturnState _state;
     int _token;
+    int _prepareToken;
     NSArray *_observers;
     dispatch_source_t _timer;
     BOOL _originalHidden;
     BOOL _needsUnhide;
     double _deadline;
+}
+- (void)prepareForExplicitRequest {
+    if (!NSThread.isMainThread) return;
+    @try {
+        [self sample];
+        UIApplication *app=UIApplication.sharedApplication;
+        UIWindow *window=_primaryWindow;UIWindowScene *target=_primaryScene;
+        BOOL noOwned=YES;
+        for (UIScene *scene in app.connectedScenes) if (Owned((UIWindowScene *)scene)) noOwned=NO;
+        if (_state.prepare(true,window!=nil,window && target && window.windowScene==target &&
+            [app.connectedScenes containsObject:target] && !Owned(target) &&
+            [target.session.role isEqual:UIWindowSceneSessionRoleApplication],CurrentRootOwned(window),
+            app.applicationState==UIApplicationStateActive && target.activationState==UISceneActivationStateForegroundActive &&
+            window.isKeyWindow && !window.hidden && window.windowLevel==UIWindowLevelNormal,
+            app.protectedDataAvailable,noOwned,!_timer && !_handoffWindow && !_needsUnhide)) {
+            _primaryRoot=window.rootViewController;_movedScene=nil;
+            [self publish];
+        }
+    } @catch (NSException *e) { (void)e;_state.flags|=64;_state.phase=PPOReturnPhase::Refused;[self publish]; }
 }
 - (void)publish {
     if (_token>=0) (void)notify_set_state(_token,_state.packed(NSProcessInfo.processInfo.systemUptime));
@@ -156,10 +177,16 @@ static BOOL CurrentRootOwned(UIWindow *window) {
 - (void)disconnect:(NSNotification *)notification {
     UIWindowScene *closed=notification.object;
     if (!Owned(closed)) return;
+    uint64_t ticket=_state.generation;
+    if (!_state.acceptsDisconnect(ticket,closed==_movedScene,_primaryWindow.windowScene==closed)) return;
     // Revalidate after UIKit/app disconnection callbacks have unwound.
     // Keep only this already identified closing scene for one queue turn.
     __weak PPOMessengerReturnAgent *weakSelf=self;
-    dispatch_async(dispatch_get_main_queue(),^{ [weakSelf restoreAfterDisconnect:closed]; });
+    dispatch_async(dispatch_get_main_queue(),^{
+        PPOMessengerReturnAgent *agent=weakSelf;
+        if (agent && agent->_state.acceptsDisconnect(ticket,closed==agent->_movedScene,
+            agent->_primaryWindow.windowScene==closed)) [agent restoreAfterDisconnect:closed];
+    });
 }
 - (void)stopTimer {
     if (_timer) { dispatch_source_cancel(_timer);_timer=nil; }
@@ -191,10 +218,15 @@ static BOOL CurrentRootOwned(UIWindow *window) {
 }
 - (instancetype)init {
     if (!(self=[super init])) return nil;
-    _token=-1;if (notify_register_check("com.renatasy83.ppo.messenger.return.v2",&_token)!=NOTIFY_STATUS_OK) return nil;
+    _token=-1;_prepareToken=-1;
+    if (notify_register_check("com.renatasy83.ppo.messenger.return.v3",&_token)!=NOTIFY_STATUS_OK) return nil;
     [self publish];
     NSNotificationCenter *center=NSNotificationCenter.defaultCenter;NSMutableArray *tokens=[NSMutableArray array];
     __weak PPOMessengerReturnAgent *weakSelf=self;
+    if (notify_register_dispatch("com.renatasy83.ppo.messenger.return.prepare.v3",&_prepareToken,
+        dispatch_get_main_queue(),^(int token){ (void)token;[weakSelf prepareForExplicitRequest]; })!=NOTIFY_STATUS_OK) {
+        notify_cancel(_token);_token=-1;return nil;
+    }
     for (NSString *name in @[UIWindowDidBecomeKeyNotification,UIWindowDidBecomeVisibleNotification,
         UIApplicationDidBecomeActiveNotification,UISceneDidActivateNotification,UISceneWillDeactivateNotification])
         [tokens addObject:[center addObserverForName:name object:nil queue:NSOperationQueue.mainQueue

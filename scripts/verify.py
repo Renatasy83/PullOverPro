@@ -62,6 +62,17 @@ require(not re.search(r'\.rootViewController\s*=(?!=)', return_agent), 'Agent mu
 require('window.windowScene=target' in return_agent and 'CurrentRootOwned(window)' in return_agent and 'window==_handoffWindow' in return_agent and
         'com.renatasy83.ppo.scene.' in return_agent and 'CC_SHA256' in return_agent,
         'App-side restoration requires exact original window/root, owned session and profile')
+require('_state.prepare(true' in return_agent and 'window.isKeyWindow && !window.hidden' in return_agent and
+        '!_timer && !_handoffWindow && !_needsUnhide' in return_agent and
+        'acceptsDisconnect(ticket' in return_agent and 'notify_register_dispatch' in return_agent,
+        'Repeat readiness needs explicit notification, settled original UI and generation/scene checks')
+return_client = (ROOT / 'PPOMessengerReturn.mm').read_text()
+require('PollPrepared(20,completion)' in return_client and 'NSEC_PER_MSEC*50' in return_client and
+        'dispatch_after' in return_client and 'return.prepare.v3' in return_client and
+        'dispatch_semaphore_wait' not in return_client and 'dispatch_sync' not in return_client,
+        'Explicit prepare wait must be asynchronous and bounded; never block SpringBoard')
+require('self.messengerPreparationIntent==intent' in (ROOT / 'Tweak.xm').read_text(),
+        'At most one companion prepare request per explicit UI intent')
 require(re.sub(r'\s+', '', (ROOT / 'PPOMessengerReturnAgent.plist').read_text()) ==
         '{Filter={Bundles=("com.facebook.Messenger");};}', 'Messenger companion must have its own exact app-only filter')
 probe_source = (ROOT / 'PPOSceneLayerProbe.mm').read_text()
@@ -359,7 +370,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.7~rc8', 'Unexpected version')
+    require(field('Version') == '1.0.8~rc9', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')

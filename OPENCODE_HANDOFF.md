@@ -1,3 +1,17 @@
+## RC9 explicit Messenger repeat preparation — development/CI pending
+
+User confirmed RC8 full-screen Messenger restored normally after the timed window closed; preserve exact recovery archivead0a2b4703d22e7a29588cbdbb8f15374126c58f/sourcee92284e6e2679cfc11235273da367b5a32dc50a1. Main/stable/previous archives untouched.
+
+RC9 1.0.8~rc9 addresses deliberately consumed one-shot readiness. Public notify one explicit intent requests rearm only on exact original active visible/key window/scene/current-root ownership, protected data, no connected owned session and no timer/handoff/deferred visibility. Only completed verified return or still-unconsumed capture can prepare. No recovery from refused/active/uncertain state. Generation+scene association rejects old/duplicate disconnect callbacks across cycles. Schema3/v3 channels isolate old companion. No new private API, app launch/kill, root assignment or Keep/cold/resize/minimize change.
+
+SpringBoard checks one request per intent, asynchronous metadata polling50ms/max1s, selection/cancel/overlay/admission revalidation before private creation. Existing private owner/cleanup/quarantine/warm-only/15s/8s guards remain. Notify transports metadata, not proof of sender authorization.
+
+Local1593 state assertions (including100 cycles and all8 prepare gates) and changed source Clang analysis passed. Added native client main-queue fixture with notify stubs; full macOS38-suite CI/build required before recommending any DEB. Do not claim native fixture success or a new runtime result yet. Source/report/payload/ABI/signature-marker independent artifact checks and permanent archive still needed after successful CI. Existing Ubuntu ABI unsupported skip remains honest.
+
+NEXT autonomous work: inspect resulting CI runs, fix failures, verify exact artifact, archive ONE validated DEB, update this handoff and give only necessary phone gate: two timed Messenger openings in same app process with full-screen recovery after each. No app termination between cycles; only initial close/reopen after install to load v3. On refusal, exact UI text+interface-1.0.8.json; host-1.0.8.json for actual sessions. Do not ask for already-confirmed RC8 trial repetition. Read RC9_REPEATED_MESSENGER_WINDOWS.md. No automatic phone actions performed.
+
+---
+
 ## RC8 after-timeout Messenger return CONFIRMED by user (2026-11-05)
 
 The user explicitly confirms that, after automatic PPO window closure, the normal full-screen Messenger app displayed normal content and worked; it was not black. This answers the pending visual question for the SAME host-1.0.7 trial. Do not ask to repeat it, treat it as absent, or require another package merely to reconfirm this evidence.
