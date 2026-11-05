@@ -1,3 +1,15 @@
+## RC8 device metadata — logical return succeeded; visual answer pending (2026-11-05)
+
+Latest uploaded host-1.0.7.json has ONE Messenger warm trial. Schema2 helper phase3/flags15 (captured1 + owned-session2 + accepted migration4 + public original-target/current-root return readback8), no refusal/exception/deferred-visibility flags. ready=false is expected after consuming/completing a session. This is newly observed v2 injection/transport/identified migration/public windowScene return+ownership readback, not a visual or input proof. No root replacement observed at the accepted check (no16); do not claim the replacement case was exercised.
+
+Shown53456.450253625, close-returned53471.48406145834, timeout15.033808s. Own controller/workspace invalidations returned; distinct created-child proxy, closed/unpinned/unpoisoned/replacementAllowed=true. Last original sample53471.469775125006 is pre-close (active/nonbackgrounded/2layers). Three return-observation events occur after close, but helper is only report/session snapshot, not a per-event pixel or helper history. Integer helper sampleUptime53471 is consistent with stopped bounded telemetry; not evidence of stale readiness failure.
+
+NECESSARY NEXT INPUT: user's already-observed AFTER-close full-screen Messenger appearance/touch. Async question sent: did it return/respond or remain black? Do not ask to repeat the test/reinstall or request more data until that answer arrives. A black result would mean logical readback is insufficient; a working result permits only a scoped restoration confirmation, not general compatibility or every lifecycle/repeated-use pattern. No new DEB is justified from this metadata alone. Read RC8_MESSENGER_DEVICE_RESULT.md.
+
+No runtime changes, package rebuild or new tests for this documentation-only evidence update. Candidate/source/run/archive/hash remain as recorded below (e92284e source, Actions41903532726/37 suites, archivead0a2b47). Main/stable/RC7 and older recovery refs preserved. Always fresh-fetch handoff/head before subsequent edits for OpenCode collaboration. Prior entries below describe historical pre-phone test status and are superseded only by this scoped metadata observation; visual confirmation is still absent.
+
+---
+
 ## RC8 ready — macOS validation passed; one indispensable phone gate
 
 Candidate1.0.7~rc8 is archived and ready for the scoped Messenger return-after-close test. Tested source `e92284e6e2679cfc11235273da367b5a32dc50a1`, macOS15Intel Actions41903532726/job126831969127/artifact13358429186, all37 suites successful,171 new return/transport checks, pinned Theos/SDK16.5, Clang analysis and rootless arm64+arm64e build. Actual compiler Apple clang17.0.0/Xcode16.4. Independent report/source/37 logs/ZIP/DEB/payload/license/lifecycle/two-filter/six-fat-binary/modern arm64e/signature-bounds/v2-marker checks passed. General runtime compatibility remains unconfirmed.
