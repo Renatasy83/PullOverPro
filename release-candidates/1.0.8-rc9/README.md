@@ -1,0 +1,9 @@
+# PullOver Pro1.0.8~rc9 — explicit repeated Messenger window candidate
+
+Source `d183e1b28caa7c4e1f380decab96608b74ff6cbf`; macOS Actions41942732626 succeeded:38 suites,1803 state assertions, native asynchronous client fixtures, Clang analysis, pinned Theos/SDK16.5 rootless arm64+arm64e build. DEBcom.renatasy83.pulloverpro.diagnostic_1.0.8~rc9_iphoneos-arm64.deb, 321808bytes, SHA256`fd50b7bcf8671903733f574a5103d5dc4786d8eab25e9b96121cdea32fe0a502`. Exact ZIP/source/report/log/DEB checks and six-binary modern arm64e/code-signature bounds inspections are included in VALIDATION.json. Signature trust/execution is not established by these static checks.
+
+RC8's normal full-screen return after one timed Messenger window was user-confirmed. RC9 adds explicit guarded rearm for another window in the same process, with generation/scene/timer/stale notification isolation and v3 transport. It does not enable Keep/cold/resize/minimize or add private scene methods. Actual repeated UIKit behavior is untested.
+
+One necessary device gate: manually install/respring, manually close/reopen Messenger to load the new v3 companion, then open two consecutive timed PPO Messenger windows without terminating Messenger between trials. Verify original full-screen UI/input after each. Send host-1.0.8.json; if readiness refuses, retain its exact message and interface-1.0.8.json instead of repeated attempts. No other-app or personal Data test is needed.
+
+Ubuntu evidence confirms12 portable suites/static checks and correctly skips unsupported-ABI packaging; it is not this macOS DEB. No global Dopamine/ElleKit or repeated Messenger compatibility claim. Prior RC8 archivead0a2b4703d22e7a29588cbdbb8f15374126c58f and main/stable/older recovery remain untouched. Recovery /var/mobile/.ppo_disable plus manual respring or known Dopamine without injection/uninstall only PPO. No automatic phone actions or personal-data/other-tweak changes. GPL-3.0/original attribution preserved.
