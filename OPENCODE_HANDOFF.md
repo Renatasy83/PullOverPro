@@ -1,6 +1,6 @@
 # PullOver Pro — current OpenCode/ChatGPT handoff (2026-11-05)
 
-## RC10 ready: one bounded Keep phone gate remains
+## RC10 bounded Keep and normal return confirmed by user
 
 Latest validated executable source`fd8e3b24305624ccb984c9063ac0667e52f925af`, version1.0.9~rc10. [macOS run41946753360](https://github.com/Renatasy83/PullOverPro/actions/runs/41946753360)/job126980755950/artifact13379542626 succeeded on standard macos-15-intel:39 suites,598 budget checks,1804 state checks,68 native async client checks, Clang analysis, pinned Theos/SDK16.5 rootless arm64+modern arm64e build. Actual Apple clang17.0.0/Xcode16.4. Source/report/39 logs/ZIP/DEB/rootless/filter/license/lifecycle/six-fat-binary/signature-bounds/v4/budget markers independently verified, including a second artifact review. This does not prove signature trust or long UIKit behavior.
 
@@ -25,11 +25,15 @@ Manual Keep only for Messenger; global Keep preference ignored, cold/resize/mini
 
 Read [design](RC10_BOUNDED_MESSENGER_KEEP.md) and [actual test report](VALIDATION_1.0.9_RC10.md).
 
-## Necessary next action: phone only
+## Latest device result: no repeat of this gate is needed
 
-Manually install/respring once and manually close/reopen Messenger initially to load v4. Open ONE PPO Messenger window; choose "Păstrează (max. 2 min)" from actions before15seconds. Verify usable past20seconds, let absolute cap close near two minutes from opening/preparation, confirm normal full-screen Messenger content/input returns. Send /var/mobile/Library/Logs/PullOverPro/host-1.0.9.json. On refusal retain exact UI message/interface-1.0.9.json rather than loops. No other-app or personal Data test is required.
+User supplied host-1.0.9.json and explicitly confirmed it works, closes after two minutes and returns to normal full-screen Messenger. One session is kept, reason messenger-session-limit, root maximum120. Budget start77289.589860875 precedes prepare; explicit Keep at+5.595212s, heartbeats at~35.822/65.821/96.071s, close-returned+120.087649s (deadline overshoot~0.087649s). Window-shown is no longer retained in the bounded history, so this is budget duration, not exact visible-window timing.
 
-Long UIKit lifetime/new real IPC/later return/lock/background behavior remain untested. No unlimited Keep, duplicated original background or global app/Dopamine/ElleKit compatibility claim. No compatible physical Mac/vphone environment is available; hosted runners do not establish one.
+Schema4 phase3/flags31, clean distinct-owned proxy/controller/workspace invalidations, closed/unpinned/unpoisoned/replacementAllowed=true. Bit16 means absent/different weak baseline, not a proven literal replacement. Late2-layer/active/valid samples precede close; user confirmation establishes visible normal full-screen return. Automatic touch/keyboard flags remain false; no independent routing/continuous-pixel proof is claimed. Read [RC10 device result](RC10_MESSENGER_DEVICE_RESULT.md).
+
+This confirms the requested bounded Keep outcome as reported for this exact device/profile, not unlimited Keep, long repeated cycles, manual-X/resize/minimize/cold/background/lock transitions or global app/Dopamine/ElleKit compatibility. Do not request the same2minute test again, treat its visible answer as missing, or publish another DEB merely to reconfirm it. Current candidate/archive above is the latest scoped recovery point; RC9/RC8 remain intact.
+
+Next broader lifetime work needs coordinated renewal/cleanup design; simply removing120s would outlive the125s helper and is prohibited by the current verified design. A new protocol/candidate needs independent automated verification before any indispensable new device test. No compatible physical Mac/vphone environment is available; hosted runners do not establish one. During-trial original-background duplication remains outside this confirmation.
 
 ## Workflow/recovery
 
