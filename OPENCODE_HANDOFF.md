@@ -33,7 +33,15 @@ Schema4 phase3/flags31, clean distinct-owned proxy/controller/workspace invalida
 
 This confirms the requested bounded Keep outcome as reported for this exact device/profile, not unlimited Keep, long repeated cycles, manual-X/resize/minimize/cold/background/lock transitions or global app/Dopamine/ElleKit compatibility. Do not request the same2minute test again, treat its visible answer as missing, or publish another DEB merely to reconfirm it. Current candidate/archive above is the latest scoped recovery point; RC9/RC8 remain intact.
 
-Next broader lifetime work needs coordinated renewal/cleanup design; simply removing120s would outlive the125s helper and is prohibited by the current verified design. A new protocol/candidate needs independent automated verification before any indispensable new device test. No compatible physical Mac/vphone environment is available; hosted runners do not establish one. During-trial original-background duplication remains outside this confirmation.
+## Current next gate: background hosting on existing RC10
+
+Read-only audits of runtime checks/notifications/agent visibility plus prior evidence show existing1.0.9 can be tried over NewTerm without any code change or reinstall. Foreground admission is startup-only; lifetime checks use the SpringBoard host and owned child, not an ongoing original-app foreground requirement. Rendering/activity loss still closes through existing guards. Background original-window return can legitimately defer visibility (flag32) until manually foregrounded; no app activation/focus is requested. Real background retention/input/later unhide cannot be established statically. RC10/RC9 reports do not establish this Messenger case; old pre-hosting RC5 and Safari success must not be substituted.
+
+Only indispensable next phone input: use currently installed1.0.9; start over normal visible Messenger, create PPO window and select bounded Keep; switch to NewTerm without app termination; check small Messenger content/input and NewTerm touches outside for~10seconds; close PPO with X while NewTerm stays foreground; manually open Messenger normally and check full-screen UI. Send new host-1.0.9.json+observations. If black/automatic closure/refusal occurs, stop and send report rather than loops. No respring/reinstall, new DEB, shell commands, personal Data or repeated2minute gate. See [background gate audit](RC10_MESSENGER_BACKGROUND_GATE.md).
+
+Saved helper flag32 may be correct while NewTerm is foreground, and root's2second post-close samples may precede later manual foreground/unhide. Do not claim failed return from that frozen state alone. No compatible physical device/Mac/vphone environment is available; unchanged host tests cannot substitute for this gate.
+
+Broader lifetime work still requires coordinated design: removing120s would outlive the125s helper. Do not silently remove limits or claim unlimited/general compatibility. No runtime/package modification or new automated tests/CI were needed for this read-only audit and necessary existing-version gate.
 
 ## Workflow/recovery
 
