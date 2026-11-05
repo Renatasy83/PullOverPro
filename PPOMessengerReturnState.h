@@ -19,6 +19,9 @@ struct PPOReturnState {
             (phase==PPOReturnPhase::Captured && capturedWindowOnClosingScene));
     }
     bool acceptsTimer(uint64_t ticket, bool currentTimer) const { return ticket==generation && currentTimer; }
+    bool acceptsScopeEvent(bool stillConnected) const {
+        return stillConnected && (phase==PPOReturnPhase::Captured || phase==PPOReturnPhase::Migrated);
+    }
     bool capture(bool ordinaryPrimary, bool rootPresent) {
         if (phase!=PPOReturnPhase::Waiting || !ordinaryPrimary || !rootPresent) return false;
         phase=PPOReturnPhase::Captured; flags|=1; return true;

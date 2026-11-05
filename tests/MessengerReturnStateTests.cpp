@@ -45,6 +45,8 @@ int main() {
     }
     for (unsigned phase=0;phase<5;phase++) {
         PPOReturnState state;state.phase=PPOReturnPhase(phase);state.flags=phase==1?1:15;
+        Check(!state.acceptsScopeEvent(false),"late lifecycle event from disconnected old scope cannot consume new readiness");
+        Check(state.acceptsScopeEvent(true)==(phase==1 || phase==2),"only connected active capture/migration consumes scope event");
         Check(state.prepare(true,true,true,true,true,true,true,true)==(phase==1 || phase==3),"never rearm waiting, active migration or refused state");
     }
     for (unsigned flag : {32u,64u,128u}) {

@@ -215,7 +215,7 @@ static BOOL CurrentRootOwned(UIWindow *window) {
 - (void)event:(NSNotification *)notification {
     [self sample];
     UIWindowScene *scene=[notification.object isKindOfClass:UIWindowScene.class]?notification.object:nil;
-    if (Owned(scene) && (_state.phase==PPOReturnPhase::Captured || _state.phase==PPOReturnPhase::Migrated)) {
+    if (Owned(scene) && _state.acceptsScopeEvent([UIApplication.sharedApplication.connectedScenes containsObject:scene])) {
         _state.flags|=2;[self startTimer];
     }
     [self publish];

@@ -68,6 +68,8 @@ require('_state.prepare(true' in return_agent and 'window.isKeyWindow && !window
         'Repeat readiness needs explicit notification, settled original UI and generation/scene checks')
 require('acceptsTimer(timerGeneration,agent->_timer && agent->_deadline==timerDeadline)' in return_agent,
         'Cancelled or previous-generation timer callback must not mutate a later trial')
+require('acceptsScopeEvent([UIApplication.sharedApplication.connectedScenes containsObject:scene])' in return_agent,
+        'Old disconnected activation/deactivation notification must not consume new readiness')
 return_client = (ROOT / 'PPOMessengerReturn.mm').read_text()
 require('PollPrepared(20,completion)' in return_client and 'NSEC_PER_MSEC*50' in return_client and
         'dispatch_after' in return_client and 'return.prepare.v3' in return_client and
