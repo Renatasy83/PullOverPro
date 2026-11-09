@@ -1,3 +1,15 @@
+## RC11 current phone gate: profile admission refused; reports required
+
+User reports "Messenger: raport solicitat; fără fereastră". Source branch means inspect-scene returned inspected but Messenger admission failed with generic scene-manifest-missing; it requests read-only observation and does NOT create the hosted window. RC11 drag/resize is therefore not yet exercised. UI text does not prove report write success, updated app, older running service, injection failure or crash.
+
+The narrow allowed profile is exact Messenger585.0.0/build1101076820 + InfoSHA741517f9808a10ac225c6490d2af5bd835ff56b112464c5d53ce670d7ff92e30 and structure checks. Actual installed metadata/service result not yet known. Foregrounding alone cannot bypass this metadata rejection; do not relax/hash-whitelist blindly.
+
+NECESSARY NEXT INPUT: existing-attempt messenger-1.0.10.json and capability-1.0.10.json from /var/mobile/Library/Logs/PullOverPro (if absent, report which versions/files exist). No reinstall/respring/repeated attempts needed just to collect them. Then autonomously inspect version/timestamps/selection/proof/framework/source; request installed metadata only if missing. No geometry/runtime fix or new DEB until evidence supports it. Read RC11_ADMISSION_REFUSAL.md. Previous confirmed RC10 baseline and all archives remain; package downgrade is not established as a remedy for a changed app profile.
+
+The earlier ready-for-geometry checkpoint below is superseded by this pre-window admission blocker.
+
+---
+
 # PullOver Pro — current OpenCode/ChatGPT handoff (2026-11-09)
 
 ## RC11 ready for one indispensable move/resize device gate
