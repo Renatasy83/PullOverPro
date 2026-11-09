@@ -1,3 +1,15 @@
+## RC11 diagnostic evidence reviewed — current Info.plist required
+
+Supplied capability record is inspected/error0/issue none but generic unknown scene-manifest-missing; reviewed585 exception not recognized. Host contains only Safari/MobileSMS, no Messenger window. Thus RC11 transformed Messenger input is untested, not shown broken by a hosted attempt. Messenger observer sees unique normal source/frameworkmatches, active but backgrounded0layers, no hosting/mutation. Foreground is a separate later prerequisite, not cause of metadata refusal.
+
+Current installed Messenger version/build/InfoSHA are absent from ALL supplied reports. apps-0.5.7/bridge1 are helper/report labels, not app version. Interface uptime237–679/counters0 vs host~288410–288443/cap291128 are not authenticated one-boot/one-attempt data; don't diagnose restart/update/staleservice from that alone. Read RC11_DIAGNOSTIC_SET_RESULT.md.
+
+ONLY necessary missing input: CURRENT Messenger.app/Info.plist rawbytes in ZIP, copied outside app bundle first; no editing/conversion, appData, repeats/reinstall/respring. User already sent every existing report; don't request the same reports again. Historical uploaded Info.zip cannot prove current bytes. Compare newfile actualversion/build/structure/SHA with exact reviewed585/build1101076820/SHA741517f9808a10ac225c6490d2af5bd835ff56b112464c5d53ce670d7ff92e30. If identical, investigate actual loaded service/result generation; if different, review profile safely before changing it. App update/different bytes/oldservice remains unconfirmed. No blanket eligibility/bypass/hash whitelist or unverified API.
+
+No new code/package/CI for this evidence-only checkpoint. CurrentRC11 and confirmedRC10 archives/GPL/main/stable remain intact. The earlier request for reports below is satisfied; only current installed metadata remains missing.
+
+---
+
 ## RC11 current phone gate: profile admission refused; reports required
 
 User reports "Messenger: raport solicitat; fără fereastră". Source branch means inspect-scene returned inspected but Messenger admission failed with generic scene-manifest-missing; it requests read-only observation and does NOT create the hosted window. RC11 drag/resize is therefore not yet exercised. UI text does not prove report write success, updated app, older running service, injection failure or crash.
