@@ -84,15 +84,16 @@ report = {
     'final_candidate': False,
     'rc8_scope': 'Exact same captured UIWindow is preserved; only the current root actually owned by that window may travel back. No old root is reinstalled. Schema2/channelv2 distinguishes legitimate root replacement from old root-mismatch refusal. Bounded handoff retention/polling and all exact-profile/owner/lock/target gates remain. Actual return remains a phone gate.',
     'rc7_scope': 'Exact-profile Messenger-only public UIKit companion conditionally returns only the same original UIWindow/root from an exact PPO-prefix disconnected session to its still-connected original scene. No screenshots, focus/key-window request or direct FBScene mutation. Bounded state telemetry via libnotify. Trial refuses missing/stale companion readiness. Actual public session-name mapping, migration and restored pixels require the phone.',
-    'rc6_scope': 'Exact installed Messenger585.0.0/build1101076820 plist SHA256 profile only, unknown/eligible=false proof with explicit warm-trial admission. Unique normal existing foreground source/layers required, no cold fallback; same verified owned-child API, automatic15s close,8s render deadline, no Keep/resize/minimize. No Messenger runtime success is inferred.',
+    'historical_rc6_scope': 'Exact installed Messenger585.0.0/build1101076820 plist SHA256 profile only, unknown/eligible=false proof with explicit warm-trial admission. Unique normal existing foreground source/layers required, no cold fallback; same verified owned-child API, automatic15s close,8s render deadline, no Keep/resize/minimize. No Messenger runtime success is inferred.',
     'rc5_scope': 'Read-only Messenger missing-manifest source observation only; no Messenger hosting authorization or fix. No launch/create/activate/present/mutation; max4 explicit snapshots per SpringBoard process,2 retained. Existing floating windows remain implemented.',
     'emergency_disable': 'Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested.',
 }
 (directory / 'VALIDATION.json').write_text(json.dumps(report, indent=2) + '\n')
+current_summary = report['floating_application_hosting_implemented']
 (directory / 'VALIDATION.md').write_text(
     '# Development validation report\n\n'
     f'Commit: `{commit}`\n\n'
-    '**RC6 bounded Messenger trial candidate. Exact reviewed installed plist SHA256 and version are required; metadata remains unknown/eligible=false with explicit experimental warm-only provenance. The app must already have a unique normal foreground source with layers. Existing owned-scene APIs create a fresh child; no foreign scene is mutated. No cold fallback or permanent Keep/resize/minimize. Automatic15second close and8second child-render deadline apply. Messenger child admission, content/input and cleanup are untested on the phone. Native fixtures do not execute private iOS frameworks; general Dopamine/ElleKit compatibility is not confirmed.**\n\n'
+    f'**Current scope:** {current_summary}\n\n'
     'Emergency disable is covered before workspace access, after inventory refresh and in actual subprocess exchange using an isolated marker fixture. This cannot revoke an already submitted OS request.\n\n'
     'Passed: Clang analysis, Theos build, rootless payload/architecture inspection and these automated test suites:\n\n'
     + '\n'.join(f'- `{name}`' for name in markers)

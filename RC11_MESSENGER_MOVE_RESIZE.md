@@ -14,9 +14,11 @@ The Agent and transport source are unchanged. A currently loaded compatible v4 c
 
 ## Baseline and verification
 
+Completed validation: source192758bb746b3dcd3d4b4113fa11bcb652c10d67, macOS42061254065/artifact13432397857,39 successful suites, pinned rootless build and independent source/hash/payload/ABI checks. Exact permanent DEB/evidence in VALIDATION_1.0.10_RC11.md and OPENCODE_HANDOFF.md. Physical geometry/input remains the next gate.
+
 The user confirmed RC10 background procedure works. Supplied second session is kept/manual, original scene bg=true/0layers while owned child stays active/nonbg2layers, helper4/phase3/flags47 includes deferred visibility32, clean own cleanup. User confirmation supplies NewTerm identity/input/no focus stealing and later normal Messenger appearance, not raw layer metadata. Read RC10_MESSENGER_BACKGROUND_RESULT.md. Keep prior RC10 archive50b1390a373052f90622b47376a59aaa92c56898.
 
-Local13 portable suites/source policy and changed owner Clang analysis passed. Existing geometry108812/presentation403376/aspect-fit fixtures are reused instead of duplicate implementation-mirroring tests. Full39-suite macOS CI/rootless build and independent artifact checks are required before install recommendation; configuration is not completed evidence.
+Local13 portable suites/source policy and changed owner Clang analysis passed. Existing geometry108812/presentation403376/aspect-fit fixtures are reused instead of duplicate implementation-mirroring tests. Full39-suite macOS CI/rootless build and independent artifact checks completed; see validation for warnings/historical report caveats. This does not establish physical input-after-transform.
 
 ## Only necessary phone gate after validation
 

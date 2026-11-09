@@ -1,66 +1,44 @@
-# RC11 public Messenger move/resize — implementation/CI pending
+# PullOver Pro — current OpenCode/ChatGPT handoff (2026-11-09)
 
-User confirmed existing RC10 over-NewTerm/manualX/laterforeground procedure works. New report's second kept/manual session has originalbg0layers vs ownedactive/nonbg2layers and schema4phase3flags47(deferred32), clean own cleanup/replacementAllowed. User supplies input/NewTerm/no-focus-steal/laternormalappearance observations; frozen flag32 is not a failed return. See RC10_MESSENGER_BACKGROUND_RESULT.md. No redo of that gate. Exact RC10 recovery remains fd8e3b24/archive50b1390a373052f90622b47376a59aaa92c56898/DEBSHAfd4a6aba30a603e5dcbb33efa9c6ee4b19a1aa6fa589e8727597fc685a9c72cf.
+## RC11 ready for one indispensable move/resize device gate
 
-New1.0.10~rc11 removes only four Messenger UI restrictions: title pan interaction, pan early return, disabled size button, resize early return. Existing public panel/viewport/wrapper geometry handles movement/scaling; native child dimensions/private scene remain unchanged. Minimize/restore guards and bounded-Keep-only menu, Standard initial size, cold block,120s root/125s agent/v4, profile/firmware/owner/root/cleanup/quarantine/render/lock guards stay. Agent/transport code unchanged; currently loaded v4 companion remains compatible, no protocol-driven app termination needed.
+Validated executable source`192758bb746b3dcd3d4b4113fa11bcb652c10d67`, version1.0.10~rc11. [macOS42061254065](https://github.com/Renatasy83/PullOverPro/actions/runs/42061254065)/job127363278114/artifact13432397857 succeeded:39 native suites/analysis process/pinned Theos+SDK16.5 rootless arm64+modern arm64e. Geometry108812/presentation403376/aspect-fit policy, Keep598/state1804/client68 retained. Exact39 markers/source/ZIP/DEB/payload/filter/license/lifecycle/six actual fat binaries/code-signature bounds/v4 markers independently checked, including second reviews. No real transformed input or signature-trust claim.
 
-Local13 portable suites/owner Clang/source wiring policy passed. Reuse existing geometry108812/presentation403376/aspect-fit tests; no redundant new geometry fixture. Full39 native suites/analysis/pinned rootless build, exact artifact/ABI/hash/v4/move-resize marker checks and immutable archive still required before giving one DEB. Do not claim transformed app input from pure geometry.
+[Download exact DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/fe48837528401c61e81372d1ebc1e012ad4cfbd1/release-candidates/1.0.10-rc11/com.renatasy83.pulloverpro.diagnostic_1.0.10~rc11_iphoneos-arm64.deb)
+321262bytes; SHA256`4e55e325704f8fe12bb78c0971ab7142864ea65973d0afa353a43d2efdb77e16`; Git blob`dd0ab6a56bc9f7da4f986fdaf202c7afed1f5e3c`. Permanent archive release-candidates/1.0.10-rc11/commit`fe48837528401c61e81372d1ebc1e012ad4cfbd1`. Uploaded blob and immutable raw download independently matched. ZIP1377416bytes/SHA256398470ab7502ac5efb879a669d817069ca6a9babed33c2ffa4afd522b82f0563. Earlier completed CI artifacts were restored/reverified after workspace replacement; do not imply new physical tests or continuous background work.
 
-NEXT autonomous work: finish CI, fix failures, verify exact artifact, archive onecandidate, update current handoff. Then ONLY necessary phone gate: install/respring, normalMessenger->PPOKeep->NewTerm; drag by title and cycle3 sizes, check app content/tap/scroll and outside NewTerm input, X then manualMessengernormalforeground. host-1.0.10.json. Stop onblack/refusal/auto close with exactmessage/interface. No other-app or repeated2minute test. No automatic phone actions. Read RC11_MESSENGER_MOVE_RESIZE.md.
+Linux42061253895/artifact13431567911 passed13 portable/source/lifecycle/static suites; ZIP5876bytes/digest0bdcddf97c134e2fc196452cee02b39979580c94de9cc582a2f4d56ca1408bbd independently matched and contains no DEB. Unsupported Linux ABI correctly skips packaging. Do not call it the macOS package build or weaken the gate.
 
-Previous checkpoint below is historical; RC10 foreground/background bounded use is now scoped user-confirmed.
+## Scope
 
----
+Only four Messenger restrictions removed: title-pan interaction, pan earlyreturn, disabled sizebutton, resize earlyreturn. Existing public panel/viewport/wrapper transform code reused; native child frame explicitly set once before containment then read. No new private API/frame setter. Keep initialStandard/minimize/restore/cold guards, Keep-onlymenu, Root120/Agent125/v4, exact585profile/firmware/currentRoot/owner/cleanup/quarantine/lifetime/render/lock checks.
 
-# PullOver Pro — current OpenCode/ChatGPT handoff (2026-11-05)
+Agent/state/Keep-policy/consumer/filter source unchanged from RC10; existing loaded v4 is compatible, so no protocol-driven Messenger termination is required. Prior independent __TEXT comparison matched both Agent slices, but whole dylibs differ; do not claim byte identity.
 
-## RC10 bounded Keep and normal return confirmed by user
+## Confirmed device baseline
 
-Latest validated executable source`fd8e3b24305624ccb984c9063ac0667e52f925af`, version1.0.9~rc10. [macOS run41946753360](https://github.com/Renatasy83/PullOverPro/actions/runs/41946753360)/job126980755950/artifact13379542626 succeeded on standard macos-15-intel:39 suites,598 budget checks,1804 state checks,68 native async client checks, Clang analysis, pinned Theos/SDK16.5 rootless arm64+modern arm64e build. Actual Apple clang17.0.0/Xcode16.4. Source/report/39 logs/ZIP/DEB/rootless/filter/license/lifecycle/six-fat-binary/signature-bounds/v4/budget markers independently verified, including a second artifact review. This does not prove signature trust or long UIKit behavior.
+User's reported iPhone12,5/iOS26.0.1 build23A355/Dopamine rootless/ElleKit1.2 remains scope. RC9 repeated timed Messenger returns, RC10 explicit120second Keep/normal full-screen return are confirmed as reported. Latest RC10 background procedure also confirmed: startMessenger/PPOKeep, use it overNewTerm/outside touches, X without forcing Messenger forward, manuallyforegroundMessenger normally.
 
-[Download exact DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/50b1390a373052f90622b47376a59aaa92c56898/release-candidates/1.0.9-rc10/com.renatasy83.pulloverpro.diagnostic_1.0.9~rc10_iphoneos-arm64.deb)
-321086bytes; SHA256`fd4a6aba30a603e5dcbb33efa9c6ee4b19a1aa6fa589e8727597fc685a9c72cf`; Git blob`31cae78d10c47d151d1b0709e1372771f26d718a`. Archive branch release-candidates/1.0.9-rc10/commit`50b1390a373052f90622b47376a59aaa92c56898`. Uploaded blob and raw permanent download independently matched. ZIP1377319bytes/SHA2563628a3bb94f9d43966c500b6ea414342717eab3f8025e0b71a53536115792397.
+Latest host1.0.9 has2 manual-close sessions; relevant kept/background sample shows originalbg0layers versus childactive/nonbg2layers for retained~7.25seconds, helper4/phase3/flags47 deferred32, clean own invalidations/closed/unpinned/unpoisoned/replacementAllowed. User supplies NewTerm/input/laternormalappearance; the frozen flag32 snapshot is not a failure. No independent PID/frontmost/pixel proof. Read [background result](RC10_MESSENGER_BACKGROUND_RESULT.md). Do not request those completed gates again.
 
-Ubuntu41946753305/job126980756038 succeeded for13 portable/source/lifecycle/cross-analysis suites. Evidence13379376474 independently verified, including598/1804 markers and no DEB. Unsupported Linux arm64e correctly skips packaging; do not call that evidence-only green run the delivered package or weaken its gate.
+Preserve exact RC10 recovery sourcefd8e3b24305624ccb984c9063ac0667e52f925af/archive50b1390a373052f90622b47376a59aaa92c56898/SHAfd4a6aba30a603e5dcbb33efa9c6ee4b19a1aa6fa589e8727597fc685a9c72cf, RC9/RC8/older archives. Messages worked after correct com.apple.MobileSMS selection; don't retest unrelated apps.
 
-## Newly confirmed device evidence
+## Only next necessary phone action
 
-User confirmed RC9 works under the requested two consecutive timed-window procedure. Supplied host-1.0.8 has two clean15.025650/15.024213s Messenger sessions, schema3 phase3 flags31/15, distinct owned proxies, controller/workspace invalidations returned, closed/unpinned/unpoisoned/replacementAllowed=true. First bit16 means weak baseline absent OR current root differed, not which case; current-root ownership passed. Same-process interpretation is procedural user context; no independent PID/boot/generation echo exists. Read [RC9 device result](RC9_MESSENGER_DEVICE_RESULT.md). Do not ask to redo RC9 merely to reconfirm it.
+Manually install/respring RC11. Open Messenger normally, open PPO and choose bounded Keep before15seconds. SwitchNewTerm; drag Messenger by title and use sizebutton to cycleLarge/Compact/Standard, check content/tap/scroll after changes and outsideNewTerm input. CloseX, manuallyforegroundMessenger and check normalUI. Send /var/mobile/Library/Logs/PullOverPro/host-1.0.10.json. On black/refusal/unexpected earlyclosure retain exact observation/interface-1.0.10.json and stop repetitions. Known120s cap remains. No other-app/repeated2minute/cold/minimize test or personal Data required.
 
-User's reported iPhone12,5/iOS26.0.1 build23A355/Dopamine rootless/ElleKit1.2 remains scope. Earlier RC8 normal full-screen Messenger return was explicitly confirmed. Other app/edge UI/favorites/preferences results have prior scoped reports; Messages worked with com.apple.MobileSMS. Do not retest unrelated apps.
+Actual transformed rendering/input remains untested; geometry fixtures cannot substitute for physical UI. No compatible physical device/Mac/vphone environment is accessible; hosted runners/Linux browser are not such an environment. No global Dopamine/ElleKit/app or unlimited Keep claim.
 
-Preserve exact RC9 recovery source d183e1b28caa7c4e1f380decab96608b74ff6cbf/archive3a1eecdbffba0c576ea7790af541bb2db68b192c/DEBSHAfd50b7bcf8671903733f574a5103d5dc4786d8eab25e9b96121cdea32fe0a502. RC8 and older remain accessible.
+Read [RC11 design](RC11_MESSENGER_MOVE_RESIZE.md) and [full validation](VALIDATION_1.0.10_RC11.md).
 
-## RC10 implementation boundaries
+## Reporting caveats
 
-Explicit Messenger-only "Păstrează (max. 2 min)" action; ordinary15s default unchanged. New PPOMessengerKeepPolicy starts once BEFORE owned allocation/prepare, absolute120s includes startup, cannot reset on Keep. Fresh positive rendering and refreshed lifetime/time after the probe reject late requests. Normal scene/lock/disable/protected/activation/render checks still win. Agent observation cap125s starts at later owned scope, giving nominal5s cleanup margin, not a guarantee under frozen/private callbacks.
-
-Manual Keep only for Messenger; global Keep preference ignored, cold/resize/minimize/pan blocked. No new private method, app launch/kill, focus/key-window request, root assignment or arbitrary reparenting. Schema4/channelsv4 isolate still-loaded v3/20s helpers. Existing exact585 Info SHA/UIKitUUID, explicit rearm generation/scene/timer/lifecycle guards and own-proxy/cleanup/quarantine remain. Root reports messengerMaximumSeconds120/messengerAbsoluteDeadline; lifetimeMode "kept" remains compatible and is bounded by those fields.
-
-Read [design](RC10_BOUNDED_MESSENGER_KEEP.md) and [actual test report](VALIDATION_1.0.9_RC10.md).
-
-## Latest device result: no repeat of this gate is needed
-
-User supplied host-1.0.9.json and explicitly confirmed it works, closes after two minutes and returns to normal full-screen Messenger. One session is kept, reason messenger-session-limit, root maximum120. Budget start77289.589860875 precedes prepare; explicit Keep at+5.595212s, heartbeats at~35.822/65.821/96.071s, close-returned+120.087649s (deadline overshoot~0.087649s). Window-shown is no longer retained in the bounded history, so this is budget duration, not exact visible-window timing.
-
-Schema4 phase3/flags31, clean distinct-owned proxy/controller/workspace invalidations, closed/unpinned/unpoisoned/replacementAllowed=true. Bit16 means absent/different weak baseline, not a proven literal replacement. Late2-layer/active/valid samples precede close; user confirmation establishes visible normal full-screen return. Automatic touch/keyboard flags remain false; no independent routing/continuous-pixel proof is claimed. Read [RC10 device result](RC10_MESSENGER_DEVICE_RESULT.md).
-
-This confirms the requested bounded Keep outcome as reported for this exact device/profile, not unlimited Keep, long repeated cycles, manual-X/resize/minimize/cold/background/lock transitions or global app/Dopamine/ElleKit compatibility. Do not request the same2minute test again, treat its visible answer as missing, or publish another DEB merely to reconfirm it. Current candidate/archive above is the latest scoped recovery point; RC9/RC8 remain intact.
-
-## Current next gate: background hosting on existing RC10
-
-Read-only audits of runtime checks/notifications/agent visibility plus prior evidence show existing1.0.9 can be tried over NewTerm without any code change or reinstall. Foreground admission is startup-only; lifetime checks use the SpringBoard host and owned child, not an ongoing original-app foreground requirement. Rendering/activity loss still closes through existing guards. Background original-window return can legitimately defer visibility (flag32) until manually foregrounded; no app activation/focus is requested. Real background retention/input/later unhide cannot be established statically. RC10/RC9 reports do not establish this Messenger case; old pre-hosting RC5 and Safari success must not be substituted.
-
-Only indispensable next phone input: use currently installed1.0.9; start over normal visible Messenger, create PPO window and select bounded Keep; switch to NewTerm without app termination; check small Messenger content/input and NewTerm touches outside for~10seconds; close PPO with X while NewTerm stays foreground; manually open Messenger normally and check full-screen UI. Send new host-1.0.9.json+observations. If black/automatic closure/refusal occurs, stop and send report rather than loops. No respring/reinstall, new DEB, shell commands, personal Data or repeated2minute gate. See [background gate audit](RC10_MESSENGER_BACKGROUND_GATE.md).
-
-Saved helper flag32 may be correct while NewTerm is foreground, and root's2second post-close samples may precede later manual foreground/unhide. Do not claim failed return from that frozen state alone. No compatible physical device/Mac/vphone environment is available; unchanged host tests cannot substitute for this gate.
-
-Broader lifetime work still requires coordinated design: removing120s would outlive the125s helper. Do not silently remove limits or claim unlimited/general compatibility. No runtime/package modification or new automated tests/CI were needed for this read-only audit and necessary existing-version gate.
+Clang logged one guarded nil warning at Agent219 (Owned rejectsnil before containsObject, reviewed likelyfalsepositive), plus obsolete linker-option warnings. Do not call analysis warning-free. Original generated CI Markdown opening/rc6_scope field are historicalRC6 text, superseded by current RC11 scope and independent report. Future report generator is corrected metadata-only; exact delivered source remains192758bb. No executable rebuilt merely for documentation.
 
 ## Workflow/recovery
 
-Continue implementation/build/static/native validation autonomously until a necessary real-device gate. Never request automatable intermediate tests or routine permission, install/respring/kill automatically, delete personal data or alter other tweaks. Preserve GPL-3.0/c1d3r attribution. Keep this root file current for OpenCode; fresh-fetch active head and preserve intervening changes with explicit tree delta/CAS, never broad local-index push/reset.
+User wants autonomous implementation/build/automated tests until necessary real-device gate. Don't ask for routine permission or automatable intermediate tests. Never install/respring/kill automatically, delete personal Data or alter other tweaks. Preserve GPL-3.0/c1d3r attribution, main/stable/recovery. Keep this root file current for OpenCode; fresh-fetch remotehead and preserve changes via explicit Git tree/CAS, never broad local-index reset/push.
 
-Active debug/two-stage-handle-messages. Mainaf336d84a6b4812e6b6406af87803fb15bf29c3b, stable/verified-rc2-safari-source-free-classic-reuse=e5c6e53f659109d77d78a5a99f7139899a978991 and old archives untouched. Recovery /var/mobile/.ppo_disable+manual respring or known Dopamine without injection/uninstall only PPO if unusable. No automatic phone action performed.
+Active debug/two-stage-handle-messages. Mainaf336d84a6b4812e6b6406af87803fb15bf29c3b and scopedstablee5c6e53f659109d77d78a5a99f7139899a978991 unchanged by this work. Recovery /var/mobile/.ppo_disable+manualrespring, or known Dopamine withoutinjection/uninstallonlyPPO ifunusable. No automatic phone action performed. Earlier watchdog cause unconfirmed; don't blame Dopamine/ElleKit or infer ObjC exception without logs.
 
-[Historical RC10 implementation checkpoint](docs/OPENCODE_HISTORY_THROUGH_RC10.md) and [earlier history](docs/OPENCODE_HISTORY_THROUGH_RC9.md) are historical; old pending statuses/questions may be superseded. Earlier SpringBoard watchdog causes remain unconfirmed; do not blame Dopamine/ElleKit or infer exceptions without logs.
+[Historical RC11 implementation checkpoint](docs/OPENCODE_HISTORY_THROUGH_RC11.md) and older history are historical; their pending statuses may be superseded here.
