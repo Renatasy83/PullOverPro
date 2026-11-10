@@ -33,9 +33,10 @@ int main() {
     for(double now : {-1.0,std::numeric_limits<double>::quiet_NaN(),std::numeric_limits<double>::infinity(),4294967296.0})
         Check(s.packed(now)==0,"invalid producer clock not published");
     PPOReturnState captured;captured.capture(true,true);uint64_t valid=captured.packed(200);
-    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(1)<<44),200),"old v1 root-mismatch semantics cannot authorize v3 trial");
-    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(2)<<44),200),"old one-shot v2 cannot authorize v3 repeat protocol");
+    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(1)<<44),200),"old v1 root-mismatch semantics cannot authorize v5 trial");
+    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(2)<<44),200),"old one-shot v2 cannot authorize v5 repeat protocol");
     Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(3)<<44),200),"old v3 twenty-second companion cannot authorize bounded long Keep");
+    Check(!PPOReturnReady((valid&~(uint64_t(15)<<44))|(uint64_t(4)<<44),200),"585-only v4 companion cannot authorize reviewed 586 profile trial");
     for (unsigned mask=0;mask<256;mask++) {
         PPOReturnState cycle;cycle.capture(true,true);cycle.migration(true,true,true,true,false);cycle.finish(true);
         auto ticket=cycle.generation;

@@ -13,14 +13,14 @@ static void Check(bool value,const char *message) {
     ++checks;if(!value){std::fprintf(stderr,"FAIL: %s\n",message);std::exit(1);}
 }
 extern "C" uint32_t PPOReturnTestRegister(const char *name,int *token) {
-    Check(std::strcmp(name,"com.renatasy83.ppo.messenger.return.v4")==0,"read only versioned companion channel");
+    Check(std::strcmp(name,"com.renatasy83.ppo.messenger.return.v5")==0,"read only versioned companion channel");
     *token=17;return NOTIFY_STATUS_OK;
 }
 extern "C" uint32_t PPOReturnTestGet(int token,uint64_t *value) {
     Check(token==17,"registered token used");*value=published;return NOTIFY_STATUS_OK;
 }
 extern "C" uint32_t PPOReturnTestPost(const char *name) {
-    Check(std::strcmp(name,"com.renatasy83.ppo.messenger.return.prepare.v4")==0,"only explicit prepare channel posted");
+    Check(std::strcmp(name,"com.renatasy83.ppo.messenger.return.prepare.v5")==0,"only explicit prepare channel posted");
     ++posts;return postFails?NOTIFY_STATUS_FAILED:NOTIFY_STATUS_OK;
 }
 static void Pump(double seconds) {
@@ -54,6 +54,10 @@ int main() { @autoreleasepool {
     Publish(PPOReturnPhase::Captured,1,31);Request(true,true,true);
     Publish(PPOReturnPhase::Migrated,7);Request(false,false,false);
     Publish(PPOReturnPhase::Refused,129);Request(false,false,false);
+    Publish(PPOReturnPhase::Captured,1);
+    published=(published&~(uint64_t(15)<<44))|(uint64_t(4)<<44);
+    Check(![PPOMessengerReturnSnapshot()[@"ready"] boolValue],"old schema4 state on new channel is unavailable");
+    Request(false,false,false);
     published=0;Request(false,false,false);
     Publish(PPOReturnPhase::Restored,15);postFails=true;Request(false,false,false);postFails=false;
     std::printf("Messenger prepare client tests passed: %u checks; real main-queue scheduling with notify boundary stubs, not UIKit or daemon ownership\n",checks);

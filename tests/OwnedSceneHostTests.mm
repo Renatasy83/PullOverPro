@@ -381,14 +381,17 @@ static void CompleteDeferredCleanup(void) {
 }
 int main(void) {
     @autoreleasepool {
-        ResetForApplication(@"com.facebook.Messenger");
-        requestedCapability=PPOSceneCapabilityUnknown(requestedApplication,@"reviewed-messenger585-warm-trial",
-            NSProcessInfo.processInfo.systemUptime);
-        Check(Prepare(sourceScene), "reviewed warm Messenger uses the existing independently owned-scene path");
-        Check(current.hostedScene!=sourceScene && [current.snapshot[@"admission"][@"basis"] isEqual:@"reviewed-messenger-warm-trial"],
-              "trial provenance is explicit and created child is distinct");
-        Check([current close] && current.closed && !current.poisoned, "reviewed warm trial confirms owned cleanup");
-        SourceUnchanged();
+        for (NSString *reason in @[@"reviewed-messenger585-warm-trial", @"reviewed-messenger586-warm-trial"]) {
+            ResetForApplication(@"com.facebook.Messenger");
+            requestedCapability=PPOSceneCapabilityUnknown(requestedApplication,reason,
+                NSProcessInfo.processInfo.systemUptime);
+            Check(Prepare(sourceScene), "each reviewed warm Messenger profile uses the existing independently owned-scene path");
+            Check(current.hostedScene!=sourceScene && [current.snapshot[@"admission"][@"basis"] isEqual:@"reviewed-messenger-warm-trial"] &&
+                  [current.snapshot[@"admission"][@"sceneCapability"][@"reason"] isEqual:reason],
+                  "exact reviewed profile provenance is retained and created child is distinct");
+            Check([current close] && current.closed && !current.poisoned, "each reviewed warm trial confirms owned cleanup");
+            SourceUnchanged();
+        }
         Reset();
         Check(Prepare(sourceScene), "creates one independently owned scene");
         Check(current.viewController != nil && current.hostedScene != sourceScene && !current.poisoned,

@@ -1,6 +1,6 @@
 Package: com.renatasy83.pulloverpro.diagnostic
 Name: PullOver Pro
-Version: 1.0.10~rc11
+Version: 1.0.11~rc12
 Architecture: iphoneos-arm64
 Description: Rootless PullOver Pro release candidate with a left/right edge drawer, live Settings preferences, quick switching and independently owned app windows.
 Maintainer: Renatasy83

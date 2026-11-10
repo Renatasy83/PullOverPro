@@ -71,11 +71,16 @@ require('acceptsTimer(timerGeneration,agent->_timer && agent->_deadline==timerDe
 require('acceptsScopeEvent([UIApplication.sharedApplication.connectedScenes containsObject:scene])' in return_agent,
         'Old disconnected activation/deactivation notification must not consume new readiness')
 require('PPOMessengerKeepPolicy::CompanionMaximumSeconds' in return_agent and
-        'com.renatasy83.ppo.messenger.return.v4' in return_agent,
-        'Long bounded Keep requires the coordinated v4 companion, never old20second helper')
+        'com.renatasy83.ppo.messenger.return.v5' in return_agent,
+        'Long bounded Keep requires the coordinated v5 companion, never old20second helper')
 return_client = (ROOT / 'PPOMessengerReturn.mm').read_text()
+return_state = (ROOT / 'PPOMessengerReturnState.h').read_text()
+require('((value>>44)&15)==5' in return_state and '((value>>44)&15)!=5' in return_client and
+        'messenger.return.v4' not in return_agent + return_client and 'return.prepare.v4' not in return_agent + return_client,
+        'Reviewed586 profile requires coordinated schema5 producer/consumer without v4 fallback')
+
 require('PollPrepared(20,completion)' in return_client and 'NSEC_PER_MSEC*50' in return_client and
-        'dispatch_after' in return_client and 'return.prepare.v4' in return_client and
+        'dispatch_after' in return_client and 'return.prepare.v5' in return_client and
         'dispatch_semaphore_wait' not in return_client and 'dispatch_sync' not in return_client,
         'Explicit prepare wait must be asynchronous and bounded; never block SpringBoard')
 require('self.messengerPreparationIntent==intent' in (ROOT / 'Tweak.xm').read_text(),
@@ -185,6 +190,13 @@ require(target_ids == {'com.apple.mobilesafari', 'com.apple.reminders', 'com.app
         'Only the three selected exact-firmware targets may bypass selected-app inspection')
 admission_source = (ROOT / 'PPOOwnedAdmission.mm').read_text()
 capability_source = (ROOT / 'PPOSceneCapability.mm').read_text()
+require(all(token in capability_source for token in (
+    '741517f9808a10ac225c6490d2af5bd835ff56b112464c5d53ce670d7ff92e30',
+    '354b8abc3acd00ae3a16f48e3b0156f1497be49742f6dc1db3753c13bbc89b9f',
+    'reviewed-messenger585-warm-trial', 'reviewed-messenger586-warm-trial',
+    '585.0.0', '1101076820', '586.0.0', '1105932679')),
+    'Both separately reviewed Messenger profiles must preserve their exact provenance')
+
 require('CapabilityMessagesProfile(raw, manifest)' in capability_source and
         'declared-messages-programmatic-scenes' in capability_source and
         '![raw[@"bundleIdentifier"] isEqual:@"com.apple.MobileSMS"]' in capability_source and
@@ -398,7 +410,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.10~rc11', 'Unexpected version')
+    require(field('Version') == '1.0.11~rc12', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')

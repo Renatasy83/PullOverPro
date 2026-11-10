@@ -216,7 +216,7 @@ static BOOL CurrentRootOwned(UIWindow *window) {
 - (void)event:(NSNotification *)notification {
     [self sample];
     UIWindowScene *scene=[notification.object isKindOfClass:UIWindowScene.class]?notification.object:nil;
-    if (Owned(scene) && _state.acceptsScopeEvent([UIApplication.sharedApplication.connectedScenes containsObject:scene])) {
+    if (scene && Owned(scene) && _state.acceptsScopeEvent([UIApplication.sharedApplication.connectedScenes containsObject:scene])) {
         _state.flags|=2;[self startTimer];
     }
     [self publish];
@@ -224,11 +224,11 @@ static BOOL CurrentRootOwned(UIWindow *window) {
 - (instancetype)init {
     if (!(self=[super init])) return nil;
     _token=-1;_prepareToken=-1;
-    if (notify_register_check("com.renatasy83.ppo.messenger.return.v4",&_token)!=NOTIFY_STATUS_OK) return nil;
+    if (notify_register_check("com.renatasy83.ppo.messenger.return.v5",&_token)!=NOTIFY_STATUS_OK) return nil;
     [self publish];
     NSNotificationCenter *center=NSNotificationCenter.defaultCenter;NSMutableArray *tokens=[NSMutableArray array];
     __weak PPOMessengerReturnAgent *weakSelf=self;
-    if (notify_register_dispatch("com.renatasy83.ppo.messenger.return.prepare.v4",&_prepareToken,
+    if (notify_register_dispatch("com.renatasy83.ppo.messenger.return.prepare.v5",&_prepareToken,
         dispatch_get_main_queue(),^(int token){ (void)token;[weakSelf prepareForExplicitRequest]; })!=NOTIFY_STATUS_OK) {
         notify_cancel(_token);_token=-1;return nil;
     }

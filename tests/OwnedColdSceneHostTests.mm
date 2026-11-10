@@ -54,13 +54,15 @@ static void ResetCold(NSString *identifier = @"com.example.coldapp") {
 }
 int main(void) {
     @autoreleasepool {
-        ResetCold(@"com.facebook.Messenger");
-        requestedCapability=PPOSceneCapabilityUnknown(requestedApplication,@"reviewed-messenger585-warm-trial",
-            NSProcessInfo.processInfo.systemUptime);
-        Check(!Prepare(nil) && current.closed && !current.poisoned && identityFactories==0 && specificationFactories==0 &&
-            constructors==0 && workspaceConstructions==0,
-            "reviewed Messenger trial cannot use cold factories or allocate an empty workspace");
-        SourceUnchanged();
+        for (NSString *reason in @[@"reviewed-messenger585-warm-trial", @"reviewed-messenger586-warm-trial"]) {
+            ResetCold(@"com.facebook.Messenger");
+            requestedCapability=PPOSceneCapabilityUnknown(requestedApplication,reason,
+                NSProcessInfo.processInfo.systemUptime);
+            Check(!Prepare(nil) && current.closed && !current.poisoned && identityFactories==0 && specificationFactories==0 &&
+                constructors==0 && workspaceConstructions==0,
+                "each reviewed Messenger profile refuses before cold factories or empty-workspace allocation");
+            SourceUnchanged();
+        }
         for (NSString *reason in @[@"declared-single-application-scene", @"declared-programmatic-application-scenes", @"declared-named-application-configurations"]) {
             ResetCold();
             NSMutableDictionary *proof = [requestedCapability mutableCopy]; proof[@"reason"] = reason; requestedCapability = proof;
