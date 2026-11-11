@@ -143,6 +143,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 @property(nonatomic) BOOL protectedDataAvailable;
 @property(nonatomic) BOOL protectedDataSampled;
 @property(nonatomic,strong) UIButton *actionsButton;
+@property(nonatomic,strong) UIMenu *actionsMenuModel;
 @property(nonatomic,strong) UIButton *sizeButton;
 @property(nonatomic,strong) UIButton *closeButton;
 @property(nonatomic,strong) UIButton *restoreButton;
@@ -209,7 +210,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 - (UIMenu *)presentationActionsMenu {
     if (!NSThread.isMainThread || !self.messengerTrial || !self.classicLayout ||
         !self.running || self.opening || self.closed || self.closing || self.closePending) return nil;
-    return self.actionsButton.menu;
+    return self.actionsMenuModel;
 }
 - (CGRect)drawerVisibleFrameInScene {
     if (!NSThread.isMainThread || !self.running || self.closed || self.closing || self.closePending ||
@@ -320,7 +321,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.13~rc14",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.14~rc15",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"messengerReturnHelper":self.messengerTrial?PPOMessengerReturnSnapshot():@{},
         @"messengerWarmTrial":@(self.messengerTrial), @"messengerRenderDeadline":@(self.messengerRenderDeadline),
@@ -373,11 +374,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.13.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.14.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.13] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.14] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -514,7 +515,9 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     if (_lifetime.kept()) { keep.attributes = UIMenuElementAttributesDisabled; keep.state = UIMenuElementStateOn; }
     UIAction *minimize = [UIAction actionWithTitle:@"Minimizează" image:nil identifier:nil
         handler:^(__kindof UIAction *action) { (void)action; dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf minimizeFromButton:nil]; }); }];
-    self.actionsButton.menu = [UIMenu menuWithTitle:@"" children:@[keep, minimize]];
+    // Keep the original model identity. UIKit is allowed to copy button menus.
+    self.actionsMenuModel = [UIMenu menuWithTitle:@"" children:@[keep, minimize]];
+    self.actionsButton.menu = self.actionsMenuModel;
     self.actionsButton.showsMenuAsPrimaryAction = YES;
 }
 - (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier
@@ -1137,7 +1140,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
         [self.startupSpinner stopAnimating]; self.startupSpinner = nil;
         self.window = nil; self.panel = nil; self.content = nil; self.scalingWrapper = nil;
         self.childController = nil; self.rootController = nil;
-        self.actionsButton = nil; self.titleLabel = nil;
+        self.actionsButton = nil; self.actionsMenuModel = nil; self.titleLabel = nil;
         self.sizeButton = nil; self.closeButton = nil; self.restoreButton = nil;
     }
     self.uiCleanupConfirmed = uiClean;

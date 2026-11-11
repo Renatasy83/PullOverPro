@@ -12,7 +12,7 @@ INSTALL_TARGET_PROCESSES := SpringBoard
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME := PullOverProDiagnostic PPOMessengerReturnAgent
-PullOverProDiagnostic_FILES := Tweak.xm PPOMessengerReturn.mm PPOSceneObservation.mm PPOCapabilityDiagnostics.mm PPOKeyboardMonitor.mm PPOClassicQuickSwitchView.mm PPOUserPreferences.mm PPOAppData.mm PPOFavoriteApps.mm PPOFavoritesStore.mm PPOPickerState.mm PPOBridgeClient.mm PPOBridgeProtocol.mm PPOBridgeIO.cpp PPOScenePreflight.mm PPOSceneLayerProbe.mm PPOOwnedSceneHost.mm PPOOwnedSafariTrial.mm PPOHostSessionSlot.mm PPOScreenLockState.mm PPOSceneCapability.mm PPOOwnedAdmission.mm
+PullOverProDiagnostic_FILES := Tweak.xm PPOMenuBinding.mm PPOMessengerReturn.mm PPOSceneObservation.mm PPOCapabilityDiagnostics.mm PPOKeyboardMonitor.mm PPOClassicQuickSwitchView.mm PPOUserPreferences.mm PPOAppData.mm PPOFavoriteApps.mm PPOFavoritesStore.mm PPOPickerState.mm PPOBridgeClient.mm PPOBridgeProtocol.mm PPOBridgeIO.cpp PPOScenePreflight.mm PPOSceneLayerProbe.mm PPOOwnedSceneHost.mm PPOOwnedSafariTrial.mm PPOHostSessionSlot.mm PPOScreenLockState.mm PPOSceneCapability.mm PPOOwnedAdmission.mm
 PullOverProDiagnostic_OBJCFLAGS := -fobjc-arc
 PullOverProDiagnostic_CCFLAGS := -std=c++17
 PullOverProDiagnostic_FRAMEWORKS := Foundation UIKit CoreFoundation QuartzCore

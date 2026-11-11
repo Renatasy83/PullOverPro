@@ -125,7 +125,7 @@ jobs:
             'sourceAndLifecyclePassed': os.environ['PORTABLE_STATUS'] == 'success',
             'crossTargetStaticAnalysis': os.environ['ANALYSIS_STATUS'] == 'success',
             'abiProbe': abi, 'rootlessCrossBuild': os.environ['PACKAGE_STATUS'] == 'success',
-            'macOSObjectiveCTestsExecuted': False, 'full37SuiteValidation': False,
+            'macOSObjectiveCTestsExecuted': False, 'fullNativeSuiteValidation': False, 'nativeSuiteCount': 40,
             'deviceRuntimeTested': False, 'dopamineEllekitCompatibilityConfirmed': False,
             'installRecommendation': False,
             'limitations': ['macOS native fixtures await hosted runner',
@@ -137,7 +137,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-RC14-linux-evidence-${{ github.sha }}
+          name: PullOverPro-RC15-linux-evidence-${{ github.sha }}
           path: |
             diagnostics/*.log
             diagnostics/*.json
@@ -150,6 +150,6 @@ jobs:
         if: steps.package.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-RC14-linux-deb-${{ github.sha }}
+          name: PullOverPro-RC15-linux-deb-${{ github.sha }}
           path: packages/*.deb
           if-no-files-found: error

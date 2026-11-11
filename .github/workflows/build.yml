@@ -303,6 +303,16 @@ jobs:
               -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -I . \
               -Xanalyzer -analyzer-output=text "$source"
           done
+      - name: Analyze and test copy-safe menu binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun clang++ --analyze -std=c++17 -Wall -Wextra -Werror -fobjc-arc -target arm64-apple-ios15.0 \
+            -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk" -Xanalyzer -analyzer-output=text \
+            PPOMenuBinding.mm 2>&1 | tee diagnostics/menu-binding-analysis.log
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fobjc-arc \
+            -framework Foundation tests/MenuBindingTests.mm PPOMenuBinding.mm -o "$RUNNER_TEMP/ppo-menu-binding-tests"
+          "$RUNNER_TEMP/ppo-menu-binding-tests" | tee diagnostics/menu-binding-tests.log
       - name: Compile and package
         shell: bash
         run: |
@@ -356,7 +366,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-1.0.13-rc14-${{ github.sha }}
+          name: PullOverPro-1.0.14-rc15-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/

@@ -12,6 +12,7 @@
 #import "PPOScenePreflight.h"
 #import "PPOSceneObservation.h"
 #import "PPOOwnedSafariTrial.h"
+#import "PPOMenuBinding.h"
 #import "PPOMessengerReturn.h"
 #import "PPOOwnedApplicationPolicy.h"
 #import "PPOOwnedAdmission.h"
@@ -37,6 +38,8 @@ static UIView *ppoHandlePill;
 static UIVisualEffectView *ppoHandleBlur;
 static UIImageView *ppoHandleIcon;
 static UIButton *ppoClassicClose;
+static PPOMenuBinding *ppoClassicMenuBinding;
+static NSUInteger ppoClassicMenuAssignmentCount;
 static UIButton *ppoAllAppsButton;
 static double ppoHandleRevealProgress;
 static NSUInteger ppoHostInspectionRequestCount, ppoHostOpenAttemptCount, ppoFirstStageRevealCount;
@@ -192,27 +195,27 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *response, NSError *error) {
     static NSArray *history; // This function is called only on PPOFileQueue.
     NSDictionary *report = PPOCapabilityDiagnosticRecord(history,identifier,response,error,
-        @"1.0.13~rc14",NSProcessInfo.processInfo.systemUptime);
+        @"1.0.14~rc15",NSProcessInfo.processInfo.systemUptime);
     if (!report) return;
     history = report[@"observations"];
     NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
         withIntermediateDirectories:YES attributes:nil error:NULL])
-        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-1.0.13.json"]
+        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-1.0.14.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
 // Worker-only bounded diagnostics: counts/outcome, never the favorite IDs or names.
 static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL readable, NSError *error) {
-    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.13~rc14", @"event": event,
+    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.14~rc15", @"event": event,
         @"favoriteCount": @(MIN(count, PPOFavoriteIdentifiersLimit)), @"readable": @(readable),
         @"errorCode": @(error.code), @"errorDomain": error ? ([error.domain isEqual:NSPOSIXErrorDomain] ? @"posix" : @"data") : @"none",
         @"runtimeCompatibilityConfirmed": @NO};
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES
-        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-1.0.13.json"]
+        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-1.0.14.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
@@ -421,13 +424,13 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                             [recent addObject:snapshot];
                             while (recent.count>2) [recent removeObjectAtIndex:0];
                             history=[recent copy];
-                            NSDictionary *report=@{@"schema":@1,@"version":@"1.0.13~rc14",@"observations":history,
+                            NSDictionary *report=@{@"schema":@1,@"version":@"1.0.14~rc15",@"observations":history,
                                 @"hostingRequested":@NO,@"sceneMutationRequested":@NO};
                             NSData *json=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
                             NSString *directory=@"/var/mobile/Library/Logs/PullOverPro";
                             if (json && [NSFileManager.defaultManager createDirectoryAtPath:directory
                                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                                [json writeToFile:[directory stringByAppendingPathComponent:@"messenger-1.0.13.json"]
+                                [json writeToFile:[directory stringByAppendingPathComponent:@"messenger-1.0.14.json"]
                                     options:NSDataWritingAtomic error:NULL];
                         });
                         ppoStatus.text=@"Messenger: raport solicitat; fără fereastră";
@@ -569,9 +572,9 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 1.0.13] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 1.0.14] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 1.0.13] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 1.0.14] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport scenă salvat (Filza)" : @"Raport API: eroare";
@@ -1190,7 +1193,7 @@ static void PPOApplyOverlayLayout(void) {
     }
     BOOL compactGeometryChanged = !CGRectEqualToRect(previousScreen,screen) ||
         !CGRectEqualToRect(previousTouch,touch) || !UIEdgeInsetsEqualToEdgeInsets(previousBand,ppoCompactInsets);
-    ppoHandle.frame = touch;
+    if (!CGRectEqualToRect(ppoHandle.frame,touch)) ppoHandle.frame = touch;
     if ((compactGeometryChanged && ppoTarget.quickChoosing && ppoClassicView.visible) ||
         (ppoCompactBlockedByKeyboard && ppoTarget.classicRequested)) [ppoTarget closeChooser];
     // The compact projection shares this public scene geometry. Refresh it when
@@ -1210,10 +1213,17 @@ static void PPOApplyOverlayLayout(void) {
     ppoHandleBlur.frame = ppoHandlePill.bounds;
     ppoHandleIcon.frame = CGRectMake(left ? 42 : 14, (height-24)/2,24,24);
     ppoHandlePill.hidden = NO;
-    ppoClassicClose.hidden = progress < 0.99 || ppoTarget.classicRequested;
+    BOOL closeHidden = progress < 0.99 || ppoTarget.classicRequested;
+    if (ppoClassicClose.hidden != closeHidden) ppoClassicClose.hidden = closeHidden;
     UIMenu *windowMenu = ppoClassicClose.hidden ? nil : active.presentationActionsMenu;
-    if (ppoClassicClose.menu != windowMenu) ppoClassicClose.menu = windowMenu;
-    ppoClassicClose.frame = CGRectMake(left ? 0 : 36,(touch.size.height-44)/2,44,44);
+    BOOL menuAssigned = [ppoClassicMenuBinding bindSource:windowMenu owner:windowMenu ? active : nil
+        destination:ppoClassicClose setter:^(id destination, id source) {
+            ((UIButton *)destination).menu = source;
+            ppoClassicMenuAssignmentCount = MIN(ppoClassicMenuAssignmentCount + 1, (NSUInteger)1000000);
+        }];
+    if (menuAssigned) PPORecordInterfaceEvent(windowMenu ? @"classic-menu-bound" : @"classic-menu-cleared");
+    CGRect closeFrame = CGRectMake(left ? 0 : 36,(touch.size.height-44)/2,44,44);
+    if (!CGRectEqualToRect(ppoClassicClose.frame,closeFrame)) ppoClassicClose.frame = closeFrame;
     BOOL physicalLeft = CGRectGetMidX(touch) < screen.size.width/2;
     ppoAllAppsButton.frame = CGRectMake(physicalLeft ? CGRectGetMaxX(touch)+6 : CGRectGetMinX(touch)-50,
         CGRectGetMidY(touch)-22,44,44);
@@ -1268,7 +1278,7 @@ static void PPOFlushInterfaceReport(void) {
             NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"interface-1.0.13.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"interface-1.0.14.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
         dispatch_async(dispatch_get_main_queue(), ^{ ppoInterfaceWriting = NO; PPOFlushInterfaceReport(); });
@@ -1287,7 +1297,8 @@ static void PPORecordInterfaceEvent(NSString *event) {
         @"handleNubbed":@(ppoHandleNubbed), @"quickChooserVisible":@(ppoClassicView.visible),
         @"handleRevealed":@(ppoTarget.handleRevealed), @"firstStageRevealCount":@(ppoFirstStageRevealCount),
         @"hostInspectionRequestCount":@(ppoHostInspectionRequestCount), @"hostOpenAttemptCount":@(ppoHostOpenAttemptCount),
-        @"drawerProgress":@([ppoTarget activeDrawer].drawerProgress)};
+        @"drawerProgress":@([ppoTarget activeDrawer].drawerProgress),
+        @"classicMenuAssignmentCount":@(ppoClassicMenuAssignmentCount)};
     if (!ppoInterfaceHistory) ppoInterfaceHistory = [NSMutableArray array];
     [ppoInterfaceHistory addObject:sample];
     if (ppoInterfaceHistory.count > 16) [ppoInterfaceHistory removeObjectAtIndex:1];
@@ -1296,7 +1307,7 @@ static void PPORecordInterfaceEvent(NSString *event) {
         [ppoInteractionHistory addObject:sample];
         if (ppoInteractionHistory.count > 12) [ppoInteractionHistory removeObjectAtIndex:0];
     }
-    ppoInterfacePending = @{@"schema":@2,@"version":@"1.0.13~rc14",@"lastObservation":sample,
+    ppoInterfacePending = @{@"schema":@2,@"version":@"1.0.14~rc15",@"lastObservation":sample,
         @"observations":[ppoInterfaceHistory copy], @"interactionObservations":[ppoInteractionHistory copy] ?: @[],
         @"runtimeCompatibilityConfirmed":@NO,
         @"keyboardEventDeliveryVerified":@NO,@"appNativeGeometryChanged":@NO};
@@ -1410,6 +1421,7 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     ppoStatus = status; ppoHandle = handle; ppoHandlePill = pill; ppoHandleBlur = blur; ppoHandleIcon = icon;
     ppoRenderedTheme = -1; ppoRenderedSymbol = nil;
     ppoClassicView = classic; ppoClassicClose = classicClose; ppoAllAppsButton = allApps; ppoOutsideDismiss = outside; ppoOutsideMask = mask;
+    ppoClassicMenuBinding = [PPOMenuBinding new]; ppoClassicMenuAssignmentCount = 0;
     ppoFirmwareMatches = [PPOSceneFrameworkIdentity()[@"matches"] boolValue];
     ppoLastInteraction = NSProcessInfo.processInfo.systemUptime; ppoWasDrawerOpen = NO;
     ppoKeyboardMonitor = [[PPOKeyboardMonitor alloc] initWithScene:scene changed:^{ PPOKeyboardDidChange(); }];
@@ -1496,12 +1508,12 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 1.0.13] no-active-scene; stopped");
+                NSLog(@"[PPO 1.0.14] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 1.0.13] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 1.0.14] ui-exception=%@; stopped", exception.name);
             ppoWindow.hidden = YES; [ppoTarget cancelOpening];
             if (ppoVisibilityTimer) { dispatch_source_cancel(ppoVisibilityTimer); ppoVisibilityTimer = nil; }
             [ppoKeyboardMonitor invalidate]; ppoKeyboardMonitor = nil;

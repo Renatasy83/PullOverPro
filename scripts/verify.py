@@ -16,7 +16,7 @@ def require(condition, message):
         raise SystemExit(message)
 
 
-source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOCapabilityDiagnostics.mm', 'PPOKeyboardMonitor.mm', 'PPOClassicQuickSwitchView.mm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm', 'PPOFavoriteApps.mm', 'PPOFavoritesStore.mm', 'PPOPickerState.mm'])
+source = '\n'.join((ROOT / path).read_text() for path in ['Tweak.xm', 'PPOCapabilityDiagnostics.mm', 'PPOKeyboardMonitor.mm', 'PPOClassicQuickSwitchView.mm', 'PPOAppData.mm', 'PPOBridgeClient.mm', 'PPOBridgeProtocol.mm', 'PPOBridgeIO.cpp', 'PPOHostSessionSlot.mm', 'PPOFavoriteApps.mm', 'PPOFavoritesStore.mm', 'PPOPickerState.mm', 'PPOMenuBinding.mm'])
 for pattern in (r'%hook\b', r'%init\b', r'objc_msgSend', r'NSClassFromString',
                 r'NSSelectorFromString', r'valueForKey:', r'launchApplication',
                 r'method_getImplementation', r'method_invoke', r'dlopen', r'dlsym',
@@ -259,7 +259,7 @@ require('UIAction actionWithTitle:' in owned_trial and '__weak PPOOwnedSafariTri
 menu_getter = re.search(r'- \(UIMenu \*\)presentationActionsMenu \{(.*?)\n\}', owned_trial, re.S)
 require(menu_getter is not None and all(token in menu_getter.group(1) for token in (
         '!NSThread.isMainThread', '!self.messengerTrial', '!self.classicLayout', '!self.running',
-        'self.opening', 'self.closed', 'self.closing', 'self.closePending', 'return self.actionsButton.menu;')) and
+        'self.opening', 'self.closed', 'self.closing', 'self.closePending', 'return self.actionsMenuModel;')) and
         all(token not in menu_getter.group(1) for token in ('checkLifetime', 'sampleState', 'prepareScene', 'updateActionsMenu')),
         'Handle actions must expose only the existing live Messenger drawer menu without private sampling')
 require('limited[@"keepWindowOpen"]=@NO;' in owned_trial and
@@ -267,11 +267,26 @@ require('limited[@"keepWindowOpen"]=@NO;' in owned_trial and
         'preferredSize=preferredSize == 3 ? 3 : 1; _sizePreset=PPOFloatingSize::Standard;' in owned_trial,
         'Messenger honors only requested Sertar alongside the Standard baseline, with automatic Keep still off')
 require('UIMenu *windowMenu = ppoClassicClose.hidden ? nil : active.presentationActionsMenu;' in picker_source and
-        'if (ppoClassicClose.menu != windowMenu) ppoClassicClose.menu = windowMenu;' in picker_source and
+        '[ppoClassicMenuBinding bindSource:windowMenu owner:windowMenu ? active : nil' in picker_source and
+        'destination:ppoClassicClose setter:' in picker_source and
         'classicClose.showsMenuAsPrimaryAction = NO;' in picker_source and
         '[touch.view isDescendantOfView:ppoClassicClose]' in picker_source and
         'pan.delegate = target;' in picker_source and 'quick.delegate = target;' in picker_source,
         'Long-press-X actions must preserve tap-close, parent gesture exclusion and live menu identity/clearing')
+require('ppoClassicClose.menu !=' not in picker_source and
+        'return self.actionsButton.menu;' not in menu_getter.group(1) and
+        'self.actionsMenuModel = [UIMenu menuWithTitle:' in owned_trial and
+        'self.actionsButton.menu = self.actionsMenuModel;' in owned_trial and
+        'self.actionsMenuModel = nil;' in owned_trial,
+        'Menu binding must use the retained original model, never a copied UIButton property identity')
+require('classicMenuAssignmentCount' in picker_source and
+        'if (!CGRectEqualToRect(ppoHandle.frame,touch))' in picker_source and
+        'if (!CGRectEqualToRect(ppoClassicClose.frame,closeFrame))' in picker_source,
+        'Menu diagnostics count actual assignments and unchanged anchor frames avoid repeated setters')
+require('PPOMenuBinding.mm' in (ROOT / 'Makefile').read_text() and
+        'menu-binding-tests.log' in (ROOT / '.github/workflows/build.yml').read_text(),
+        'The actual production menu binder and copy-boundary regression must be built and tested')
+
 
 for action in ('minimizeFromButton', 'restoreFromButton'):
     body = re.search(r'- \(void\)' + action + r':\(UIButton \*\)sender \{(.*?)\n\}', owned_trial, re.S)
@@ -435,7 +450,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.13~rc14', 'Unexpected version')
+    require(field('Version') == '1.0.14~rc15', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
