@@ -315,7 +315,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.11~rc12",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.12~rc13",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"messengerReturnHelper":self.messengerTrial?PPOMessengerReturnSnapshot():@{},
         @"messengerWarmTrial":@(self.messengerTrial), @"messengerRenderDeadline":@(self.messengerRenderDeadline),
@@ -368,11 +368,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.11.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.12.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.11] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.12] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -509,7 +509,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     if (_lifetime.kept()) { keep.attributes = UIMenuElementAttributesDisabled; keep.state = UIMenuElementStateOn; }
     UIAction *minimize = [UIAction actionWithTitle:@"Minimizează" image:nil identifier:nil
         handler:^(__kindof UIAction *action) { (void)action; dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf minimizeFromButton:nil]; }); }];
-    self.actionsButton.menu = [UIMenu menuWithTitle:@"" children:self.messengerTrial?@[keep]:@[keep, minimize]];
+    self.actionsButton.menu = [UIMenu menuWithTitle:@"" children:@[keep, minimize]];
     self.actionsButton.showsMenuAsPrimaryAction = YES;
 }
 - (NSString *)openInScene:(UIWindowScene *)scene bundleIdentifier:(NSString *)bundleIdentifier
@@ -860,7 +860,6 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     }
 }
 - (void)minimizeFromButton:(UIButton *)sender {
-    if (self.messengerTrial) return;
     (void)sender;
     if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
         self.closePending || _presentation.minimized()) return;
@@ -879,7 +878,6 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     }
 }
 - (void)restoreFromButton:(UIButton *)sender {
-    if (self.messengerTrial) return;
     (void)sender;
     if (!NSThread.isMainThread || !self.running || self.opening || self.closed || self.closing ||
         self.closePending || !_presentation.minimized()) return;

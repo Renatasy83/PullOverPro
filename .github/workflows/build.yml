@@ -356,7 +356,7 @@ jobs:
       - name: Upload development deb and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: PullOverPro-1.0.11-rc12-${{ github.sha }}
+          name: PullOverPro-1.0.12-rc13-${{ github.sha }}
           path: |
             packages/*.deb
             diagnostics/
