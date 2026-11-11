@@ -1,3 +1,15 @@
+## RC12 device gate passed (2026-11-11)
+
+User says Funcționează and supplies host-1.0.11.json. Exact reviewedMessenger586 trial/v5 helper;3moves+5resizes coveringall3presets, nativechild414x896 preserved. Kept/manualclose, ownedcontroller/workspace invalidationsreturned, closed/unpinned/unpoisoned/replacementAllowed. Rootbudget66.125255s, not exactvisibleinterval because window-shown/Keep-entry discarded. Activehosted1/2layers versus originalbg0layers retained53.749623s. Helper5/phase3/flags47deferred32/readyfalse is expected postclose. Userconfirmation suppliesactualpixels/input/laternormalappearance; telemetry flags remainfalse. See RC12_MESSENGER_DEVICE_RESULT.md. Don'trequestcompletedRC12testagain.
+
+RC12 source6928d998ea54583faf8a6e79ab6a897da72419b7/archivec08bc044455f6a6d359626891ede89915c75a34c/DEBSHA5b1860200f514cbc4ddb971898837ce2a54672d6a5f240c17db4753ea0e37c1a is the new scoped recovery point; prior archives/main/stable unchanged. No actual586minimize/restore/cold/120secondexpiry claim.
+
+Autonomously prepare RC13 enabling only existing public minimize/restore paths: remove2Messenger-specificearlyreturns and exposemenuaction; retainnativepositiveviewport/containment, allprofile/v5/120root/125agent/lock/render/cleanup gates, initialStandard/coldblock. Agent/transportunchanged. Full39native/13portable/analysis/rootlessbuild/artifactvalidation before newDEB. Onlynextphonegateafterchecks: minimizebar overNewTerm/outsideinput, movebar, restorecontent/input, minimizeagainX/manualnormalMessenger. No extra private APIs, unlimitedKeep or otherappretest.
+
+Earlier “needsdevicegate” statuses below are superseded by this result.
+
+---
+
 # PullOver Pro — OpenCode / ChatGPT handoff (2026-11-10)
 
 ## Current gate: RC12 package ready; Messenger 586 needs one device test
