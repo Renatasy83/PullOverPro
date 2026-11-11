@@ -1,0 +1,13 @@
+# PullOver Pro 1.0.13~rc14 — Messenger edge-drawer candidate
+
+Tested source `586608c13cff2557fffbb3c04233a361ab593890`. [macOS Actions42981254906](https://github.com/Renatasy83/PullOverPro/actions/runs/42981254906) passed all39 native suites, Clang analysis, pinned Theos/SDK16.5 rootless arm64+modern arm64e build and package checks. Linux42981254926 passed13 portable suites/source/lifecycle/static analysis; unsupported ABI0x2 correctly skipped packaging.
+
+DEB `com.renatasy83.pulloverpro.diagnostic_1.0.13~rc14_iphoneos-arm64.deb`: 323782 bytes; SHA256 `2d8c9105b3e13c9bba0539008928a1b1124435dd6c6b49faaf2f6b6fa8260d05`. ZIP/39-marker/source/payload/filter/lifecycle/license/six-binary/code-signature bounds and new root selectors/version markers checked. All12 analysis logs have no diagnostics; full job has12 obsolete linker-option warnings. Signature trust and actual UIKit behavior are untested.
+
+RC14 honors requested Messenger Sertar layout, keeps Standard otherwise and automaticKeepoff. Longpress handleX offers the existing weak live-guarded Keep/Minimize actions; tapX remainsclose. Parentgesture exclusion, menuidentity clearing and owned chrome order preservecontrols above the positive appviewport. Agent/profile/schema5/owner/policies are unchanged. Keep exact585/586 warm admission and15/120/125second limits. No private API, cold launch, unlimitedKeep or clockreset.
+
+## One necessary physical test
+
+Manually install/respring. PPO Settings->Dimensiune inițială->Sertar if needed. OpenMessenger normally, then PPO. Within15seconds longpresshandleX and selectPăstrează(max2min), with no accidentalclose/favorites. SwitchNewTerm, retract/reveal viahandle andcheckcontent/simpletap/scroll. LongpressX->Minimizează, restore▢/checkcontent, tapXthenmanuallyforegroundnormalMessenger. Send `/var/mobile/Library/Logs/PullOverPro/host-1.0.13.json` and `interface-1.0.13.json`. Stoponrefusal/black/unexpectedclosure andidentifywhichstep. No priorgeometry/otherapp/cold/repeated2minute/personalData tests or protocol-driven forcequit.
+
+Do not guess UIKitprivate menu classes or relaxrendergates ifmenuselection/retract fails. This physicalprobe is essential because CI cannot establish remoteinput/menuwindowrouting. RC13 userconfirmedmin/restore/barclose recovery remains at stable/verified-rc13-messenger586-minimize(c87589dc45eb4d5039081eff7015f48ad1ff4a7e), archive7f77890d4229375c83050683eb0ef6718b90b9ef. Priorarchives/main/stables/GPL-3.0/c1d3r attribution retained. No automaticphoneaction/personaldata deletion/other-tweak change. Recovery /var/mobile/.ppo_disable/manualrespring orknownDopaminewithoutinjection/uninstallonlyPPO ifunusable.

@@ -1,0 +1,244 @@
+{
+  "source": "586608c13cff2557fffbb3c04233a361ab593890",
+  "version": "1.0.13~rc14",
+  "macOSActions": {
+    "run": 42981254906,
+    "job": 130391958183,
+    "artifact": 13837724141,
+    "conclusion": "success",
+    "host": "macos-15-intel"
+  },
+  "artifactZIP": {
+    "bytes": 1384170,
+    "digest": "sha256:bd43276370710a54c5ca2b4e827b7e427867759ce6497d2f91dbb230f0ec795b"
+  },
+  "deb": {
+    "name": "com.renatasy83.pulloverpro.diagnostic_1.0.13~rc14_iphoneos-arm64.deb",
+    "bytes": 323782,
+    "sha256": "2d8c9105b3e13c9bba0539008928a1b1124435dd6c6b49faaf2f6b6fa8260d05",
+    "gitBlobSHA": "cf92af8e98a7e8c2580209a5046341f582391a89"
+  },
+  "originalCIReport": {
+    "commit": "586608c13cff2557fffbb3c04233a361ab593890",
+    "host": "macOS-15.7.9-x86_64-i386-64bit-Mach-O",
+    "successful_test_logs": [
+      "messenger-keep-tests.log",
+      "messenger-prepare-tests.log",
+      "messenger-return-tests.log",
+      "messenger-trial-tests.log",
+      "scene-observation-tests.log",
+      "handle-interaction-tests.log",
+      "capability-diagnostics-tests.log",
+      "keyboard-avoidance-tests.log",
+      "handle-nub-tests.log",
+      "classic-geometry-tests.log",
+      "owned-cold-scene-tests.log",
+      "edge-drawer-tests.log",
+      "interaction-intent-tests.log",
+      "user-preferences-tests.log",
+      "favorite-apps-tests.log",
+      "favorites-store-tests.log",
+      "picker-state-tests.log",
+      "floating-presentation-tests.log",
+      "floating-geometry-tests.log",
+      "scene-capability-tests.log",
+      "bundle-reader-tests.log",
+      "owned-admission-tests.log",
+      "lock-state-tests.log",
+      "window-lifetime-tests.log",
+      "owned-scene-tests.log",
+      "visibility-tests.log",
+      "layer-probe-tests.log",
+      "geometry-tests.log",
+      "host-slot-tests.log",
+      "presenter-tests.log",
+      "scene-tests.log",
+      "lifecycle-tests.log",
+      "appdata-tests.log",
+      "launcher-tests.log",
+      "process-tests.log",
+      "bridge-io-tests.log",
+      "bridge-protocol-tests.log",
+      "bridge-service-tests.log",
+      "bridge-integration-tests.log"
+    ],
+    "build": "Theos rootless; arm64 and arm64e; SDK16.5; deployment15.0",
+    "package_inspection": "payload, lifecycle scripts, license and architecture checks passed",
+    "sha256sums": "2d8c9105b3e13c9bba0539008928a1b1124435dd6c6b49faaf2f6b6fa8260d05  packages/com.renatasy83.pulloverpro.diagnostic_1.0.13~rc14_iphoneos-arm64.deb",
+    "not_executed": [
+      "RC14 Messenger headerless Sertar, long-press-X Keep/Minimize selection, retract/reveal, restored content and tap-X return on actual UIKit",
+      "RC4 first-touch/inward-pull chooser-only flow, distinct second-tap/row app opening and already-open window toggling on iOS",
+      "RC4 bounded per-app refusal history in the actual SpringBoard file-writing context",
+      "Messenger app delegate and independent-scene behavior remain unproven; RC5 foreground/background source samples are available and do not prove multiple scenes.",
+      "Actual public keyboard visibility, handle/compact-chooser avoidance and restoration on iOS: RC3 received47 public events but retained samples show hidden only",
+      "Physical manual outward nub/reveal and automatic-nub integration: RC3 records one commit counter but no retained commit/reveal sequence",
+      "Cold owned-scene process bootstrap, first rendered layer, input and cleanup on actual23A355",
+      "Classic headerless drawer, moving handle, compact quick switch and outside tap on iOS",
+      "iOS launchd bootstrap/removal and service permissions",
+      "SpringBoard sandbox access to the file mailbox",
+      "LaunchServices app launching from the new service context",
+      "Application scene rendering, touch/keyboard routing and teardown",
+      "Lock/unlock, orientation, process death and watchdog integration",
+      "Keep mode beyond fifteen seconds and lock-transition frame exposure",
+      "New full-scene passthrough drawer pixels/input, left/right gestures and Settings PreferenceLoader discovery/live controls/favorite editor on iOS",
+      "Dopamine and ElleKit runtime compatibility",
+      "vphone-cli: no compatible physical Apple Silicon Mac is accessible"
+    ],
+    "floating_application_hosting_implemented": "User confirmed RC13 Messenger586 minimize/restore/bar-close:4minimizes/3restores/6moves/2resizes, native414x896 and positiveviewport preserved, cleanmanualclose whileminimized, helper5phase3flags47deferredvisibility. Budget58.187716s is not exactvisibleinterval. RC14 honors requested Sertar layout and exposes existing guarded actions by longpress-X; tapXstillcloses and parent gestures excludeX. Exact585/586/v5/120root/125agent and automaticKeepoff retained. No newprivateAPI, cold or unlimitedKeep. Actual headerless/menu/retract/input/return remains untested.",
+    "prior_device_baseline": "RC13 user says Func\u021bioneaz\u0103 after min/restore/bar-X probe; one foreground/source preflight refusal then one hostedMessenger586 success.4minimizes/3restores/6moves/2resizes; minimizedAtClose, cleanownteardown/replacementAllowed, helper5/phase3/flags47. Budget58.187716s not exactvisibleinterval; user supplies outsideinput/restoredpixels/normalreturn observations. RC12 user says Func\u021bioneaz\u0103 after requestedMessenger586probe; exacttrial admission/schema5,3moves/5resizes, native414x896 preserved, kept/manualclose, closed/unpinned/unpoisoned/replacementAllowed. Hostedactive1/2layers vs originalbg0layers retained53.749623s; helper5/phase3/flags47deferred32. UI/input/normalreturn are userobservations, not rawtelemetry proof. No120secondexpiry/minimize/cold586 claim. RC3 supplied reports: four source-independent kept sessions (Safari118.583783s, Files10.076879s, Calendar282.295437s, Safari7.937405s), all closed/unpinned/unpoisoned with controller/workspace invalidations returned and replacement allowed. Interface received47 public keyboard events and manualNubCount1; all15 retained post-startup samples are hidden/not-adjusted, so visible movement/restoration is not demonstrated and older discarded observations are unknown. User requested correction of first-touch/pull app opening and reported unverified-window-support refusals for Messages/Messenger; neither app appears in the supplied host/capability files. RC2 Safari: user confirmed visible page, web navigation, keyboard and X; three source-independent scenes with active nonempty layers, Keep, sampled headerless drawer geometry and clean own controller/workspace teardown. Source1392af09d382be746ea8ece2a86380a1914fef29 is preserved as the scoped stable baseline. Process termination before launch and global compatibility are not established. RC1 Safari report: manual close after34.83s in Keep;7completed resizes/3moves; clean own controller/workspace cleanup. User reports RC1 works. 0.17.0 Files named-configuration admission/rendering with two clean default-timeout sessions;0.16.0 Calendar programmatic owned-window/kept/minimize/restore/resize/manual/default-timeout;0.15.0 own favorites store read/long-press access with1favorite;0.14.0 Safari minimize/restore/kept/bar-X/default expiry/reuse and user-confirmed restored/underlying input;0.13.0 resize/move;0.12.0 Contacts installed-info;0.11.0 Reminders and0.10.0 Safari Keep/lock/reuse. No full-platform compatibility claim.",
+    "dopamine_ellekit_compatibility_confirmed": false,
+    "final_candidate": false,
+    "rc14_scope": "Requested windowSize3 enables Messenger headerless Sertar while other initial presets remain Standard. AutomaticKeep staysoff; longpress-existing-X offers existing exacttrial weakguarded Keep/Minimize, tapremainsclose. No scene/Agent/protocol/clock changes; public minimized chrome stays above preserved viewport. Contextmenu selection/hit routing and retract/reveal require phone validation.",
+    "rc13_scope": "Enable existing public Messenger minimize/restore plus menu only;44point public panel clips positive native viewport without private scene mutation or budget reset. Companion/schema5 unchanged; no protocol-driven app termination. Actual bar passthrough and restored app rendering/input require one phone gate.",
+    "rc12_scope": "Separate reviewed585 and586 warm-only unknown profiles; exact digest/version/build/structure binding. New schema5/channelv5 requires manually reloading the app companion. No new private selector, cold fallback, generic eligibility, minimize or unlimited Keep. Metadata equality is not code/lifecycle compatibility.",
+    "rc8_scope": "Exact same captured UIWindow is preserved; only the current root actually owned by that window may travel back. No old root is reinstalled. Schema2/channelv2 distinguishes legitimate root replacement from old root-mismatch refusal. Bounded handoff retention/polling and all exact-profile/owner/lock/target gates remain. Actual return remains a phone gate.",
+    "rc7_scope": "Exact-profile Messenger-only public UIKit companion conditionally returns only the same original UIWindow/root from an exact PPO-prefix disconnected session to its still-connected original scene. No screenshots, focus/key-window request or direct FBScene mutation. Bounded state telemetry via libnotify. Trial refuses missing/stale companion readiness. Actual public session-name mapping, migration and restored pixels require the phone.",
+    "historical_rc6_scope": "Exact installed Messenger585.0.0/build1101076820 plist SHA256 profile only, unknown/eligible=false proof with explicit warm-trial admission. Unique normal existing foreground source/layers required, no cold fallback; same verified owned-child API, automatic15s close,8s render deadline, no Keep/resize/minimize. No Messenger runtime success is inferred.",
+    "rc5_scope": "Read-only Messenger missing-manifest source observation only; no Messenger hosting authorization or fix. No launch/create/activate/present/mutation; max4 explicit snapshots per SpringBoard process,2 retained. Existing floating windows remain implemented.",
+    "emergency_disable": "Policy and subprocess fixtures cover marker presence; missing/error distinctions; disable during refresh. Not device-tested."
+  },
+  "nativeTestMarkers": {
+    "messenger-keep-tests.log": "Messenger bounded Keep policy tests passed: 598 checks; absolute root cap and companion ordering only, not UIKit lifetime",
+    "messenger-prepare-tests.log": "Messenger prepare client tests passed: 74 checks; real main-queue scheduling with notify boundary stubs, not UIKit or daemon ownership",
+    "messenger-return-tests.log": "Messenger return state tests passed: 1805 checks; explicit repeat preparation and stale callback rejection, not UIKit restoration",
+    "messenger-trial-tests.log": "Messenger trial profile tests passed: 296 checks; synthetic digest/profile, not installed app or hosting",
+    "scene-observation-tests.log": "Scene observation tests passed: 63 checks; read-only synthetic scenes, not Messenger runtime",
+    "handle-interaction-tests.log": "Handle interaction tests passed: 614708 checks; public two-stage intent only, not UIKit or application hosting",
+    "capability-diagnostics-tests.log": "Capability diagnostics tests passed: 202 checks; bounded immutable latest-per-app history, not admission",
+    "keyboard-avoidance-tests.log": "Keyboard avoidance tests passed: 649349 checks; public geometry only, not UIKit keyboard delivery",
+    "handle-nub-tests.log": "Handle nub state tests passed: 464164 checks; public gesture/visibility policy, not UIKit delivery",
+    "classic-geometry-tests.log": "Classic interface geometry tests passed: 1679714 checks; original-style public geometry, not UIKit rendering",
+    "owned-cold-scene-tests.log": "Owned cold scene tests passed: 204 checks; synthetic identity factories, not iOS process launch",
+    "edge-drawer-tests.log": "Edge drawer geometry tests passed: 504519 checks; public chooser layout/gesture/hit policy, not UIKit rendering",
+    "interaction-intent-tests.log": "Interaction intent tests passed: 416496 checks; public UI cancellation/one-shot coordination, not iOS hosting",
+    "user-preferences-tests.log": "User preferences tests passed: 1288 checks; pure model and pre-I/O rejection only",
+    "favorite-apps-tests.log": "Favorite apps tests passed: 268 checks",
+    "favorites-store-tests.log": "Favorites store tests passed: 264 checks; Foundation and isolated filesystem fixtures only",
+    "picker-state-tests.log": "Picker state tests passed: 119 checks; production coordinator fixtures only",
+    "floating-presentation-tests.log": "Floating presentation tests passed: 403376 checks; 12000 mixed resize/minimize/move/restore cycles; geometry and independent lifetime policy only",
+    "floating-geometry-tests.log": "Floating window geometry tests passed: 108812 checks; public geometry and lifetime fixtures, not UIKit rendering",
+    "scene-capability-tests.log": "Scene capability tests passed: 3191 checks; policy v4 synthetic metadata, normalization and freshness; no app admission",
+    "bundle-reader-tests.log": "Bundle scene reader tests passed: 175 checks; native fixtures, not installed iOS bundle access",
+    "owned-admission-tests.log": "Owned admission tests passed: 94 checks; pure eligibility policy, not app admission",
+    "lock-state-tests.log": "Screen lock state tests passed: 175 checks; native fixtures, not device lock behavior",
+    "window-lifetime-tests.log": "Window lifetime tests passed: 439 checks; native policy only, not iOS lifecycle",
+    "owned-scene-tests.log": "Owned scene host tests passed: 859 checks; native fixtures, not iOS scene hosting",
+    "visibility-tests.log": "Visibility context tests passed: 613 checks; native fixtures, not iOS background rendering",
+    "layer-probe-tests.log": "Scene layer probe tests passed: 229 checks",
+    "geometry-tests.log": "Host geometry tests passed: 1027 checks; aspect fit only, not UIKit rendering",
+    "host-slot-tests.log": "Host session slot tests passed: 229 checks; Foundation ownership fixtures only",
+    "presenter-tests.log": "Scene presenter tests passed: 342 checks; native fixtures, not iOS hosting",
+    "scene-tests.log": "Scene preflight tests passed; native fixtures only, no private iOS methods called",
+    "lifecycle-tests.log": "Lifecycle tests passed: 46 checks; rootless/system lookup, own-service upgrade/retries, failure propagation and own-service removal.",
+    "appdata-tests.log": "App data tests passed",
+    "launcher-tests.log": "Launch ABI tests passed; no private API called",
+    "process-tests.log": "Process tests passed; no private API called",
+    "bridge-io-tests.log": "Bridge IO: 365 checks passed; bounded files, private ownership/modes, symlink/FIFO/hardlink rejection, atomic concurrent replacement.",
+    "bridge-protocol-tests.log": "Bridge protocol tests passed: 198 checks; policy v4 synthetic metadata, JSON transport and caller binding",
+    "bridge-service-tests.log": "Bridge service policy tests passed",
+    "bridge-integration-tests.log": "Bridge subprocess integration: 71 checks passed; real kqueue/mailbox, flock, replay, restart and bounded client timeout."
+  },
+  "binaryInspection": {
+    "checkedBinaries": {
+      "var/jb/Library/MobileSubstrate/DynamicLibraries/PPOMessengerReturnAgent.dylib": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverProDiagnostic.dylib": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/Library/PreferenceBundles/PullOverProPortPreferences.bundle/PullOverProPortPreferences": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/usr/bin/ppo-apps": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/usr/bin/ppo-bridge": [
+        "0x0",
+        "0x80000002"
+      ],
+      "var/jb/usr/bin/ppo-open": [
+        "0x0",
+        "0x80000002"
+      ]
+    },
+    "runtimeTest": false,
+    "signatureTrustVerified": false
+  },
+  "linuxActions": {
+    "run": 42981254926,
+    "job": 130391958010,
+    "artifact": 13838155985,
+    "conclusion": "success"
+  },
+  "linuxEvidence": {
+    "commit": "586608c13cff2557fffbb3c04233a361ab593890",
+    "host": "ubuntu-22.04",
+    "portableSuitesPassed": 13,
+    "sourceAndLifecyclePassed": true,
+    "crossTargetStaticAnalysis": true,
+    "abiProbe": {
+      "cpuSubtype": "0x2",
+      "requiredSubtype": "0x80000002",
+      "supportsRequiredABI": false,
+      "headerPatchingAllowed": false,
+      "packageBuildAllowed": false
+    },
+    "rootlessCrossBuild": false,
+    "macOSObjectiveCTestsExecuted": false,
+    "full37SuiteValidation": false,
+    "deviceRuntimeTested": false,
+    "dopamineEllekitCompatibilityConfirmed": false,
+    "installRecommendation": false,
+    "limitations": [
+      "macOS native fixtures await hosted runner",
+      "Toolchain version alone does not prove arm64e ABI compatibility",
+      "No package when arm64e ABI probe is unsupported",
+      "UIKit scene return needs real device"
+    ]
+  },
+  "linuxArtifactZIP": {
+    "bytes": 5878,
+    "digest": "sha256:1ffddc1fa58157137a1da0b7f5eb5f4f142a4e07131a49af0fece0f29cb3596b"
+  },
+  "independentChecks": [
+    "ZIP size/digest/CRC, safe paths and one exact DEB",
+    "39 exact successful native markers/report/source",
+    "DEB hash/version/rootless payload/filter/lifecycle/license",
+    "Six actual fat arm64/modern arm64e images and bounded code-signature commands",
+    "Exact585/586 profile and v5 markers, nooldv4/forbidden Agent selectors",
+    "New root presentationActionsMenu/bringSubviewToFront:/host1.0.13 markers in both slices",
+    "Linux digest/CRC,13 sanitized portable suites and analysis; correct unsupported ABI package skip"
+  ],
+  "analysisDiagnostics": [],
+  "buildWarningSummary": "Twelve analysis logs have no diagnostics; full job has exactly12 obsolete -multiply_defined linker warnings and no error lines.",
+  "currentScope": "Honor requested Messenger windowSize3 headerless Sertar, retain Standard otherwise and automaticKeepoff. Expose only existing live exact-trial weak-guarded actions on longpress-X, retain tap-close/parent gesture exclusion/identity clearing. Correct minimized own-chrome stacking by own-parent checks/bring-to-front without native viewport/containment/visibility changes. Agent/profile/schema5/owner/geometry/lifetime/Keep files unchanged.",
+  "retainedGuards": [
+    "exact585/586 warm foreground profiles/v5 companion readiness",
+    "current root/window/scene, framework and exact owner/proxy",
+    "render/lock/lifetime/cleanup/quarantine",
+    "15second default,120second absolute root cap,125second Agent cap",
+    "no cold Messenger, automatic foreground launch, unlimitedKeep, new private selector or clock reset"
+  ],
+  "confirmedPriorDeviceBaseline": "RC13 userconfirmed4minimizes/3restores/6moves/2resizes, native414x896/positiveviewport, manualclosewhileminimized andcleanownteardown/replacementAllowed. One earlierreadiness refusal beforeprepare, then1hostsuccess. Helper5/phase3/flags47deferred32; budget58.187716s notexactvisibleinterval. Realoutsideinput/restoredpixels/normalreturn are userobservations.",
+  "deviceRuntimeTested": false,
+  "signatureTrustVerified": false,
+  "dopamineEllekitCompatibilityConfirmed": false,
+  "runtimeUncertainties": [
+    "Actual overlay Xmenu selection may depend on UIKit menu window/hit routing; do not broaden private classes byguess",
+    "Whole-panel retract/reveal may alter Messenger rendering differently from44point bar; keep existing render gate",
+    "Actual headerless min/restore/input/normalreturn require physical device"
+  ],
+  "requiredPhoneGate": "Manual install/respring, SettingsDimensiuneinitialaSertar; normalMessenger->PPO, within15s longpresshandleX actuallyselectKeep withouttapclose/favorites; NewTermretract/reveal content/tap/scroll; XmenuMinimize/barRestore/content; tapX thenmanualnormalMessenger. Sendhost1.0.13 andinterface1.0.13; stoponrefusal/black/unexpectedclosure. No repeatedold/otherapp/cold/2minute tests or personalappData; no protocol-driven forced apprestart.",
+  "preservedRecovery": {
+    "rc13EvidenceStable": "c87589dc45eb4d5039081eff7015f48ad1ff4a7e",
+    "rc13Archive": "7f77890d4229375c83050683eb0ef6718b90b9ef",
+    "rc12EvidenceStable": "8f0c64f5ce82913b8cb99ef7bcecf0de6b307fa2",
+    "rc12Archive": "c08bc044455f6a6d359626891ede89915c75a34c",
+    "rc11Archive": "fe48837528401c61e81372d1ebc1e012ad4cfbd1",
+    "rc10Archive": "50b1390a373052f90622b47376a59aaa92c56898"
+  }
+}
