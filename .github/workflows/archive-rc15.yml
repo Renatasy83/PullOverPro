@@ -1,0 +1,28 @@
+name: Inspect and archive verified RC15 candidate
+on:
+  push:
+    branches: ['automation/archive-rc15']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  archive:
+    if: github.repository == 'Renatasy83/PullOverPro'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: automation
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: becd7123fec59177684f52cfd58fc8aea03e23e3
+          path: source
+          persist-credentials: false
+      - name: Inspect completed CI bytes and create immutable candidate ref
+        env:
+          RC15_TOKEN: ${{ github.token }}
+          RC15_AUTOMATION_SHA: ${{ github.sha }}
+        run: python3 automation/.github/scripts/archive-rc15.py --source-dir source --output-dir "$RUNNER_TEMP/rc15-archive"
