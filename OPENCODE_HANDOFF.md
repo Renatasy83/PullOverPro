@@ -1,3 +1,11 @@
+## RC14 phone gate failed: Keep menu unusable (2026-11-11)
+
+User reports longpress-X menu flicker/unselectableKeep and automaticclosure, supplieshost1.0.13. Two586/schema5 hosted sessions bothtimed/timeout at~15.07seconds, noacceptedKeep/refusalmarker, positiveheaderlesslayers andcleanownedcleanup. Native414×896/viewport364×787.787; seconddrawerclosed. No120cap/render/watchdogfault or completedNewTerm/input/min/restore claim. ReadRC14_MENU_DEVICE_FAILURE.md. Do not askrepeatfailedprobeorpromoteRC14; preserveverifiedRC13 stable/archive.
+
+Concrete code-contract fault: UIButton.menu iscopy; UIKitdocumentsimmutablemenucopies. ComparingdestinationX.menu identity tosourceotherUIButton.menu each1srefresh isunsupported andcanrebind/dismiss. Actualcopy/dismissbehavioron26notprovenfromlog. SourceupdateActionsMenu isnotperiodicforMessenger. RC15 must retainoriginalmenumodel andusecopy-safeFoundation bindingcache (strongsource/weakowner+destination; noUIKitgettercomparison), withactualdistinctcopypropertyregressiontest as40thnativesuite, boundedbindingdiagnostics, no privatehitTestguess/autoKeep/deadlinechange. Full40native/13portable/analysis/rootless/artifactchecks requiredbeforeonecorrectedcandidate. Thenonlynecessaryremainingheaderlessgate: XmenuKeepactuallyselect, remainpast15s, NewTermretract/reveal/menuMinimize/restore/Xnormalreturn; host+interface1.0.14. EarlierreadyRC14statusesbelow superseded.
+
+---
+
 # PullOver Pro — OpenCode / ChatGPT handoff (2026-11-11)
 
 ## Current candidate: RC14 Messenger edge drawer
