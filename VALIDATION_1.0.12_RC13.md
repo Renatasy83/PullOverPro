@@ -1,0 +1,30 @@
+# Validation — 1.0.12~rc13 Messenger minimize and restore
+
+Tested executable source `3b3e320bca7ccf15c3cbf7c1a349d5e8c4705079`. [Exact candidate DEB](https://raw.githubusercontent.com/Renatasy83/PullOverPro/7f77890d4229375c83050683eb0ef6718b90b9ef/release-candidates/1.0.12-rc13/com.renatasy83.pulloverpro.diagnostic_1.0.12~rc13_iphoneos-arm64.deb), 323518 bytes, SHA256 `b07cab134c6ce7ff27006e508fef14d203b9e3eb74c66592895a1e61a1ea28f5`, Git blob `9a3421432e5517e96b6e064efed025c68c890d4f`. Permanent archive `7f77890d4229375c83050683eb0ef6718b90b9ef` contains the DEB, SHA256SUMS, full machine-readable validation and README. The immutable raw download matches the verified artifact.
+
+## Executed checks
+
+- [macOS Actions 42956204214](https://github.com/Renatasy83/PullOverPro/actions/runs/42956204214), job130311804545, artifact13827159319: success on macOS15 Intel, Xcode16.4/AppleClang17, pinned Theos304e0799973e8145f32e4ca2de6c747a84b758ce, SDK16.5/deployment15.0/rootless. All39 native suites passed. Profile296, state1805, asyncclient74, warm-owner859, cold-owner204, Keep598, geometry108812 and presentation403376 assertions match the retained logs. Presentation includes12000 mixed resize/minimize/move/restore cycles. Native fixtures use simulated ownership/mailbox/scene objects; they do not host a real iOS app.
+- Clang static analysis passed. All12 recorded analysis logs have no diagnostics; full job has no error lines and exactly12 obsolete -multiply_defined linker warnings. Local Python syntax/source policy/lifecycle46 and13 portable sanitized suites also passed.
+- Theos rootless package and payload/version/filter/lifecycle/license checks passed. All six actual FAT binaries have arm64 subtype0 and modernarm64e subtype0x80000002, bounded code-signature commands and no test override. Exact585/586 digest/version/build/reasons verified in Agent/bridge; v5 in Agent/root, oldv4 absent and forbidden Agent selectors absent. This verifies signature bounds, not signature trust.
+- ZIP1382838 bytes/SHA2568c2e8015e8b3d6b87dc9efe3f0f6324d72730af0af72140000ed4835a3d3bc53, CRC/safe paths/unique exactDEB/source/hash/report/39 exact successful markers verified. A second independent source/artifact review found no blockers. Agent __TEXT,__text matches RC12 in both slices (arm6423980bytes, arm64e24524bytes), while whole slices differ.
+- [Linux Actions42956204227](https://github.com/Renatasy83/PullOverPro/actions/runs/42956204227), job130311804538/artifact13827556315:13 portable suites, source/lifecycle46/cross-target analysis passed. ZIP5876/SHA256dcd7aaf793df528fd32561f850d7362c0688eb41519b0a8ed10d002578eab080/CRC verified. Unsupported ABI0x2 correctly prevented Linux packaging; the delivered DEB is from macOS.
+- The explicit13-file remote implementation delta matched intended source/build/report/docs. Agent/profile/transport/state/owner/Keep/presentation/geometry/lifetime sources are byte-identical to the RC12 evidence baseline. Main, earlier scoped stable, new scoped RC12 stable and all previous archives are preserved. No raw user report, app Data or Info.plist was committed. GPL-3.0/c1d3r attribution retained.
+
+## Scope
+
+The only three runtime decisions changed are the existing Messenger Minimize menu item and the two Messenger-specific early returns in minimize/restore. Existing public code saves the expanded rectangle, clips the own panel to44points while preserving positive expanded viewport/wrapper/native containment, and refits the public wrapper on restore. No scene creation, root replacement, new private selector, attached native frame assignment or timer reset.
+
+Keep exact585/586 warm profiles, source/framework/companion/current-root/window/scene/owner/lock/render/cleanup/quarantine checks, initialStandard,15second default/120second absolute root/125second companion limits. Source checks forbid timer/budget/lifetime start/keep/reprepare in the actions. Agent/protocol5 are unchanged; no forced Messenger restart is needed solely for protocol loading. Cold Messenger, unlimited Keep and headerless Messenger remain outside this stage.
+
+## Device evidence and limits
+
+RC12 user-confirmed Messenger586 result is a separate baseline:3 moves/5 resizes/all3presets, native414x896 preserved, kept/manual clean owned close/replacementAllowed, helper5/phase3/flags47 with deferred visibility. Budgetelapsed66.125255s is not exactvisible duration because bounded history discarded window-shown/Keep-entry. Retained hostedactive1/2layers versus originalbg0layers span53.749623s. Actual pixels/input/later normal appearance are user observations. Read RC12_MESSENGER_DEVICE_RESULT.md; preserve stable/verified-rc12-messenger586-geometry at8f0c64f5ce82913b8cb99ef7bcecf0de6b307fa2 and DEB archivec08bc044455f6a6d359626891ede89915c75a34c.
+
+Actual Messenger minimized-bar clipping/remote passthrough, restored content/input and close-from-bar return have not been executed here. Geometry, metadata and green builds do not confirm actual UIKit, entitlements, signature trust, lock/process-death/watchdog integration or global Dopamine/ElleKit compatibility. No compatible physical device/Apple Silicon Mac/vphone environment is accessible; Intel hosted CI is not a substitute. Earlier watchdog cause remains unconfirmed.
+
+## One remaining physical procedure
+
+Manually install/respring. Open Messenger normally, PPO boundedKeep, switch NewTerm. Menu->Minimizează, check input/scroll outside the44point bar, drag the bar, restore▢ and check Messenger content/simpletap/scroll. Minimize again and close barX, then manually foreground Messenger and verify normal UI. Send `/var/mobile/Library/Logs/PullOverPro/host-1.0.12.json`. On refusal/black/unexpectedclosure stop repetitions and retain exactmessage/interface-1.0.12.json. No other-app, cold, repeated resize/two-minute or personal appData probe.
+
+No automatic install/respring/process termination or personal-data/other-tweak change. Recovery: /var/mobile/.ppo_disable plus manualrespring; if unusable use known Dopamine without injection and uninstall only PPO.
