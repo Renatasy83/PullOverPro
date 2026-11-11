@@ -206,6 +206,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
 }
 - (double)drawerProgress { return self.presentedDrawerProgress; }
 - (BOOL)classicLayout { return self.drawerSized && !self.closed && !_presentation.minimized(); }
+- (UIMenu *)presentationActionsMenu {
+    if (!NSThread.isMainThread || !self.messengerTrial || !self.classicLayout ||
+        !self.running || self.opening || self.closed || self.closing || self.closePending) return nil;
+    return self.actionsButton.menu;
+}
 - (CGRect)drawerVisibleFrameInScene {
     if (!NSThread.isMainThread || !self.running || self.closed || self.closing || self.closePending ||
         !self.window || self.window.hidden || !self.panel || self.panel.hidden ||
@@ -315,7 +320,7 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     // terminal cleanup, even after a long kept session. No unbounded history.
     if (self.events.count > 16) [self.events removeObjectAtIndex:2];
     UIView *presentation = [self hostView];
-    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.12~rc13",
+    NSDictionary *report = @{@"schema": @10, @"version": @"1.0.13~rc14",
         @"sessionID": self.reportID ?: @"none", @"bundleIdentifier": self.bundleIdentifier ?: @"none",
         @"messengerReturnHelper":self.messengerTrial?PPOMessengerReturnSnapshot():@{},
         @"messengerWarmTrial":@(self.messengerTrial), @"messengerRenderDeadline":@(self.messengerRenderDeadline),
@@ -368,11 +373,11 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
                 options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.12.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"host-1.0.13.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
     });
-    NSLog(@"[PPO 1.0.12] host=%@ state=%@", event, self.session.state ?: @"none");
+    NSLog(@"[PPO 1.0.13] host=%@ state=%@", event, self.session.state ?: @"none");
 }
 - (BOOL)isFinished {
     return NSThread.isMainThread && self.attempted && !self.opening && !self.running && !self.closing;
@@ -538,9 +543,9 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     self.messengerTrial=PPOSceneCapabilityIsMessengerTrial(self.sceneCapability);
     if (self.messengerTrial) {
         NSMutableDictionary *limited=[self.presentationPreferences mutableCopy];
-        limited[@"keepWindowOpen"]=@NO; limited[@"windowSize"]=@1;
+        limited[@"keepWindowOpen"]=@NO; limited[@"windowSize"]=@(preferredSize == 3 ? 3 : 1);
         self.presentationPreferences=PPOUserPreferencesNormalize(limited);
-        preferredSize=1; _sizePreset=PPOFloatingSize::Standard;
+        preferredSize=preferredSize == 3 ? 3 : 1; _sizePreset=PPOFloatingSize::Standard;
     }
     if (![self.frameworks[@"matches"] boolValue]) {
         [self record:@"framework-refused"]; return @"Firmware diferit; probă refuzată";
@@ -831,7 +836,16 @@ static NSString *PPOWindowStopName(PPOWindowStop reason) {
     self.panel.layer.cornerRadius = classic ? 12 : 14;
     // The minimized window clips below its 44-point bar. Keep the positive
     // expanded viewport, wrapper, native view and containment exactly in place.
-    if (minimized) return self.content.bounds.size.width > 0 && self.content.bounds.size.height > 0;
+    if (minimized) {
+        // A headerless viewport begins at y=0 and was added after the chrome.
+        // Keep our bar controls above it without moving or hiding app content.
+        UIView *title = self.titleLabel, *restore = self.restoreButton, *close = self.closeButton;
+        UIView *panel = self.panel;
+        if (!panel || !title || !restore || !close || title.superview != panel ||
+            restore.superview != panel || close.superview != panel) return NO;
+        [panel bringSubviewToFront:title]; [panel bringSubviewToFront:restore]; [panel bringSubviewToFront:close];
+        return self.content.bounds.size.width > 0 && self.content.bounds.size.height > 0;
+    }
     CGFloat contentTop = classic ? 0 : 44;
     self.content.frame = CGRectMake(0, contentTop, frame.width, frame.height - contentTop);
     self.sizeButton.accessibilityValue = _sizePreset == PPOFloatingSize::Large ? @"Mare"

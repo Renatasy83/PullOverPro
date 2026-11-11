@@ -12,6 +12,9 @@
 @property(nonatomic,readonly) double drawerTravel;
 // Expanded default drawer has no floating toolbar. Other presets retain it.
 @property(nonatomic,readonly) BOOL classicLayout;
+// Reviewed Messenger drawer only; existing weak, live-guarded actions for the
+// handle X long-press menu, or nil outside that state. Read-only; no private probes.
+@property(nonatomic,readonly) UIMenu *presentationActionsMenu;
 // Model geometry in scene coordinates, clipped to the screen. It is not a
 // presentation-layer/input guarantee during an in-flight UIKit animation.
 @property(nonatomic,readonly) CGRect drawerVisibleFrameInScene;

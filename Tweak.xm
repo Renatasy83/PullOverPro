@@ -192,27 +192,27 @@ static NSString *PPOBridgeFailureMessage(NSDictionary *response) {
 static void PPOWriteCapabilityObservation(NSString *identifier, NSDictionary *response, NSError *error) {
     static NSArray *history; // This function is called only on PPOFileQueue.
     NSDictionary *report = PPOCapabilityDiagnosticRecord(history,identifier,response,error,
-        @"1.0.12~rc13",NSProcessInfo.processInfo.systemUptime);
+        @"1.0.13~rc14",NSProcessInfo.processInfo.systemUptime);
     if (!report) return;
     history = report[@"observations"];
     NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
         withIntermediateDirectories:YES attributes:nil error:NULL])
-        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-1.0.12.json"]
+        [data writeToFile:[directory stringByAppendingPathComponent:@"capability-1.0.13.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
 // Worker-only bounded diagnostics: counts/outcome, never the favorite IDs or names.
 static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL readable, NSError *error) {
-    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.12~rc13", @"event": event,
+    NSDictionary *report = @{@"schema": @1, @"version": @"1.0.13~rc14", @"event": event,
         @"favoriteCount": @(MIN(count, PPOFavoriteIdentifiersLimit)), @"readable": @(readable),
         @"errorCode": @(error.code), @"errorDomain": error ? ([error.domain isEqual:NSPOSIXErrorDomain] ? @"posix" : @"data") : @"none",
         @"runtimeCompatibilityConfirmed": @NO};
     NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
     NSString *directory = @"/var/mobile/Library/Logs/PullOverPro";
     if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES
-        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-1.0.12.json"]
+        attributes:nil error:NULL]) [data writeToFile:[directory stringByAppendingPathComponent:@"picker-1.0.13.json"]
             options:NSDataWritingAtomic error:NULL];
 }
 
@@ -421,13 +421,13 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                             [recent addObject:snapshot];
                             while (recent.count>2) [recent removeObjectAtIndex:0];
                             history=[recent copy];
-                            NSDictionary *report=@{@"schema":@1,@"version":@"1.0.12~rc13",@"observations":history,
+                            NSDictionary *report=@{@"schema":@1,@"version":@"1.0.13~rc14",@"observations":history,
                                 @"hostingRequested":@NO,@"sceneMutationRequested":@NO};
                             NSData *json=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
                             NSString *directory=@"/var/mobile/Library/Logs/PullOverPro";
                             if (json && [NSFileManager.defaultManager createDirectoryAtPath:directory
                                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                                [json writeToFile:[directory stringByAppendingPathComponent:@"messenger-1.0.12.json"]
+                                [json writeToFile:[directory stringByAppendingPathComponent:@"messenger-1.0.13.json"]
                                     options:NSDataWritingAtomic error:NULL];
                         });
                         ppoStatus.text=@"Messenger: raport solicitat; fără fereastră";
@@ -569,9 +569,9 @@ static void PPOWritePickerObservation(NSString *event, NSUInteger count, BOOL re
                         @"metadata-0.5.6.txt"] atomically:YES
                         encoding:NSUTF8StringEncoding error:&error];
                 }
-                NSLog(@"[PPO 1.0.12] metadata-report=%@", saved ? @"saved" : @"write-failed");
+                NSLog(@"[PPO 1.0.13] metadata-report=%@", saved ? @"saved" : @"write-failed");
             } @catch (NSException *exception) {
-                NSLog(@"[PPO 1.0.12] metadata-exception=%@", exception.name);
+                NSLog(@"[PPO 1.0.13] metadata-exception=%@", exception.name);
             }
             dispatch_async(dispatch_get_main_queue(), ^{
                 ppoStatus.text = saved ? @"Raport scenă salvat (Filza)" : @"Raport API: eroare";
@@ -1211,6 +1211,8 @@ static void PPOApplyOverlayLayout(void) {
     ppoHandleIcon.frame = CGRectMake(left ? 42 : 14, (height-24)/2,24,24);
     ppoHandlePill.hidden = NO;
     ppoClassicClose.hidden = progress < 0.99 || ppoTarget.classicRequested;
+    UIMenu *windowMenu = ppoClassicClose.hidden ? nil : active.presentationActionsMenu;
+    if (ppoClassicClose.menu != windowMenu) ppoClassicClose.menu = windowMenu;
     ppoClassicClose.frame = CGRectMake(left ? 0 : 36,(touch.size.height-44)/2,44,44);
     BOOL physicalLeft = CGRectGetMidX(touch) < screen.size.width/2;
     ppoAllAppsButton.frame = CGRectMake(physicalLeft ? CGRectGetMaxX(touch)+6 : CGRectGetMinX(touch)-50,
@@ -1266,7 +1268,7 @@ static void PPOFlushInterfaceReport(void) {
             NSData *data = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:NULL];
             if (data && [NSFileManager.defaultManager createDirectoryAtPath:directory
                 withIntermediateDirectories:YES attributes:nil error:NULL])
-                [data writeToFile:[directory stringByAppendingPathComponent:@"interface-1.0.12.json"]
+                [data writeToFile:[directory stringByAppendingPathComponent:@"interface-1.0.13.json"]
                     options:NSDataWritingAtomic error:NULL];
         }
         dispatch_async(dispatch_get_main_queue(), ^{ ppoInterfaceWriting = NO; PPOFlushInterfaceReport(); });
@@ -1294,7 +1296,7 @@ static void PPORecordInterfaceEvent(NSString *event) {
         [ppoInteractionHistory addObject:sample];
         if (ppoInteractionHistory.count > 12) [ppoInteractionHistory removeObjectAtIndex:0];
     }
-    ppoInterfacePending = @{@"schema":@2,@"version":@"1.0.12~rc13",@"lastObservation":sample,
+    ppoInterfacePending = @{@"schema":@2,@"version":@"1.0.13~rc14",@"lastObservation":sample,
         @"observations":[ppoInterfaceHistory copy], @"interactionObservations":[ppoInteractionHistory copy] ?: @[],
         @"runtimeCompatibilityConfirmed":@NO,
         @"keyboardEventDeliveryVerified":@NO,@"appNativeGeometryChanged":@NO};
@@ -1395,6 +1397,8 @@ static void PPOBuildOverlay(UIWindowScene *scene) {
     UIButton *classicClose = [UIButton buttonWithType:UIButtonTypeSystem];
     [classicClose setTitle:@"×" forState:UIControlStateNormal]; classicClose.titleLabel.font = [UIFont systemFontOfSize:24];
     classicClose.accessibilityLabel = @"Închide fereastra PullOver Pro"; classicClose.hidden = YES;
+    classicClose.accessibilityHint = @"În modul Sertar pentru Messenger, ține apăsat pentru Păstrează sau Minimizează";
+    classicClose.showsMenuAsPrimaryAction = NO;
     [classicClose addTarget:target action:@selector(closeClassicWindow:) forControlEvents:UIControlEventTouchUpInside];
     [handle addSubview:classicClose];
     [pan requireGestureRecognizerToFail:quick];
@@ -1492,12 +1496,12 @@ static void PPOScheduleOverlay(void) {
             } else if (ppoAttempts < 3) {
                 PPOScheduleOverlay();
             } else {
-                NSLog(@"[PPO 1.0.12] no-active-scene; stopped");
+                NSLog(@"[PPO 1.0.13] no-active-scene; stopped");
                 ppoStopped = YES;
             }
         } @catch (NSException *exception) {
             // Catches synchronous ObjC exceptions only, not hangs or memory faults.
-            NSLog(@"[PPO 1.0.12] ui-exception=%@; stopped", exception.name);
+            NSLog(@"[PPO 1.0.13] ui-exception=%@; stopped", exception.name);
             ppoWindow.hidden = YES; [ppoTarget cancelOpening];
             if (ppoVisibilityTimer) { dispatch_source_cancel(ppoVisibilityTimer); ppoVisibilityTimer = nil; }
             [ppoKeyboardMonitor invalidate]; ppoKeyboardMonitor = nil;

@@ -256,6 +256,23 @@ require('#include "PPOFloatingWindowPresentation.h"' in owned_trial and
 require('UIAction actionWithTitle:' in owned_trial and '__weak PPOOwnedSafariTrial *weakSelf' in owned_trial and
         'showsMenuAsPrimaryAction = YES' in owned_trial,
         'Public action menus must use weak trial captures')
+menu_getter = re.search(r'- \(UIMenu \*\)presentationActionsMenu \{(.*?)\n\}', owned_trial, re.S)
+require(menu_getter is not None and all(token in menu_getter.group(1) for token in (
+        '!NSThread.isMainThread', '!self.messengerTrial', '!self.classicLayout', '!self.running',
+        'self.opening', 'self.closed', 'self.closing', 'self.closePending', 'return self.actionsButton.menu;')) and
+        all(token not in menu_getter.group(1) for token in ('checkLifetime', 'sampleState', 'prepareScene', 'updateActionsMenu')),
+        'Handle actions must expose only the existing live Messenger drawer menu without private sampling')
+require('limited[@"keepWindowOpen"]=@NO;' in owned_trial and
+        'limited[@"windowSize"]=@(preferredSize == 3 ? 3 : 1);' in owned_trial and
+        'preferredSize=preferredSize == 3 ? 3 : 1; _sizePreset=PPOFloatingSize::Standard;' in owned_trial,
+        'Messenger honors only requested Sertar alongside the Standard baseline, with automatic Keep still off')
+require('UIMenu *windowMenu = ppoClassicClose.hidden ? nil : active.presentationActionsMenu;' in picker_source and
+        'if (ppoClassicClose.menu != windowMenu) ppoClassicClose.menu = windowMenu;' in picker_source and
+        'classicClose.showsMenuAsPrimaryAction = NO;' in picker_source and
+        '[touch.view isDescendantOfView:ppoClassicClose]' in picker_source and
+        'pan.delegate = target;' in picker_source and 'quick.delegate = target;' in picker_source,
+        'Long-press-X actions must preserve tap-close, parent gesture exclusion and live menu identity/clearing')
+
 for action in ('minimizeFromButton', 'restoreFromButton'):
     body = re.search(r'- \(void\)' + action + r':\(UIButton \*\)sender \{(.*?)\n\}', owned_trial, re.S)
     require(body is not None and '[self checkLifetime]' in body.group(1) and
@@ -264,8 +281,15 @@ for action in ('minimizeFromButton', 'restoreFromButton'):
             'prepareScene:' not in body.group(1),
             'Presentation changes must honor lifetime without recreating a scene or extending its deadline')
 require('if (!_presentation.minimized()) {' in owned_trial and
-        'if (minimized) return self.content.bounds.size.width > 0 && self.content.bounds.size.height > 0;' in owned_trial,
+        'return self.content.bounds.size.width > 0 && self.content.bounds.size.height > 0;' in owned_trial,
         'Minimized geometry must preserve a positive expanded viewport without fitting a zero-height bar')
+minimized_branch = re.search(r'if \(minimized\) \{(.*?)\n    \}', owned_trial, re.S)
+require(minimized_branch is not None and all(token in minimized_branch.group(1) for token in (
+        'title.superview != panel', 'restore.superview != panel', 'close.superview != panel',
+        '[panel bringSubviewToFront:title]', '[panel bringSubviewToFront:restore]', '[panel bringSubviewToFront:close]')) and
+        all(token not in minimized_branch.group(1) for token in ('content.frame =', 'content.hidden =', 'fitPresentation', 'windowScene=')),
+        'Headerless minimization must keep owned chrome above the preserved app viewport without app mutations')
+
 require('[(NSDictionary *)manifest count] == 1 && !manifest[@"UISceneConfigurations"]' in capability_source and
         'declared-programmatic-application-scenes' in capability_source and
         'installed-basic-multiscene-v4' in capability_source,
@@ -411,7 +435,7 @@ for arg in sys.argv[1:]:
         return subprocess.check_output(['dpkg-deb', '-f', str(deb), name], text=True).strip()
     require(field('Package') == 'com.renatasy83.pulloverpro.diagnostic', 'Unexpected package')
     require(field('Architecture') == 'iphoneos-arm64', 'Unexpected architecture')
-    require(field('Version') == '1.0.12~rc13', 'Unexpected version')
+    require(field('Version') == '1.0.13~rc14', 'Unexpected version')
     require('ellekit' in field('Depends'), 'ElleKit dependency missing')
     require('preferenceloader' in field('Depends'), 'PreferenceLoader dependency missing')
     require('bash' in field('Depends'), 'Lifecycle script interpreter dependency missing')
