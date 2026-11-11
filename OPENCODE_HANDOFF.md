@@ -1,3 +1,13 @@
+## RC13 device gate passed (2026-11-11)
+
+User confirms Funcționează with host-1.0.12.json. ExactMessenger586/schema5 hosted session has4minimizes/3restores/6moves/2resizes, positive260×376viewport/native414×896, manualclose whileminimized, cleanownedteardown/replacementAllowed. Budgetelapsed58.187716s is not exactvisibleinterval; initialshown/Keep discarded. Helper5/phase3/flags47deferred32/readyfalse expectedpostclose. Firstattempt refusedbeforeownedprepare atforeground/source readiness, notminimizeregression. User suppliesactualpixels/outsideinput/normalreturn; telemetryflagsremainfalse. See RC13_MESSENGER_DEVICE_RESULT.md; don'taskcompletedprobeagain.
+
+RC13 recovery source3b3e320bca7ccf15c3cbf7c1a349d5e8c4705079/archive7f77890d4229375c83050683eb0ef6718b90b9ef/DEBSHAb07cab134c6ce7ff27006e508fef14d203b9e3eb74c66592895a1e61a1ea28f5 preserved. Main/scopedstable/RC12/olderarchives unchanged. No genericcompatibility/cold/headerless/120expiry claim.
+
+Nextwork RC14: honorMessenger requestedwindowSize3 Sertar whilekeepingotherinitialpresetsStandard andautomaticKeepoff; exposeexistingweak/liveguarded UIMenu onlongpress existinghandleX, withtapstillclose andparentgestureexclusion preserved. No newprivateAPI/scenecreation/nativeframe/rootassignment/clockreset; samev5Agent/profile/120root125agent. Do notguesscontextmenuhit-routingorbroadenUIKitprivatehit classes. Full39native/13portable/static/Theosbuild/artifactinspection beforenewDEB; onlynextphonegate afterchecks headerlesscontent/menuKeepactualselection/edgeretract+reopen/menuMinimize+restore/tapX/normalMessenger. ExistingRC13probeneednotrepeat. Earlierpendingstatusesbelow superseded.
+
+---
+
 # PullOver Pro — OpenCode / ChatGPT handoff (2026-11-11)
 
 ## Current candidate: RC13 Messenger minimize and restore
