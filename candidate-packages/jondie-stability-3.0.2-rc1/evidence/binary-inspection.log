@@ -1,0 +1,46 @@
+/Users/runner/work/_temp/jondie-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib (architecture arm64):
+	@rpath/PullOverPro.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 1971.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 1971.0.0)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 6441.1.101)
+	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1.11.0)
+	/System/Library/PrivateFrameworks/FrontBoard.framework/FrontBoard (compatibility version 1.0.0, current version 0.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 1500.65.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1319.100.3)
+	/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox (compatibility version 1.0.0, current version 1000.0.0)
+	/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics (compatibility version 64.0.0, current version 1690.5.4)
+	@rpath/CydiaSubstrate.framework/CydiaSubstrate (compatibility version 0.0.0, current version 0.0.0)
+/Users/runner/work/_temp/jondie-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib (architecture arm64e):
+	@rpath/PullOverPro.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 1971.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 1971.0.0)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 6441.1.101)
+	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1.11.0)
+	/System/Library/PrivateFrameworks/FrontBoard.framework/FrontBoard (compatibility version 1.0.0, current version 0.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 1500.65.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1319.100.3)
+	/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox (compatibility version 1.0.0, current version 1000.0.0)
+	/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics (compatibility version 64.0.0, current version 1690.5.4)
+	@rpath/CydiaSubstrate.framework/CydiaSubstrate (compatibility version 0.0.0, current version 0.0.0)
+UUID: 729B4BD5-B6E0-391D-B2A9-51D0A1D0C187 (arm64) /Users/runner/work/_temp/jondie-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib
+UUID: 1E1F0F0A-C4DA-3FA5-9E94-17090182FE0D (arm64e) /Users/runner/work/_temp/jondie-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib
+/Users/runner/work/_temp/jondie-package/var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs (architecture arm64):
+	/var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 1971.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 1971.0.0)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 6441.1.101)
+	/System/Library/PrivateFrameworks/Preferences.framework/Preferences (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1319.100.3)
+/Users/runner/work/_temp/jondie-package/var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs (architecture arm64e):
+	/var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 1971.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 1971.0.0)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 6441.1.101)
+	/System/Library/PrivateFrameworks/Preferences.framework/Preferences (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1319.100.3)
+UUID: E026DB3D-DA82-37F2-8EB1-31098D1D2C60 (arm64) /Users/runner/work/_temp/jondie-package/var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs
+UUID: 4C0B28A1-B656-30D5-AB6D-BEB1CDC0D0C8 (arm64e) /Users/runner/work/_temp/jondie-package/var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs

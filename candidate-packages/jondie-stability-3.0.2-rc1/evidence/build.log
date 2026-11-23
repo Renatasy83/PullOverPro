@@ -1,0 +1,55 @@
+[1;31m> [1;3;39mMaking all in Tweak…[m
+[1;31m> [1;3;39mMaking all for tweak PullOverPro…[m
+[0;31m==> [1;39mPreprocessing Tweak.xm…[m
+[0;31m==> [1;39mPreprocessing Tweak.xm…[m
+[0;32m==> [1;39mCompiling ContextHostManager.mm (arm64)…[m
+[0;32m==> [1;39mCompiling ContextHostManager.mm (arm64e)…[m
+[0;32m==> [1;39mCompiling BaseScrollView.m (arm64)…[m
+[0;32m==> [1;39mCompiling BaseScrollView.m (arm64e)…[m
+[0;32m==> [1;39mCompiling POApplicationHelper.m (arm64)…[m
+[0;32m==> [1;39mCompiling POApplicationHelper.m (arm64e)…[m
+[0;32m==> [1;39mCompiling POHandle.m (arm64)…[m
+[0;32m==> [1;39mCompiling POHandle.m (arm64e)…[m
+[0;32m==> [1;39mCompiling PullOverViewController.m (arm64)…[m
+[0;32m==> [1;39mCompiling PullOverViewController.m (arm64e)…[m
+[0;32m==> [1;39mCompiling PullOverWindow.m (arm64e)…[m
+[0;32m==> [1;39mCompiling PullOverWindow.m (arm64)…[m
+[0;32m==> [1;39mCompiling QuickSwitchTableView.m (arm64)…[m
+[0;32m==> [1;39mCompiling QuickSwitchTableView.m (arm64e)…[m
+[0;32m==> [1;39mCompiling QuickSwitchTableViewCell.m (arm64e)…[m
+[0;32m==> [1;39mCompiling QuickSwitchTableViewCell.m (arm64)…[m
+[0;32m==> [1;39mCompiling Tweak.xm (arm64)…[m
+[0;32m==> [1;39mCompiling Tweak.xm (arm64e)…[m
+[0;33m==> [1;39mLinking tweak PullOverPro (arm64e)…[m
+ld: warning: -multiply_defined is obsolete
+[0;34m==> [1;39mGenerating debug symbols for PullOverPro…[m
+[0;34m==> [1;39mStripping PullOverPro (arm64e)…[m
+[0;33m==> [1;39mLinking tweak PullOverPro (arm64)…[m
+ld: warning: -multiply_defined is obsolete
+[0;34m==> [1;39mGenerating debug symbols for PullOverPro…[m
+[0;34m==> [1;39mStripping PullOverPro (arm64)…[m
+[0;34m==> [1;39mMerging tweak PullOverPro…[m
+[0;34m==> [1;39mSigning PullOverPro…[m
+[1;31m> [1;3;39mMaking all in Prefs…[m
+[1;31m> [1;3;39mMaking all for bundle PullOverProPrefs…[m
+[0;35m==> [1;39mCopying resource directories into the bundle wrapper…[m
+[0;32m==> [1;39mCompiling POPRootListController.m (arm64)…[m
+[0;32m==> [1;39mCompiling POPRootListController.m (arm64e)…[m
+[0;33m==> [1;39mLinking bundle PullOverProPrefs (arm64e)…[m
+ld: warning: -multiply_defined is obsolete
+[0;34m==> [1;39mGenerating debug symbols for PullOverProPrefs…[m
+[0;34m==> [1;39mStripping PullOverProPrefs (arm64e)…[m
+[0;33m==> [1;39mLinking bundle PullOverProPrefs (arm64)…[m
+ld: warning: -multiply_defined is obsolete
+[0;34m==> [1;39mGenerating debug symbols for PullOverProPrefs…[m
+[0;34m==> [1;39mStripping PullOverProPrefs (arm64)…[m
+[0;34m==> [1;39mMerging bundle PullOverProPrefs…[m
+[0;34m==> [1;39mSigning PullOverProPrefs…[m
+[1;31m> [1;3;39mMaking stage in Tweak…[m
+[1;31m> [1;3;39mMaking stage for tweak PullOverPro…[m
+[1;31m> [1;3;39mMaking stage in Prefs…[m
+[1;31m> [1;3;39mMaking stage for bundle PullOverProPrefs…[m
+install -d "/Users/runner/work/PullOverPro/PullOverPro/jondie-port/.theos/_/usr/share/doc/com.johndie.pulloverpro-rootless"
+install -m 644 LICENSE PROVENANCE.md "/Users/runner/work/PullOverPro/PullOverPro/jondie-port/.theos/_/usr/share/doc/com.johndie.pulloverpro-rootless/"
+od: stdout: Broken pipe
+dm.pl: building package `com.johndie.pulloverpro-rootless:iphoneos-arm64' in `./packages/com.johndie.pulloverpro-rootless_3.0.2~rc1_iphoneos-arm64.deb'

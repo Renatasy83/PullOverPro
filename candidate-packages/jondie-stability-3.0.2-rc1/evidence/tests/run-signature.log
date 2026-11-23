@@ -1,0 +1,18 @@
+test_corrupt_alternate_code_hash (__main__.SignatureTests.test_corrupt_alternate_code_hash) ... ok
+test_corrupt_code_page (__main__.SignatureTests.test_corrupt_code_page) ... ok
+test_corrupt_requirements_blob (__main__.SignatureTests.test_corrupt_requirements_blob) ... ok
+test_empty_placeholder_page_hashes (__main__.SignatureTests.test_empty_placeholder_page_hashes) ... ok
+test_entire_binary_single_page (__main__.SignatureTests.test_entire_binary_single_page) ... ok
+test_external_info_hash_when_present (__main__.SignatureTests.test_external_info_hash_when_present) ... ok
+test_macho_two_architecture_integration (__main__.SignatureTests.test_macho_two_architecture_integration) ... ok
+test_malformed_structures (__main__.SignatureTests.test_malformed_structures) ... ok
+test_missing_special_slot_digest (__main__.SignatureTests.test_missing_special_slot_digest) ... ok
+test_real_format_all_hash_algorithms (__main__.SignatureTests.test_real_format_all_hash_algorithms) ... ok
+test_sha1_only_rejected (__main__.SignatureTests.test_sha1_only_rejected) ... ok
+test_truncated_input (__main__.SignatureTests.test_truncated_input) ... ok
+test_unvalidated_nonzero_special_slot (__main__.SignatureTests.test_unvalidated_nonzero_special_slot) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.093s
+
+OK

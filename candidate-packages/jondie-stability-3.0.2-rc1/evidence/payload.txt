@@ -1,0 +1,28 @@
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 .
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/Library
+drwxr-xr-x root/wheel        0 2026-11-23 15:30 var/jb/Library/Application Support
+drwxr-xr-x root/wheel        0 2026-11-23 15:30 var/jb/Library/Application Support/PullOverPro
+-rw-r--r-- root/wheel     1124 2026-11-23 15:30 var/jb/Library/Application Support/PullOverPro/rocket.png
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/Library/MobileSubstrate
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/Library/MobileSubstrate/DynamicLibraries
+-rwxr-xr-x root/wheel   326112 2026-11-23 15:32 var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib
+-rw-r--r-- root/wheel       93 2026-11-23 15:32 var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverPro.plist
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/Library/PreferenceBundles
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle
+-rw-r--r-- root/wheel      415 2026-11-23 15:32 var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/Info.plist
+-rwxr-xr-x root/wheel   169152 2026-11-23 15:32 var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs
+-rw-r--r-- root/wheel     2651 2026-11-23 15:32 var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/Root.plist
+-rw-r--r-- root/wheel     3104 2026-11-23 15:30 var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/icon.png
+-rw-r--r-- root/wheel     6899 2026-11-23 15:30 var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/icon@2x.png
+-rw-r--r-- root/wheel    11203 2026-11-23 15:30 var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/icon@3x.png
+drwxr-xr-x root/wheel        0 2026-11-23 15:30 var/jb/Library/PreferenceLoader
+drwxr-xr-x root/wheel        0 2026-11-23 15:30 var/jb/Library/PreferenceLoader/Preferences
+-rw-r--r-- root/wheel      197 2026-11-23 15:32 var/jb/Library/PreferenceLoader/Preferences/PullOverPro.plist
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/usr
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/usr/share
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/usr/share/doc
+drwxr-xr-x root/wheel        0 2026-11-23 15:32 var/jb/usr/share/doc/com.johndie.pulloverpro-rootless
+-rw-r--r-- root/wheel    35149 2026-11-23 15:32 var/jb/usr/share/doc/com.johndie.pulloverpro-rootless/LICENSE
+-rw-r--r-- root/wheel     1764 2026-11-23 15:32 var/jb/usr/share/doc/com.johndie.pulloverpro-rootless/PROVENANCE.md
