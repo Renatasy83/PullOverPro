@@ -6,6 +6,7 @@ mkdir -p diagnostics/analysis
 perl "$THEOS/vendor/logos/bin/logos.pl" Tweak/Tweak.xm > diagnostics/analysis/Tweak.mm
 flags=(-fobjc-arc -target arm64-apple-ios15.0 -isysroot "$THEOS/sdks/iPhoneOS16.5.sdk"
   -I "$THEOS/vendor/include" -I "$THEOS/include" -I Tweak -I Shared
+  -F "$THEOS/vendor/lib/iphone/rootless" -F "$THEOS/vendor/lib/iphone" -F "$THEOS/vendor/lib"
   '-DTHEOS_PACKAGE_INSTALL_PREFIX="/var/jb"'
   -Wno-deprecated-declarations -Wno-unused-variable -Wno-objc-property-no-attribute -Wno-incomplete-implementation)
 for source in diagnostics/analysis/Tweak.mm Tweak/*.m Tweak/*.mm Prefs/*.m; do

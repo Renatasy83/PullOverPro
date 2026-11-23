@@ -16,7 +16,9 @@ com.johndie.pulloverpro-rootless so it upgrades that implementation and preserve
 its preference domain. The original upstream package and source remain available
 from https://jond-ie.github.io/repo/ and the upstream repository.
 
-The intended corrections are keyboard geometry, bounded/cancellable startup,
+Modifications made on 2026-11-23.
+
+The implemented corrections are keyboard geometry, bounded/cancellable startup,
 rollback of partial hosting setup, QuickSwitch selection/layout guards and
 preference validation. It preserves the original drawer interface and introduces
 no new private SpringBoard API signatures. Read the validation report accompanying

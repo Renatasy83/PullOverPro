@@ -1,3 +1,4 @@
+// Modified 2026-11-23 by Renatasy83: stability corrections; original credits and GPL-3.0 retained.
 #import "ContextHostManager.h"
 #import "POLog.h"
 

@@ -1,3 +1,4 @@
+// Modified 2026-11-23 by Renatasy83: stability corrections; original credits and GPL-3.0 retained.
 // PullOver Pro (rootless) — SpringBoard hooks.
 // Original by c1d3r (Will Smillie), GPL-3.0. iOS 15-27 rootless and RootHide support: Jond-ie.
 // Changes from the original: the licence check, the What's New sheet and the
