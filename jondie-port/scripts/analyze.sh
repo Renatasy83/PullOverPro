@@ -9,6 +9,7 @@ flags=(-fobjc-arc -target arm64-apple-ios15.0 -isysroot "$THEOS/sdks/iPhoneOS16.
   -F "$THEOS/vendor/lib/iphone/rootless" -F "$THEOS/vendor/lib/iphone" -F "$THEOS/vendor/lib"
   '-DTHEOS_PACKAGE_INSTALL_PREFIX="/var/jb"'
   -Wno-deprecated-declarations -Wno-unused-variable -Wno-objc-property-no-attribute -Wno-incomplete-implementation)
+failed=0
 for source in diagnostics/analysis/Tweak.mm Tweak/*.m Tweak/*.mm Prefs/*.m; do
   output="diagnostics/analysis/$(basename "$source").plist"
   if [[ "$source" == *.mm ]]; then
@@ -16,8 +17,10 @@ for source in diagnostics/analysis/Tweak.mm Tweak/*.m Tweak/*.mm Prefs/*.m; do
   else
     compiler=(xcrun clang -x objective-c)
   fi
-  "${compiler[@]}" --analyze "${flags[@]}" \
-    -Xanalyzer -analyzer-output=plist -Xanalyzer -analyzer-werror "$source" -o "$output"
+  if ! "${compiler[@]}" --analyze "${flags[@]}" \
+    -Xanalyzer -analyzer-output=plist -Xanalyzer -analyzer-werror "$source" -o "$output"; then
+    failed=1
+  fi
 done
 python3 - <<'PY'
 import pathlib, plistlib
@@ -29,3 +32,4 @@ for path in files:
     assert not report.get('diagnostics'), f'Clang analyzer findings in {path}'
 print(f'Clang analysis: {len(files)} production translation units, zero analyzer findings')
 PY
+test "$failed" -eq 0

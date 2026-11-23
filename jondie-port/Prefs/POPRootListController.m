@@ -1,3 +1,4 @@
+// Modified 2026-11-23 by Renatasy83: guard an unavailable rootless AltList path; GPL-3.0.
 // PullOver Pro settings.
 // Values go through CFPreferences (what the tweak reads) and every change
 // posts a Darwin notification so SpringBoard applies it without a respring.
@@ -18,7 +19,8 @@
     if (self != [POPRootListController class]) return;
     // The favourites picker comes from AltList (a package dependency); load it
     // at runtime so the plist can name its controller class.
-    dlopen(ROOT_PATH("/Library/Frameworks/AltList.framework/AltList"), RTLD_NOW);
+    const char *path = ROOT_PATH("/Library/Frameworks/AltList.framework/AltList");
+    if (path) dlopen(path, RTLD_NOW);
 }
 
 - (NSArray *)specifiers {

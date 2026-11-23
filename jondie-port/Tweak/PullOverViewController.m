@@ -57,7 +57,9 @@
     [self.view addSubview:self.backgroundView];
     
     
-    UIImage *image = [UIImage imageWithContentsOfFile:ROOT_PATH_NS(@"/Library/Application Support/PullOverPro/rocket.png")];
+    NSString *rocketPath = ROOT_PATH_NS(@"/Library/Application Support/PullOverPro/rocket.png");
+    UIImage *image = rocketPath ? [UIImage imageWithContentsOfFile:rocketPath] : nil;
+    if (!image) image = [UIImage systemImageNamed:@"arrow.up.forward.app"];
     
     
     dragAndDropView = [[UIView alloc] initWithFrame:CGRectMake(0,0,100,100)];

@@ -13,5 +13,7 @@
 #include <rootless.h>
 #include <unistd.h>
 static inline BOOL POTriggrAddonInstalled(void) {
-    return access(ROOT_PATH("/Library/MobileSubstrate/DynamicLibraries/PullOverTriggr.dylib"), F_OK) == 0;
+    // Modified 2026-11-23: an unavailable rootless path is not an installed add-on.
+    const char *path = ROOT_PATH("/Library/MobileSubstrate/DynamicLibraries/PullOverTriggr.dylib");
+    return path && access(path, F_OK) == 0;
 }
