@@ -1,0 +1,5 @@
+.theos/
+packages/
+diagnostics/
+__pycache__/
+*.pyc

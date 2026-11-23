@@ -1,0 +1,128 @@
+name: Jond_ie derivative - tests, analysis and rootless candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: ['improve/jondie-stability']
+    paths: ['jondie-port/**', '.github/workflows/jondie-stability.yml']
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: macos-15-intel
+    timeout-minutes: 25
+    env:
+      LC_ALL: C
+      LANG: C
+    defaults:
+      run:
+        working-directory: jondie-port
+        shell: bash
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Configure Theos path
+        run: echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+      - name: Install build tools
+        run: brew install ldid dpkg make
+      - name: Install pinned Theos and SDK
+        run: |
+          set -euo pipefail
+          git clone --no-checkout https://github.com/theos/theos.git "$THEOS"
+          git -C "$THEOS" checkout 304e0799973e8145f32e4ca2de6c747a84b758ce
+          git -C "$THEOS" submodule update --init --recursive
+          git clone --filter=blob:none --no-checkout https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
+          git -C "$RUNNER_TEMP/sdks" sparse-checkout set iPhoneOS16.5.sdk
+          git -C "$RUNNER_TEMP/sdks" checkout 0222fd5413cf4b9af096f37b4621afa2688572f7
+          mkdir -p "$THEOS/sdks"
+          cp -R "$RUNNER_TEMP/sdks/iPhoneOS16.5.sdk" "$THEOS/sdks/"
+          echo "/usr/local/opt/make/libexec/gnubin" >> "$GITHUB_PATH"
+          echo "/opt/homebrew/opt/make/libexec/gnubin" >> "$GITHUB_PATH"
+      - name: Validate source/package contracts
+        id: source
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics
+          python3 scripts/verify.py | tee diagnostics/source-contracts.log
+      - name: Execute actual helper and fake-interface fixtures
+        id: tests
+        run: scripts/run-tests.sh
+      - name: Analyze production translation units
+        id: analysis
+        run: |
+          set -euo pipefail
+          scripts/analyze.sh 2>&1 | tee diagnostics/analysis.log
+      - name: Compile and package release candidate
+        id: build
+        run: |
+          set -euo pipefail
+          {
+            git rev-parse HEAD
+            git -C "$THEOS" rev-parse HEAD
+            xcrun clang --version
+            make --version
+            echo 'SDK=iPhoneOS16.5; deployment=15.0; scheme=rootless; arm64+modern-arm64e'
+          } > diagnostics/build-environment.txt
+          make SHELL=/bin/bash clean
+          make SHELL=/bin/bash -j2 package FINALPACKAGE=1 2>&1 | tee diagnostics/build.log
+          if grep -E 'incompatible arm64e ABI|error:' diagnostics/build.log; then exit 1; fi
+      - name: Inspect rootless payload, signatures and required ABI
+        id: package
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib
+          packages = list(pathlib.Path('packages').glob('*.deb'))
+          assert len(packages) == 1, f'Expected one candidate DEB, found {len(packages)}'
+          PY
+          python3 scripts/verify.py packages/*.deb | tee diagnostics/package-inspection.log
+          mkdir -p "$RUNNER_TEMP/jondie-package"
+          dpkg-deb -x packages/*.deb "$RUNNER_TEMP/jondie-package"
+          for relative in Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs; do
+            binary="$RUNNER_TEMP/jondie-package/var/jb/$relative"
+            xcrun lipo "$binary" -verify_arch arm64 arm64e
+            xcrun otool -L "$binary"
+            xcrun dwarfdump --uuid "$binary"
+            codesign --verify --verbose=2 "$binary"
+          done 2>&1 | tee diagnostics/binary-inspection.log
+          shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
+      - name: Record actual validation scope
+        if: always()
+        env:
+          SOURCE_RESULT: ${{ steps.source.outcome }}
+          TESTS_RESULT: ${{ steps.tests.outcome }}
+          ANALYSIS_RESULT: ${{ steps.analysis.outcome }}
+          BUILD_RESULT: ${{ steps.build.outcome }}
+          PACKAGE_RESULT: ${{ steps.package.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          out = pathlib.Path('diagnostics')
+          out.mkdir(exist_ok=True)
+          package = out / 'PACKAGE_VALIDATION.json'
+          report = {
+            'commit': os.environ['GITHUB_SHA'],
+            'upstream': '076da8f07e707453bc58ed9baadeefb40f0e93e4',
+            'runner': 'macos-15-intel', 'candidateVersion': '3.0.2~rc1',
+            'outcomes': {name: os.environ[name + '_RESULT'] for name in ('SOURCE', 'TESTS', 'ANALYSIS', 'BUILD', 'PACKAGE')},
+            'fixtureLogs': sorted(p.name for p in (out / 'tests').glob('*.log')) if (out / 'tests').exists() else [],
+            'package': json.loads(package.read_text()) if package.exists() else None,
+            'deviceRuntimeTested': False, 'dopamineEllekitCompatibilityConfirmed': False,
+            'limitations': ['No real SpringBoard/UIKit scene execution',
+              'Fake private interfaces verify only the production cleanup/launch logic under supplied responses',
+              'No measured CPU/battery improvement', 'Actual app launch, content, interaction and keyboard placement require a device']
+          }
+          (out / 'VALIDATION.json').write_text(json.dumps(report, indent=2) + '\n')
+          PY
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PullOverPro-jondie-stability-evidence-${{ github.sha }}
+          path: jondie-port/diagnostics/
+          if-no-files-found: error
+      - name: Upload single candidate DEB
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PullOverPro-3.0.2-rc1-rootless-${{ github.sha }}
+          path: jondie-port/packages/*.deb
+          if-no-files-found: error
