@@ -1,3 +1,4 @@
+// Modified 2026-11-23 by Renatasy83: remove unused hit-test coordinate calculation; GPL-3.0.
 //
 //  PullOverWindow.m
 //  PullOverPro
@@ -77,13 +78,7 @@
     UIView *hitTestResult = [super hitTest:point withEvent:event];
     
 
-    CGPoint convertedPoint = [self convertPoint:point toView:controller.contentView];
-
     if ([controller isOpened]) {
-//        if (CGRectContainsPoint(controller.contentView.bounds, convertedPoint)) {
-//            NSLog(@"[PO] Touch is contained in controller!");
-//            return nil;
-//        }
         return hitTestResult;
     }else{
         if ([hitTestResult isKindOfClass:[POHandle class]]) {

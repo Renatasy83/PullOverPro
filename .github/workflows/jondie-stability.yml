@@ -52,6 +52,7 @@ jobs:
           scripts/analyze.sh 2>&1 | tee diagnostics/analysis.log
       - name: Compile and package release candidate
         id: build
+        if: ${{ !cancelled() && steps.source.outcome == 'success' && steps.tests.outcome == 'success' }}
         run: |
           set -euo pipefail
           {
@@ -66,6 +67,7 @@ jobs:
           if grep -E 'incompatible arm64e ABI|error:' diagnostics/build.log; then exit 1; fi
       - name: Inspect rootless payload, signatures and required ABI
         id: package
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'

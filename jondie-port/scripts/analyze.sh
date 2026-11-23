@@ -22,6 +22,10 @@ for source in diagnostics/analysis/Tweak.mm Tweak/*.m Tweak/*.mm Prefs/*.m; do
     failed=1
   fi
 done
+if [[ "$failed" -ne 0 ]]; then
+  echo 'Production analysis failed; successful partial outputs are not a passing analysis.' >&2
+  exit 1
+fi
 python3 - <<'PY'
 import pathlib, plistlib
 files = sorted(pathlib.Path('diagnostics/analysis').glob('*.plist'))
