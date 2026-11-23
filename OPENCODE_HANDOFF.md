@@ -2,9 +2,13 @@
 
 The user authorized implementation. Continue on `improve/jondie-stability`, source directory `jondie-port/`, not the older root diagnostic implementation. Read the [current handoff](https://github.com/Renatasy83/PullOverPro/blob/improve/jondie-stability/OPENCODE_HANDOFF.md) and [validation / necessary phone checks](https://github.com/Renatasy83/PullOverPro/blob/improve/jondie-stability/docs/JOND_IE_STABILITY_RC1_VALIDATION.md).
 
-Candidate3.0.2~rc1 is archived at `candidate/jondie-stability-3.0.2-rc1`, commit `6c3fdc2fe19b09d1fa5d11a5be9f0aec095fb463`. Built source `22adc654e237d21d26a67535a994f63c4980b4bd`; successful Actions run45205953764. Six suites,10 production Clang analysis units, Theos rootless build, modern-arm64e/payload and embedded ldid CodeDirectory hash checks passed. SHA256 `b3f8fc9a946ea4d87a7c0a8bd5649ab8deef54b6fe05c026f6e2ab2b3bb9b50d`. Mac codesign diagnostic does not establish Apple/device trust; actual phone behavior and Dopamine/ElleKit compatibility remain unconfirmed.
+Candidate3.0.2~rc1 is archived at `candidate/jondie-stability-3.0.2-rc1`, commit `6c3fdc2fe19b09d1fa5d11a5be9f0aec095fb463`. Built source `22adc654e237d21d26a67535a994f63c4980b4bd`; successful Actions run45205953764. Six suites,10 production Clang analysis units, Theos rootless build, modern-arm64e/payload and embedded ldid CodeDirectory hash checks passed. SHA256 `b3f8fc9a946ea4d87a7c0a8bd5649ab8deef54b6fe05c026f6e2ab2b3bb9b50d`. Mac codesign diagnostic does not establish Apple/device trust. The user has now reported “Funcționează” for the delivered candidate on the previously stated setup; the report does not separately establish every probe, all applications or prolonged stability.
 
 No automatic phone actions were performed. Preserve main, stable branches, archives and upstream GPL attribution. This branch retains the earlier custom source for recovery; only this documentation pointer changed.
+
+## User-reported working recovery point
+
+On 2026-11-23 the user replied “Funcționează” (“It works”). This feedback is recorded in the current handoff and validation report, with the exact DEB/source hashes. Recovery checkpoint: `checkpoint/user-reported-working-jondie-3.0.2-rc1` at `4c986fb7b881f9b80ce5eb747057f3b0c3153ef7`. The original candidate archive and DEB remain unchanged. No new build or phone action was performed for this documentation update.
 
 ## Historical handoff before implementation
 
