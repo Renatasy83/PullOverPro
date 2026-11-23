@@ -1,4 +1,4 @@
-# PullOver Pro — current OpenCode / ChatGPT handoff (2026-11-22)
+# PullOver Pro — current OpenCode / ChatGPT handoff (2026-11-23)
 
 ## Priority: evaluate the existing GPL port before further custom candidates
 
@@ -8,7 +8,11 @@ Public source: https://github.com/Jond-ie/pulloverpro, inspected head `076da8f07
 
 The package index at Jond-ie/repo head `84183ec8b6c3bce2d777575264d4380ebf6740f1` lists3.0.1 builds for iphoneos-arm64 and iphoneos-arm64e. Dependencies: mobilesubstrate, com.opa334.altlist, firmware>=15 and<28; PreferenceLoader recommended. The author advertises iOS15–27 and Rootless/RootHide. These are upstream statements, not an independently confirmed test on the user's iPhone12,5/iOS26.0.1 build23A355/Dopamine/ElleKit1.2.
 
-Read [external port reference](EXTERNAL_PORT_REFERENCE.md) for exact package hashes, links, stated tests and limitations. Next useful engineering work is source comparison and identifying any actual missing compatibility work. Preserve GPL/c1d3r/Jond_ie attribution. Do not restart a long UI-only candidate sequence or copy binaries without source/licence review. No new custom DEB or phone test was prepared for this reference checkpoint.
+Read [external port reference](EXTERNAL_PORT_REFERENCE.md) for exact package hashes, links, stated tests and limitations. The source assessment is now recorded in [the improvement review](docs/JOND_IE_IMPROVEMENT_REVIEW.md): keyboard geometry, duplicate/unbounded startup retries, rollback after partial scene setup, QuickSwitch bounds and preference validation. These are static findings and proposals, not measured runtime improvements. Preserve GPL/c1d3r/Jond_ie attribution. Do not restart a long UI-only candidate sequence or copy binaries without source/licence review. No new custom DEB or phone test was prepared for this reference checkpoint.
+
+## Latest user request: can Jond_ie's port be improved?
+
+Yes; prioritize the source-grounded corrections in [the review](docs/JOND_IE_IMPROVEMENT_REVIEW.md) while preserving its original interface. Adjustable per-app window size/position is a possible later feature. This turn assessed feasibility only: no application patch, upstream modification, new build, package, installation or phone test was performed. Do not imply these changes have already shipped. The remaining phone compatibility and performance claims are unverified.
 
 ## Preserved local project state
 
