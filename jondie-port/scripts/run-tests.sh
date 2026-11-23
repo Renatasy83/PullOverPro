@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p diagnostics/tests
-expected=(run-context.sh run-keyboard.sh run-preferences.sh run-quickswitch.sh run-startup.sh)
+expected=(run-context.sh run-keyboard.sh run-preferences.sh run-quickswitch.sh run-startup.sh run-signature.sh)
 for test in "${expected[@]}"; do
   if [[ ! -x "tests/$test" ]]; then
     echo "Missing executable test runner: tests/$test" >&2

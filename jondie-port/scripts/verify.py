@@ -47,6 +47,116 @@ def source_checks():
     print('Source contracts: plist schemas, filter, GPL/provenance, package identity and rootless build passed')
 
 
+HASHES = {1: ('sha1', 20), 2: ('sha256', 32), 3: ('sha256', 20), 4: ('sha384', 48)}
+CD_MAGIC = 0xfade0c02
+BLOB_MAGICS = {2: 0xfade0c01, 5: 0xfade7171, 7: 0xfade7172, 0x10000: 0xfade0b01}
+
+
+def digest_bytes(raw, hash_type):
+    name, size = HASHES[hash_type]
+    return hashlib.new(name, raw).digest()[:size]
+
+
+def cstring_end(blob, offset, lower_bound, upper_bound, label):
+    require(lower_bound <= offset < upper_bound, f'Invalid {label} offset')
+    end = blob.find(b'\0', offset, upper_bound)
+    require(end > offset, f'Invalid/empty {label}')
+    return end + 1
+
+
+def inspect_embedded_signature(image, dataoff, datasize, external_slots=None):
+    """Verify embedded page/special-slot digests, not Apple identity or device trust."""
+    external_slots = external_slots or {}
+    require(0 < dataoff and 12 <= datasize and dataoff + datasize <= len(image), 'Invalid signature extent')
+    signature = image[dataoff:dataoff + datasize]
+    magic, length, count = struct.unpack_from('>III', signature)
+    require(magic == 0xfade0cc0, 'Invalid signature superblob')
+    require(12 <= length <= datasize and 0 < count <= 16 and 12 + count * 8 <= length, 'Invalid superblob index')
+    require(not any(signature[length:]), 'Nonzero data after signature superblob')
+    blobs = {}
+    extents = []
+    for index in range(count):
+        slot, offset = struct.unpack_from('>II', signature, 12 + index * 8)
+        require(slot not in blobs, 'Duplicate signature slot')
+        require(12 + count * 8 <= offset and offset + 8 <= length, 'Invalid signature blob offset')
+        blob_magic, blob_length = struct.unpack_from('>II', signature, offset)
+        require(blob_length >= 8 and offset + blob_length <= length, 'Invalid signature blob length')
+        require(all(offset >= end or offset + blob_length <= start for start, end in extents), 'Overlapping signature blobs')
+        extents.append((offset, offset + blob_length))
+        if slot == 0 or 0x1000 <= slot < 0x1005:
+            require(blob_magic == CD_MAGIC, 'CodeDirectory slot has wrong magic')
+        else:
+            require(slot in BLOB_MAGICS and blob_magic == BLOB_MAGICS[slot], 'Unsupported signature blob type')
+        blobs[slot] = signature[offset:offset + blob_length]
+    require(0 in blobs, 'Primary CodeDirectory is missing')
+    # Padding is not authenticated by a CodeDirectory; accept only zero padding.
+    cursor = 12 + count * 8
+    for start, end in sorted(extents):
+        require(not any(signature[cursor:start]), 'Nonzero unindexed signature data')
+        cursor = end
+    require(not any(signature[cursor:length]), 'Nonzero trailing signature data')
+    directories = []
+    for slot, cd in sorted(blobs.items()):
+        if slot != 0 and not 0x1000 <= slot < 0x1005:
+            continue
+        require(len(cd) >= 44, 'Truncated CodeDirectory')
+        _, cd_length, version, flags, hash_offset, identifier_offset, n_special, n_code, code_limit = struct.unpack_from('>9I', cd)
+        hash_size, hash_type, platform, page_shift = struct.unpack_from('>4B', cd, 36)
+        require(0x20001 <= version <= 0x20600, 'Unsupported CodeDirectory version')
+        header_size = 44
+        for threshold, size in ((0x20100, 48), (0x20200, 52), (0x20300, 64), (0x20400, 88), (0x20500, 96), (0x20600, 108)):
+            if version >= threshold:
+                header_size = size
+        require(cd_length == len(cd) and len(cd) >= header_size, 'Truncated versioned CodeDirectory')
+        require(struct.unpack_from('>I', cd, 40)[0] == 0, 'Nonzero CodeDirectory reserved field')
+        if version >= 0x20100:
+            require(struct.unpack_from('>I', cd, 44)[0] == 0, 'Scatter signing is unsupported')
+        team_offset = struct.unpack_from('>I', cd, 48)[0] if version >= 0x20200 else 0
+        if version >= 0x20300:
+            require(struct.unpack_from('>I', cd, 52)[0] == 0, 'Nonzero CodeDirectory reserved field')
+            wide_limit = struct.unpack_from('>Q', cd, 56)[0]
+            if wide_limit:
+                code_limit = wide_limit
+        if version >= 0x20500:
+            require(struct.unpack_from('>I', cd, 92)[0] == 0, 'Pre-encrypt hash table is unsupported')
+        if version >= 0x20600:
+            require(not any(cd[96:108]), 'Linkage signing is unsupported')
+        require(hash_type in HASHES and hash_size == HASHES[hash_type][1], 'Unsupported CodeDirectory hash type/size')
+        require(n_special <= 7 and 0 < n_code, 'Invalid CodeDirectory slot counts')
+        require(page_shift <= 30, 'Invalid CodeDirectory page size')
+        require(code_limit == dataoff, 'CodeDirectory must cover every byte before the signature')
+        page_bytes = (1 << page_shift) if page_shift else code_limit
+        require(n_code == (code_limit + page_bytes - 1) // page_bytes, 'CodeDirectory page count mismatch')
+        special_start = hash_offset - n_special * hash_size
+        require(header_size <= special_start <= hash_offset and hash_offset + n_code * hash_size <= len(cd), 'CodeDirectory hash table outside blob')
+        cstring_end(cd, identifier_offset, header_size, special_start, 'signing identifier')
+        if team_offset:
+            cstring_end(cd, team_offset, header_size, special_start, 'team identifier')
+        for page in range(n_code):
+            start = page * page_bytes
+            digest = digest_bytes(image[start:min(start + page_bytes, code_limit)], hash_type)
+            require(cd[hash_offset + page * hash_size:hash_offset + (page + 1) * hash_size] == digest, f'Code page hash mismatch (slot {slot:#x}, page {page})')
+        verified_special = []
+        for special in range(1, n_special + 1):
+            actual = cd[hash_offset - special * hash_size:hash_offset - (special - 1) * hash_size]
+            content = blobs.get(special, external_slots.get(special))
+            if not any(actual):
+                require(special not in blobs, f'Embedded special slot {special} has no digest')
+            else:
+                require(content is not None, f'Unvalidated nonzero special slot {special}')
+                require(actual == digest_bytes(content, hash_type), f'Special slot {special} hash mismatch')
+                verified_special.append(special)
+        for special in (2, 5, 7):
+            require(special not in blobs or special <= n_special, f'Embedded special slot {special} is not covered')
+        directories.append({'slot': slot, 'version': hex(version), 'flags': hex(flags),
+                            'hashType': hash_type, 'hash': HASHES[hash_type][0] + ('-truncated20' if hash_type == 3 else ''),
+                            'pagesVerified': n_code, 'pageBytes': page_bytes, 'codeLimit': code_limit,
+                            'specialSlotsVerified': verified_special, 'platform': platform})
+    require(any(cd['hashType'] in (2, 4) for cd in directories), 'A full SHA256 or SHA384 CodeDirectory is required')
+    return {'codeDirectories': directories, 'embeddedPageHashIntegrityVerified': True,
+            'cmsPresent': 0x10000 in blobs, 'appleTrustVerified': False, 'deviceTrustVerified': False}
+
+
 def inspect_macho(path):
     raw = path.read_bytes()
     require(len(raw) >= 8, f'Truncated Mach-O: {path}')
@@ -71,9 +181,16 @@ def inspect_macho(path):
         require(magic == b'\xcf\xfa\xed\xfe', 'Expected little-endian 64-bit Mach-O')
         cpu, subtype = struct.unpack_from('<II', raw, 4)
         slices.append((cpu, subtype, raw))
+    external = {}
+    if path.parent.suffix == '.bundle':
+        for special, relative in ((1, 'Info.plist'), (3, '_CodeSignature/CodeResources')):
+            resource = path.parent / relative
+            if resource.is_file():
+                external[special] = resource.read_bytes()
     seen = set()
+    signatures = []
     for fat_cpu, fat_subtype, image in slices:
-        require(image[:4] == b'\xcf\xfa\xed\xfe', 'Unexpected slice Mach-O format')
+        require(image[:4] == b'\xcf\xfa\xed\xfe' and len(image) >= 32, 'Unexpected/truncated slice Mach-O format')
         cpu, subtype, filetype, ncmds, sizeofcmds = struct.unpack_from('<IIIII', image, 4)
         require((cpu, subtype) == (fat_cpu, fat_subtype), 'FAT/header architecture mismatch')
         require(filetype in (6, 8), 'Expected dylib or bundle')
@@ -83,23 +200,25 @@ def inspect_macho(path):
         seen.add(subtype)
         require(0 < ncmds < 1000 and 32 + sizeofcmds <= len(image), 'Invalid load commands')
         offset = 32
-        signed = False
+        signature_extent = None
         for _ in range(ncmds):
             require(offset + 8 <= 32 + sizeofcmds, 'Truncated load command')
             cmd, size = struct.unpack_from('<II', image, offset)
             require(size >= 8 and offset + size <= 32 + sizeofcmds, 'Invalid load command bounds')
             if cmd == 0x1d:
-                require(size >= 16, 'Truncated code signature command')
-                dataoff, datasize = struct.unpack_from('<II', image, offset + 8)
-                require(datasize > 20 and dataoff + datasize <= len(image), 'Invalid code signature bounds')
-                require(image[dataoff:dataoff + 4] == b'\xfa\xde\x0c\xc0', 'Invalid signature superblob')
-                signed = True
+                require(signature_extent is None and size == 16, 'Invalid/duplicate code signature command')
+                signature_extent = struct.unpack_from('<II', image, offset + 8)
             offset += size
         require(offset == 32 + sizeofcmds, 'Load command size mismatch')
-        require(signed, 'Unsigned Mach-O slice')
+        require(signature_extent is not None, 'Unsigned Mach-O slice')
+        dataoff, datasize = signature_extent
+        require(dataoff >= 32 + sizeofcmds, 'Signature overlaps Mach-O header/load commands')
+        require(dataoff + datasize == len(image), 'Unvalidated trailing bytes after signature')
+        signatures.append({'architecture': 'arm64e' if subtype == 0x80000002 else 'arm64',
+                           **inspect_embedded_signature(image, dataoff, datasize, external)})
     require(seen == {0, 0x80000002}, 'Both arm64 and modern arm64e must be present')
-    return {'binary': path.name, 'slices': ['arm64', 'arm64e ABI v2'], 'codeSignaturePresent': True}
-
+    return {'binary': path.name, 'slices': ['arm64', 'arm64e ABI v2'], 'signatures': signatures,
+            'embeddedPageHashIntegrityVerified': True, 'appleTrustVerified': False, 'deviceTrustVerified': False}
 
 def package_checks(deb):
     deb = deb.resolve()

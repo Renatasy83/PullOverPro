@@ -8,13 +8,14 @@ Version3.0.2~rc1; upstream source076da8f07e707453bc58ed9baadeefb40f0e93e4. Indep
 - Native Foundation fixtures compile the actual ContextHostManager implementation against fake scene/presenter/service responses: nil presenter/view, exceptions, rollback, reuse, stale/repeated cleanup, unavailable services, launch error propagation, duplicate callbacks and main-thread completion. These fakes do not validate actual private API behavior.
 - Actual in-memory preference sanitizer tests invalid types, finite/clamped numeric values, IDs, duplicates and preserved defaults.
 - Clang analysis of production translation units and generated Logos code; release Theos rootless package build.
-- Package inspection: SpringBoard-only injection, preference bundle/loader resources, GPL/provenance, no maintainer scripts/personal-data paths, arm64 plus modern arm64e ABI, signatures and SHA256.
+- Embedded-signature fixture: thirteen Python unittest methods plus malformed-structure subcases reject altered code pages, alternate CodeDirectories, Requirements, unsupported hash/bounds/coverage and empty placeholders.
+- Package inspection: SpringBoard-only injection, preference bundle/loader resources, GPL/provenance, no maintainer scripts/personal-data paths, arm64 plus modern arm64e ABI, every embedded CodeDirectory/page/special-slot digest and SHA256 of the whole DEB. macOS codesign diagnostics are recorded separately: the upstream ldid fakesign format is not accepted as Apple signing trust, and this check does not establish phone trust.
 
 No UIKit touch/lifecycle test, real SpringBoard hosting, on-phone signature trust, Dopamine/ElleKit compatibility or battery measurement is automated here.
 
 ## Installation boundary
 
-Keep the known-working original Jond_ie3.0.1 DEB available before replacing it. The candidate upgrades the same package ID; returning to3.0.1 requires an explicit downgrade using the saved DEB or Sileo. Do not run the old custom `com.renatasy83.pulloverpro.diagnostic` alongside it; remove that package manually if still installed. The candidate declares the conflict but does not execute removals. Keep preferences; there is no need to delete them. Install manually with Sileo/Filza, and perform a manual respring only after successful installation.
+Keep the original upstream Jond_ie3.0.1 recovery DEB available before replacing it. Its operation on this exact phone has not been confirmed in the conversation. The candidate upgrades the same package ID; returning to3.0.1 requires an explicit downgrade using the saved DEB or Sileo. Do not run the old custom `com.renatasy83.pulloverpro.diagnostic` alongside it; remove that package manually if still installed. The candidate declares the conflict but does not execute removals. Keep preferences; there is no need to delete them. Install manually with Sileo/Filza, and perform a manual respring only after successful installation.
 
 If SpringBoard stalls: use the already-established Dopamine recovery path (reboot, enable jailbreak without tweak injection), remove/downgrade only this candidate, then restore normal injection. No automatic recovery action is performed by this package.
 

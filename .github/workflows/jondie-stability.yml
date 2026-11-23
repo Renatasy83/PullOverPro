@@ -85,8 +85,24 @@ jobs:
             xcrun lipo "$binary" -verify_arch arm64 arm64e
             xcrun otool -L "$binary"
             xcrun dwarfdump --uuid "$binary"
-            codesign --verify --verbose=2 "$binary"
           done 2>&1 | tee diagnostics/binary-inspection.log
+          python3 - <<'PYDIAG'
+          import json, os, pathlib, subprocess
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'jondie-package/var/jb'
+          results = []
+          for relative in ('Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib', 'Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs'):
+              result = subprocess.run(['codesign', '--verify', '--verbose=2', str(root / relative)], text=True, capture_output=True)
+              results.append({'binary': relative, 'exitCode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr})
+          pathlib.Path('diagnostics/MACOS_CODESIGN_DIAGNOSTIC.json').write_text(json.dumps({
+              'results': results, 'isReleaseGate': False,
+              'macosVerificationSucceeded': all(r['exitCode'] == 0 for r in results),
+              'appleTrustVerified': False, 'deviceTrustVerified': False,
+              'scope': 'Theos/ldid embedded signatures are checked independently for code-page and special-slot hash integrity. macOS codesign acceptance is recorded separately; neither establishes jailbreak device trust.'
+          }, indent=2) + '\n')
+          for result in results:
+              print(result['binary'], 'macOS codesign exit:', result['exitCode'])
+              print(result['stderr'].strip())
+          PYDIAG
           shasum -a 256 packages/*.deb > diagnostics/SHA256SUMS
       - name: Record actual validation scope
         if: always()
@@ -109,13 +125,26 @@ jobs:
             'outcomes': {name: os.environ[name + '_RESULT'] for name in ('SOURCE', 'TESTS', 'ANALYSIS', 'BUILD', 'PACKAGE')},
             'fixtureLogs': sorted(p.name for p in (out / 'tests').glob('*.log')) if (out / 'tests').exists() else [],
             'package': json.loads(package.read_text()) if package.exists() else None,
+            'macosCodesignDiagnostic': json.loads((out / 'MACOS_CODESIGN_DIAGNOSTIC.json').read_text()) if (out / 'MACOS_CODESIGN_DIAGNOSTIC.json').exists() else None,
             'deviceRuntimeTested': False, 'dopamineEllekitCompatibilityConfirmed': False,
-            'limitations': ['No real SpringBoard/UIKit scene execution',
+            'limitations': ['Embedded ldid code-page hashes establish internal integrity only, not certificate authenticity, Apple trust or jailbreak acceptance',
+              'No real SpringBoard/UIKit scene execution',
               'Fake private interfaces verify only the production cleanup/launch logic under supplied responses',
               'No measured CPU/battery improvement', 'Actual app launch, content, interaction and keyboard placement require a device']
           }
           (out / 'VALIDATION.json').write_text(json.dumps(report, indent=2) + '\n')
           PY
+      - name: Quarantine built bytes after inspection failure
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.package.outcome != 'success' }}
+        run: |
+          python3 - <<'PYQUARANTINE'
+          import pathlib, shutil
+          output = pathlib.Path('diagnostics/quarantine')
+          output.mkdir(parents=True, exist_ok=True)
+          (output / 'DO_NOT_INSTALL.txt').write_text('UNVALIDATED BUILD - DIAGNOSTICS ONLY. Package inspection failed. Do not install these bytes. See the workflow logs and VALIDATION.json.\n')
+          for package in pathlib.Path('packages').glob('*.deb'):
+              shutil.copyfile(package, output / package.name)
+          PYQUARANTINE
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
