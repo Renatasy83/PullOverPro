@@ -19,5 +19,5 @@ SUBPROJECTS += Prefs
 include $(THEOS_MAKE_PATH)/aggregate.mk
 
 after-stage::
-	install -d "$(THEOS_STAGING_DIR)$(THEOS_PACKAGE_INSTALL_PREFIX)/usr/share/doc/com.johndie.pulloverpro-rootless"
-	install -m 644 LICENSE PROVENANCE.md "$(THEOS_STAGING_DIR)$(THEOS_PACKAGE_INSTALL_PREFIX)/usr/share/doc/com.johndie.pulloverpro-rootless/"
+	install -d "$(THEOS_STAGING_DIR)/usr/share/doc/com.johndie.pulloverpro-rootless"
+	install -m 644 LICENSE PROVENANCE.md "$(THEOS_STAGING_DIR)/usr/share/doc/com.johndie.pulloverpro-rootless/"

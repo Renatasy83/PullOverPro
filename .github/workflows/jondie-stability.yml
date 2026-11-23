@@ -75,6 +75,8 @@ jobs:
           packages = list(pathlib.Path('packages').glob('*.deb'))
           assert len(packages) == 1, f'Expected one candidate DEB, found {len(packages)}'
           PY
+          dpkg-deb -c packages/*.deb | tee diagnostics/payload.txt
+          dpkg-deb -I packages/*.deb | tee diagnostics/package-control.txt
           python3 scripts/verify.py packages/*.deb | tee diagnostics/package-inspection.log
           mkdir -p "$RUNNER_TEMP/jondie-package"
           dpkg-deb -x packages/*.deb "$RUNNER_TEMP/jondie-package"

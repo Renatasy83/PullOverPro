@@ -119,6 +119,7 @@ def package_checks(deb):
         for path in files:
             relative = path.relative_to(payload)
             require(relative.is_relative_to(PREFIX), f'Non-rootless payload: {relative}')
+            require(relative.parts[:4] != ('var', 'jb', 'var', 'jb'), f'Doubled rootless prefix: {relative}')
             require(not path.is_symlink(), f'Unexpected symlink in candidate payload: {relative}')
             require('PullOverProDiagnostic' not in path.name and 'ppo-bridge' not in path.name, 'Old diagnostic payload included')
         dylib = payload / PREFIX / 'Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib'
