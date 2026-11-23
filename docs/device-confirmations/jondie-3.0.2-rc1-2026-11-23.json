@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-23",
+  "evidenceType": "user_report",
+  "quote": "Funcționează",
+  "association": "Reply to delivery of this candidate",
+  "package": {
+    "id": "com.johndie.pulloverpro-rootless",
+    "version": "3.0.2~rc1",
+    "filename": "com.johndie.pulloverpro-rootless_3.0.2~rc1_iphoneos-arm64.deb",
+    "bytes": 92432,
+    "sha256": "b3f8fc9a946ea4d87a7c0a8bd5649ab8deef54b6fe05c026f6e2ab2b3bb9b50d"
+  },
+  "sourceCommit": "22adc654e237d21d26a67535a994f63c4980b4bd",
+  "archiveCommit": "6c3fdc2fe19b09d1fa5d11a5be9f0aec095fb463",
+  "previouslyStatedEnvironment": {
+    "device": "iPhone12,5",
+    "iOS": "26.0.1",
+    "build": "23A355",
+    "jailbreak": "Dopamine rootless",
+    "injection": "ElleKit 1.2"
+  },
+  "result": "User reports working behavior",
+  "individualProbeResults": "not separately specified",
+  "testedApplications": "not specified",
+  "prolongedStability": "not established",
+  "batteryOrPerformanceMeasurements": "not provided",
+  "assistantExecutedDeviceTests": false,
+  "checkpointBranch": "checkpoint/user-reported-working-jondie-3.0.2-rc1"
+}

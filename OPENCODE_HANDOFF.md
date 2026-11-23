@@ -8,14 +8,18 @@ Candidate: `com.johndie.pulloverpro-rootless`, version `3.0.2~rc1`, rootless arm
 
 Implemented: final-keyboard-frame geometry with coordinate conversion and restoration; idempotent drawer transitions; one launch request per startup, cancellable generation-bound polling with a 20-second startup deadline (no healthy-window lifetime); visible retry/error state; rollback for partial presenter creation; guarded scene/presenter API calls using existing signatures; immutable valid QuickSwitch selection, safe-area viewport and edge autoscroll; in-memory preference type/range validation. Manual vertical handle dragging ends the previous keyboard-restoration session so hiding the keyboard does not undo that deliberate move. Controller disappearance/close invalidates startup and delayed selection so old controllers cannot reopen after Settings replacement.
 
-## Candidate ready for the real-device gate
+## User-reported working checkpoint
 
 [Full validation and grouped phone plan](docs/JOND_IE_STABILITY_RC1_VALIDATION.md).
 Build source `22adc654e237d21d26a67535a994f63c4980b4bd`; successful Mac Actions run45205953764 / job137801616407. Six suites passed, including66 actual-manager/fake-platform checks and13 signature test methods plus malformed subcases. Clang analyzed10 production units without findings. Theos release and exact rootless payload/modern-arm64e checks passed. All embedded primary/alternate CodeDirectory/page/special-slot digests passed (216 page-hash checks). The downloaded package was inspected independently on Linux and ZIP digests matched Actions metadata.
 
 DEB `com.johndie.pulloverpro-rootless_3.0.2~rc1_iphoneos-arm64.deb` (92432bytes), SHA256 `b3f8fc9a946ea4d87a7c0a8bd5649ab8deef54b6fe05c026f6e2ab2b3bb9b50d`. Preserved at `candidate-packages/jondie-stability-3.0.2-rc1/` and branch `candidate/jondie-stability-3.0.2-rc1`, alongside complete evidence. Actions package artifact14833169352, evidence14833367214. These are the only approved candidate bytes for this checkpoint; earlier failed CI packages are not candidates.
 
-Mac codesign rejects the upstream-style ldid fakesign format; the actual diagnostic is retained in JSON, separate from hash-integrity verification. No certificate authenticity, Apple trust, jailbreak device acceptance, SpringBoard/UIKit behavior, general app compatibility or battery improvement is claimed. The user must now execute only the grouped real-device probes in the report. No additional automated gate is pending.
+On 2026-11-23 the user replied “Funcționează” (“It works”) to delivery of this candidate. Record this as user-reported working behavior on the previously stated iPhone12,5 / iOS26.0.1 (23A355) / Dopamine / ElleKit1.2 setup. The message does not separately document all three grouped probes, the tested apps, prolonged stability, battery use or performance. Do not mark those individual checks as passed or ask for their repetition solely to fill this record. No new package or automatic phone action is required for this confirmation.
+
+Preserved recovery checkpoint: `checkpoint/user-reported-working-jondie-3.0.2-rc1`, containing the same archived DEB and its source/evidence. Candidate archive `candidate/jondie-stability-3.0.2-rc1` remains at `6c3fdc2fe19b09d1fa5d11a5be9f0aec095fb463`. See [the device confirmation record](docs/device-confirmations/jondie-3.0.2-rc1-2026-11-23.json).
+
+Mac codesign still rejects the upstream-style ldid fakesign format; the actual diagnostic remains separate from hash-integrity verification. The user report adds real-device feedback, not assistant-run phone testing or an Apple trust/certificate validation. No general app compatibility or measured battery/performance improvement is established.
 
 ## Continuation and recovery
 

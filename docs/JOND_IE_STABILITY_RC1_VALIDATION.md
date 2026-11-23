@@ -12,6 +12,12 @@ Corecții implementate pe sursa Jond_ie, păstrând interfața originală. Este 
 - [GitHub Actions reușit](https://github.com/Renatasy83/PullOverPro/actions/runs/45205953764), job137801616407. Artefact DEB14833169352; dovezi14833367214.
 - Ramură de dezvoltare: `improve/jondie-stability`; arhivă: `candidate/jondie-stability-3.0.2-rc1`. Main, ramurile stabile și arhivele anterioare sunt păstrate.
 
+## Confirmare de pe dispozitiv — 2026-11-23
+
+Utilizatorul a răspuns „Funcționează” după livrarea acestui candidat, pe configurația declarată anterior: iPhone12,5 / iOS26.0.1 (23A355) / Dopamine / ElleKit1.2. Aceasta consemnează funcționarea raportată de utilizator pentru pachetul livrat. Mesajul nu documentează separat cele trei probe, aplicațiile testate, stabilitatea îndelungată, consumul bateriei sau performanța; acele rezultate nu sunt presupuse.
+
+DEB-ul, sursa compilată și dovezile automate sunt păstrate integral. Punct de revenire: `checkpoint/user-reported-working-jondie-3.0.2-rc1`. [Înregistrarea confirmării](device-confirmations/jondie-3.0.2-rc1-2026-11-23.json). Această actualizare modifică doar documentația, fără recompilare sau schimbarea pachetului.
+
 ## Ce s-a schimbat
 
 Calculul pentru tastatură folosește cadrul final în coordonatele ferestrei și limitele vizibile. Mutarea deliberată a mânerului nu mai este anulată când dispare tastatura. Pornirea folosește o singură cerere, un singur timer și anularea rezultatelor vechi; termenul de20secunde limitează doar pornirea, fără să închidă o fereastră funcțională. Eșecul afișează o acțiune de reîncercare.
@@ -37,13 +43,15 @@ Verificatorul macOS `codesign` raportează binarele ldid ca nesemnate. Același 
 
 ## Ce nu a putut fi executat
 
-Nu a fost executat SpringBoard/UIKit pe telefon și nu este confirmată compatibilitatea acestui candidat cu iPhone12,5/iOS26.0.1 build23A355/Dopamine/ElleKit1.2. Nu s-au măsurat consumul bateriei sau performanța. Testele cu interfețe false verifică logica proprie, fără să valideze contractele private ale sistemului real. Conținutul aplicațiilor, atingerile, coordonatele tastaturii și ciclul real al scenelor necesită telefonul. Nu se declară compatibilitatea tuturor aplicațiilor.
+Asistentul nu a executat SpringBoard/UIKit pe un telefon. Ulterior verificărilor automate, utilizatorul a raportat funcționarea candidatului pe configurația declarată; sfera confirmării este descrisă mai sus. Nu s-au măsurat consumul bateriei sau performanța. Testele cu interfețe false verifică logica proprie, fără să valideze contractele private ale sistemului real. Conținutul aplicațiilor, atingerile, coordonatele tastaturii și ciclul real al scenelor necesită evaluare pe telefon; mesajul primit nu detaliază rezultatele individuale. Nu se declară compatibilitatea tuturor aplicațiilor.
 
 ## Instalare, probă și revenire
 
 Pachetul are același identificator `com.johndie.pulloverpro-rootless` și actualizează portarea Jond_ie, păstrând domeniul preferințelor. Dacă este încă instalat vechiul `com.renatasy83.pulloverpro.diagnostic`, acesta trebuie dezinstalat manual înainte; conflictul previne injectarea ambelor. Nu șterge preferințele. Instalează manual candidatul cu Sileo/Filza, apoi fă un respring manual după instalarea reușită.
 
-Probează într-o singură sesiune:
+Planul de probe livrat inițial este păstrat mai jos ca referință. Confirmarea generală a fost primită; nu se solicită repetarea probelor doar pentru această actualizare a documentației.
+
+Probele inițiale:
 
 1. Din NewTerm sau altă aplicație, deschide o favorită în PPO fără lansare normală prealabilă. Verifică atingeri/derulare, închidere/redeschidere și păstreaz-o deschisă peste30secunde. Închide imediat după o selecție o singură dată: nu trebuie să se redeschidă singură.
 2. Arată/ascunde tastatura; verifică mânerul pe ambele margini. Mută-l manual cât timp tastatura este vizibilă, apoi ascunde tastatura: poziția aleasă trebuie păstrată.
