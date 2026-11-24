@@ -14,7 +14,7 @@ RC1 remains the user-reported working recovery package. Its exact archive, sourc
 - `Tweak/POWindowSizeStore.h/.m` supplies actual Foundation persistence. State key `windowSizeFractionsV1` in the existing POStateDomain stores a normalized fraction per bundle ID. Reads do not write. Saving/resetting changes only the selected app, preserving sibling entries and unrelated state. Production does not call synchronize or removePersistentDomain.
 - Only completed valid gestures save. Close/app switch/controller disappearance cancels unfinished resize; stale generations cannot save to another app. Layout changes invalidate the gesture. Accessibility size adjustments are discrete commits.
 
-## Validated candidate ready for the phone gate
+## User-reported correct operation — RC2 checkpoint
 
 [Full validation, download and necessary phone checks](docs/JOND_IE_WINDOW_SIZE_RC2_VALIDATION.md).
 
@@ -22,7 +22,11 @@ Build source93b0304e39d1a97ba90eb0511d57e9e3780f95a2; Mac Actions run45332058212
 
 Candidate `com.johndie.pulloverpro-rootless_3.0.2~rc2_iphoneos-arm64.deb` (98020bytes), SHA256 `59bf2fc4426c4ed78b28654af622574fc385d50c219d61d96998f9e3582fd5e4`, preserved in `candidate-packages/jondie-window-size-3.0.2-rc2/` and branch `candidate/jondie-window-size-3.0.2-rc2`, with complete evidence. Package artifact14892313021; evidence14892058549. Previous packages are unchanged.
 
-Only the real-phone gate remains: grip versus drawer paging on both edges, touches/keyboard at smaller size, independent A/B sizes plus reset, and persistence after respring. RC2 has not run on a phone; RC1's user report does not confirm these new features. No all-app/long-stability/battery claims. UIKit coordinate conversion and actual remote input cannot be established by geometry/Foundation fixtures. macOS codesign diagnostics and absence of Apple/device trust verification remain explicit in evidence. Do not request intermediate installs or exhaustive per-app tests.
+On 2026-11-24 the user replied “Funcționează corect” (“It works correctly”) after delivery of RC2. Record this as user-reported correct operation of the delivered window-sizing feature on the previously stated iPhone12,5 / iOS26.0.1 (23A355) / Dopamine rootless / ElleKit1.2 setup. The message does not separately enumerate every grouped probe, the apps tested, respring persistence, prolonged stability or measured battery/performance results. Do not mark those individual checks as separately passed, or request repetition solely to fill documentation.
+
+Preserved recovery checkpoint: `checkpoint/user-reported-working-jondie-3.0.2-rc2`, containing the same DEB/source/evidence; original candidate archive remains at `dd5e7e3ec5dd73231d65dd9e7fae18614ee8b865`. See [the RC2 device-feedback record](docs/device-confirmations/jondie-3.0.2-rc2-2026-11-24.json). No new build, installation or phone action was performed for this confirmation. RC1's archive/checkpoint also remains intact.
+
+This feedback adds the user's real-device observation; the assistant did not execute independent phone tests. No all-app/long-stability/battery or Apple-trust claim is made. Historical CI evidence retains its original automation-only scope. macOS codesign diagnostics remain separate from embedded-hash integrity and jailbreak/device acceptance.
 
 ## Recovery and continuation
 

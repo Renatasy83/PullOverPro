@@ -32,11 +32,17 @@ Dimensiunea se salvează doar la încheierea unei glisări valide, separat pentr
 
 Au rămas patru avertismente ale linkerului despre opțiunea veche `-multiply_defined`; compilarea a reușit. Formatul ldid este neschimbat. macOS codesign îl raportează ca nesemnat, iar rezultatul este păstrat separat; integritatea hashurilor încorporate nu stabilește identitatea Apple sau acceptarea pe telefon. [Dovezi complete](../candidate-packages/jondie-window-size-3.0.2-rc2/evidence/VALIDATION.json).
 
-## Ce necesită telefonul
+## Confirmare de pe telefon și limite — 2026-11-24
 
-RC2 nu a fost executat pe un iPhone. Confirmarea utilizatorului „Funcționează” se referă la RC1, cu sfera înregistrată în [confirmarea anterioară](device-confirmations/jondie-3.0.2-rc1-2026-11-23.json). Pentru RC2 nu sunt confirmate comportamentul UIKit/SpringBoard, atingerile în aplicația micșorată, gesturile sub oglindirea marginii sau păstrarea după respring. Testele Foundation redeschid obiecte defaults, fără să simuleze un respring iOS. Nu sunt stabilite compatibilitatea tuturor aplicațiilor, stabilitatea îndelungată ori beneficii de baterie/performanță.
+După livrarea RC2, utilizatorul a răspuns „Funcționează corect”. Înregistrăm funcționarea corectă raportată pentru pachetul livrat și opțiunea de redimensionare, pe configurația declarată anterior: iPhone12,5 / iOS26.0.1 (23A355) / Dopamine rootless / ElleKit1.2. Mesajul nu enumeră separat fiecare probă, aplicațiile testate, păstrarea după respring sau stabilitatea îndelungată; rezultatele individuale nu sunt presupuse.
 
-Probe grupate:
+Punctul de revenire `checkpoint/user-reported-working-jondie-3.0.2-rc2` păstrează același DEB și dovezile. [Înregistrarea feedbackului](device-confirmations/jondie-3.0.2-rc2-2026-11-24.json). Arhiva originală RC2 și pachetul RC1 nu au fost modificate. Confirmarea anterioară RC1 rămâne în [înregistrarea ei](device-confirmations/jondie-3.0.2-rc1-2026-11-23.json).
+
+Asistentul nu a executat verificări independente pe telefon. Testele Foundation redeschid obiecte defaults, fără să simuleze un respring iOS; feedbackul utilizatorului este consemnat separat de dovezile automate. Nu sunt stabilite compatibilitatea tuturor aplicațiilor ori beneficii măsurate de baterie/performanță.
+
+Planul de probe livrat inițial rămâne mai jos ca referință. Nu se solicită repetarea lor doar pentru această actualizare a documentației:
+
+
 
 1. Din NewTerm sau altă aplicație, deschide o favorită în PPO. Trage mânerul de sub fereastră; verifică derularea, un buton/link și tastarea la dimensiunea micșorată. Probează mânerul și cu cealaltă margine selectată, confirmând că nu glisează întregul sertar în loc să redimensioneze.
 2. Alege dimensiuni diferite pentru două aplicații, închide/redeschide și verifică memorarea separată. Dublul tap pe mânerul uneia trebuie să restabilească numai dimensiunea ei.
