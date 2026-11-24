@@ -1,0 +1,13 @@
+93b0304e39d1a97ba90eb0511d57e9e3780f95a2
+304e0799973e8145f32e4ca2de6c747a84b758ce
+Apple clang version 17.0.0 (clang-1700.0.13.5)
+Target: x86_64-apple-darwin24.6.0
+Thread model: posix
+InstalledDir: /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+GNU Make 4.4.1
+Built for x86_64-apple-darwin24.0.0
+Copyright (C) 1988-2023 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+SDK=iPhoneOS16.5; deployment=15.0; scheme=rootless; arm64+modern-arm64e

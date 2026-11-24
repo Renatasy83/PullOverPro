@@ -14,11 +14,15 @@ RC1 remains the user-reported working recovery package. Its exact archive, sourc
 - `Tweak/POWindowSizeStore.h/.m` supplies actual Foundation persistence. State key `windowSizeFractionsV1` in the existing POStateDomain stores a normalized fraction per bundle ID. Reads do not write. Saving/resetting changes only the selected app, preserving sibling entries and unrelated state. Production does not call synchronize or removePersistentDomain.
 - Only completed valid gestures save. Close/app switch/controller disappearance cancels unfinished resize; stale generations cannot save to another app. Layout changes invalidate the gesture. Accessibility size adjustments are discrete commits.
 
-## Verification boundary
+## Validated candidate ready for the phone gate
 
-Local portable geometry and existing embedded-signature fixtures passed with sanitizers where applicable. Independent reviews found no blocker; cached invalid geometry and VoiceOver copy were corrected. The workflow now requires eight suites: the prior six plus window geometry and actual Foundation size-store tests. Full macOS Foundation execution, production Clang analysis and rootless Theos/package validation are pending this checkpoint; record actual final results before delivering RC2. Never infer runtime compatibility from compilation.
+[Full validation, download and necessary phone checks](docs/JOND_IE_WINDOW_SIZE_RC2_VALIDATION.md).
 
-The remaining phone gate is grip/paging behavior on both edges, app touches at smaller size, independent A/B size restoration/reset, and persistence after a manual respring. Do not ask the user to test intermediate builds or every app. Do not claim long-duration stability, all-app compatibility or battery benefits. A per-app size is a uniform wrapper transform, preserving the existing native canvas; responsive scene resizing and multiple simultaneous windows are out of scope.
+Build source93b0304e39d1a97ba90eb0511d57e9e3780f95a2; Mac Actions run45332058212 / job138235302471 succeeded. All eight suites passed, including123 actual Foundation size-store checks and the existing66 manager/fake-platform checks. Clang analyzed11 production units without findings. Theos rootless release and exact payload/modern-arm64e/embedded-signature checks passed (228 page-hash checks). Downloaded ZIP digests matched Actions metadata, and the DEB was independently inspected on Linux.
+
+Candidate `com.johndie.pulloverpro-rootless_3.0.2~rc2_iphoneos-arm64.deb` (98020bytes), SHA256 `59bf2fc4426c4ed78b28654af622574fc385d50c219d61d96998f9e3582fd5e4`, preserved in `candidate-packages/jondie-window-size-3.0.2-rc2/` and branch `candidate/jondie-window-size-3.0.2-rc2`, with complete evidence. Package artifact14892313021; evidence14892058549. Previous packages are unchanged.
+
+Only the real-phone gate remains: grip versus drawer paging on both edges, touches/keyboard at smaller size, independent A/B sizes plus reset, and persistence after respring. RC2 has not run on a phone; RC1's user report does not confirm these new features. No all-app/long-stability/battery claims. UIKit coordinate conversion and actual remote input cannot be established by geometry/Foundation fixtures. macOS codesign diagnostics and absence of Apple/device trust verification remain explicit in evidence. Do not request intermediate installs or exhaustive per-app tests.
 
 ## Recovery and continuation
 
