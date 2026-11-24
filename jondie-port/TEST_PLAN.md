@@ -1,25 +1,25 @@
-# PullOver Pro window-size candidate3.0.2~rc2
+# PullOver Pro movable-window candidate3.0.2~rc3
 
-Independent GPL-3.0 derivative of c1d3r/Jond_ie, preserving original attribution and drawer interface. RC1 is retained unchanged as the user-reported working recovery package.
+Independent c1d3r/Jond_ie GPL-3.0 derivative. User reports RC2 resizing works and requests practical free movement. RC2 remains archived and unchanged for recovery.
 
-## Automated checks
+## Controls
 
-The full macOS workflow must pass all eight fixture runners: previous startup/keyboard/QuickSwitch/preferences/real-manager-fakes/embedded-signature fixtures, plus actual window geometry and actual Foundation size-store fixtures. New fixtures cover aspect/safe-area/grip bounds, exact baseline size, clamped total-delta pan projection, invalid values, independent applications, non-destructive reads, reset, reopened defaults and concurrent sibling updates. Fixtures do not execute UIKit gestures or prove iOS respring persistence.
+Shrink with the lower diagonal-arrow grip, then grab the top bar to move the whole window. The full bar/app/grip stays within the safe screen area. X closes. A physical double tap on the top bar resets this app's position; double tap on the lower grip resets its maximum size. Position and size are saved per app when each valid gesture ends. VoiceOver has directional movement/reset and size-adjustment actions.
 
-Production Clang analysis, rootless Theos release build, exact package/filter/preferences/GPL paths, both arm64/modern-arm64e ABI and every embedded CodeDirectory/page/special-slot hash remain mandatory. macOS codesign diagnostics are retained separately and do not establish Apple or device trust. Failed package inspections retain quarantine evidence and never publish a candidate artifact.
+The new bar reserves30points plus the existing20point bottom grip area. Maximum iPhone11ProMax pane is354.857x768points; native aspect ratio is preserved. Moving/resizing uses owned UIKit transforms, without relaunching or requesting new private scene APIs. The original edge drawer and outside-tap-close behavior remain.
 
-## User controls
+## Automated verification
 
-Drag the small diagonal-arrow grip below the app to resize between55percent and100percent of its largest pane, keeping proportions. A physical double tap restores only this app's size. With VoiceOver, use increment/decrement and the Restore original size action. The default app size on iPhone11ProMax is unchanged. App touches remain inside the native hosted canvas; resizing adjusts the owned wrapper only and keeps its scene active.
+Ten mandatory suites: prior eight plus actual floating geometry (bounds, normalization, movement, anchored resize, invalid inputs) and actual Foundation position store (independent apps, preserved size/global/unknown metadata, malformed data, reset/reopen/concurrent saves). ASan/UBSan where applicable. Production Clang analysis, rootless Theos release, complete payload/filter/preferences/GPL resources, modern-arm64e ABI and embedded CodeDirectory/page/special-slot hashes remain mandatory. macOS codesign is recorded separately; internal hash consistency is not Apple/device trust. Failed inspections remain quarantined and never become candidate uploads.
 
-## One grouped phone gate
+## Single grouped real-device gate
 
-1. From another app such as NewTerm, open appA in PPO. Drag its grip smaller/larger; verify scrolling and a button/link still respond at smaller size. Check the grip does not page/close the drawer. Repeat the grip once with the opposite edge setting.
-2. Give appA a small size and appB a different size; return to each and confirm independent restoration. Double tap appA's grip: only appA should return to original size. Cancel an unfinished resize by closing: reopening should restore the last completed size.
-3. After choosing a non-default size, perform one manual respring and reopen that app; confirm the size persists. No exhaustive per-app checks or extra crash simulations are required.
+1. From another app such as NewTerm, open a favorite, shrink it and drag the top bar horizontally/vertically to several corners. Check the drawer does not page instead and the complete controls remain reachable; repeat once with the opposite edge setting. Verify a button/link, scrolling and typing after moving/resizing.
+2. Give two apps distinct positions/sizes, close/reopen each and check independent restoration. Double tap the bar to reset position; double tap the lower grip to reset size. X must close; reopen and verify normal content.
+3. With a chosen moved position/size, perform one manual respring and confirm persistence. No exhaustive per-app tests or induced crashes are required.
 
 ## Installation and recovery
 
-Install manually using Sileo/Filza and respring after successful installation. Same package ID upgrades RC1 and keeps preferences. Do not run the old `com.renatasy83.pulloverpro.diagnostic` simultaneously; remove that package manually only if present, keeping preferences.
+Install manually via Filza/Sileo, then respring after success. Same package ID upgrades RC2; preserve preferences. If the old diagnostic package is still present, remove that package manually before installing; do not run both.
 
-Keep the saved RC1 DEB available: SHA256 b3f8fc9a946ea4d87a7c0a8bd5649ab8deef54b6fe05c026f6e2ab2b3bb9b50d, archive6c3fdc2fe19b09d1fa5d11a5be9f0aec095fb463. Return by manual downgrade if needed. If SpringBoard stalls: reboot, Dopamine without tweak injection, then remove/downgrade only this candidate. No installer scripts, automatic phone actions or personal-data deletion are performed.
+Keep RC2 from archive dd5e7e3ec5dd73231d65dd9e7fae18614ee8b865, SHA25659bf2fc4426c4ed78b28654af622574fc385d50c219d61d96998f9e3582fd5e4. Revert by manual downgrade. If SpringBoard stalls: reboot, Dopamine without injection, then remove/downgrade only the candidate. No automatic phone action, process termination or personal-data deletion is performed. RC2 ignores windowPositionsV1.

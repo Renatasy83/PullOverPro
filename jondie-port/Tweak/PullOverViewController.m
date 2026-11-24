@@ -1,5 +1,6 @@
 // Modified 2026-11-23 by Renatasy83: stability corrections; original credits and GPL-3.0 retained.
 // Modified 2026-11-24: owned-view resizing with per-application size persistence.
+// Modified 2026-11-24: draggable window chrome with per-application positions.
 #import <rootless.h>
 //
 //  PullOverViewController.m
@@ -14,6 +15,8 @@
 #import "../Shared/POKeyboardGeometry.h"
 #import "../Shared/POWindowSizeGeometry.h"
 #import "POWindowSizeStore.h"
+#import "../Shared/POFloatingWindowGeometry.h"
+#import "POWindowPositionStore.h"
 
 #define HANDLE_MARGIN 50
 #define HALF_OPEN_HEIGHT 400
@@ -61,18 +64,40 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
     uint64_t selectionGeneration;
     BOOL controllerDetached;
     double windowSizeFraction;
-    POWindowSizeGeometry windowGeometry;
+    POFloatingWindowGeometry windowGeometry;
+    POFloatingWindowPosition windowPosition;
+    UIView *windowChrome;
+    UIView *moveBar;
+    UIView *moveGrip;
+    UIImageView *moveIcon;
+    UILabel *moveLabel;
+    UIView *moveIndicator;
+    UIButton *windowCloseButton;
+    UIPanGestureRecognizer *movePan;
     POWindowResizeHandle *resizeGrip;
     UIImageView *resizeIcon;
     UIPanGestureRecognizer *resizePan;
     BOOL resizeGestureActive;
     double resizeStartFraction;
-    POWindowSizeGeometry resizeStartGeometry;
+    POFloatingWindowGeometry resizeStartGeometry;
+    POFloatingWindowPosition resizeStartPosition;
     NSString *resizeBundleIdentifier;
     uint64_t resizeSelectionGeneration;
     CGRect resizeViewportBounds;
     UIEdgeInsets resizeSafeInsets;
+    BOOL moveGestureActive;
+    POFloatingWindowGeometry moveStartGeometry;
+    POFloatingWindowPosition moveStartPosition;
+    NSString *moveBundleIdentifier;
+    uint64_t moveSelectionGeneration;
+    CGRect moveViewportBounds;
+    UIEdgeInsets moveSafeInsets;
 }
+-(BOOL)canManipulateWindow;
+-(BOOL)restoreDefaultWindowPosition;
+-(BOOL)restoreDefaultWindowSize;
+-(BOOL)accessibilityMoveWindowByX:(double)dx y:(double)dy;
+-(void)configureMoveBar;
 
 @end
 
@@ -189,7 +214,12 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
     [self.contentView addSubview:activityIndicator];
 
     
-    [scrollView addSubview:self.contentView];
+    windowChrome = [[UIView alloc] initWithFrame:CGRectZero];
+    windowChrome.backgroundColor = UIColor.clearColor;
+    windowChrome.hidden = YES;
+    [windowChrome addSubview:self.contentView];
+    [scrollView addSubview:windowChrome];
+    [self configureMoveBar];
     [self configureResizeGrip];
     
     if ([[POApplicationHelper state] stringForKey:@"lastPinnedBundleId"]) {
@@ -293,8 +323,9 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
 }
 
 -(BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer shouldReceiveTouch:(UITouch *)touch{
-    if (recognizer == resizePan) return [self canResizeWindow];
-    if ([touch.view isDescendantOfView:resizeGrip]) return NO;
+    if (recognizer == resizePan) return [self canManipulateWindow] && !moveGestureActive;
+    if (recognizer == movePan) return [self canManipulateWindow] && !resizeGestureActive;
+    if ([touch.view isDescendantOfView:windowChrome]) return NO;
     // Background taps close the drawer; app content and the Retry button keep their touches.
     return ![touch.view isDescendantOfView:self.contentView];
 }
@@ -306,11 +337,11 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
     [self endHosting]; // Release the old bundle before changing its identifier.
     POLog(@"pin %@ (front=%@)", bundleId, [POApplicationHelper frontMostBundleId]);
     pinnedBundleId = bundleId;
-    [self loadWindowSizeForPinnedApplication];
     
     [[POApplicationHelper state] setObject:bundleId forKey:@"lastPinnedBundleId"];
     UIImage *image = [POApplicationHelper imageForBundleId:bundleId];
     self.handle.imageView.image = image;
+    [self loadWindowSizeForPinnedApplication];
     
     if ([[POApplicationHelper frontMostBundleId] isEqualToString:bundleId]) {
         // _returnToHomescreenWithCompletion: is gone on iOS 15+; a simulated Home press does the same (iOS 15-27).
@@ -539,6 +570,7 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
 -(void)setIsOpened:(BOOL)isOpened{
     if (_isOpened == isOpened) return;
     _isOpened = isOpened;
+    [self updateResizeGripVisibility];
     
     overlayView.userInteractionEnabled = NO;
     if (isOpened) {
@@ -661,7 +693,66 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
     [self updateResizeGripVisibility];
 }
 
-#pragma mark - Owned window size
+#pragma mark - Owned movable window
+
+-(void)configureMoveBar{
+    moveBar = [[UIView alloc] initWithFrame:CGRectZero];
+    moveBar.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.94];
+    moveBar.layer.cornerRadius = 9;
+    [windowChrome addSubview:moveBar];
+    moveGrip = [[UIView alloc] initWithFrame:CGRectZero];
+    moveGrip.isAccessibilityElement = YES;
+    moveGrip.accessibilityLabel = @"Move window";
+    moveGrip.accessibilityHint = @"Use the actions menu to move or restore the window position.";
+    [moveBar addSubview:moveGrip];
+    moveIcon = [[UIImageView alloc] initWithFrame:CGRectZero];
+    moveIcon.contentMode = UIViewContentModeScaleAspectFit;
+    moveIcon.userInteractionEnabled = NO;
+    [moveGrip addSubview:moveIcon];
+    moveLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    moveLabel.text = @"PullOver Pro";
+    moveLabel.textColor = UIColor.whiteColor;
+    moveLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    moveLabel.textAlignment = NSTextAlignmentCenter;
+    moveLabel.userInteractionEnabled = NO;
+    [moveGrip addSubview:moveLabel];
+    moveIndicator = [[UIView alloc] initWithFrame:CGRectZero];
+    moveIndicator.backgroundColor = [UIColor colorWithWhite:1 alpha:0.45];
+    moveIndicator.layer.cornerRadius = 1.5;
+    moveIndicator.userInteractionEnabled = NO;
+    [moveGrip addSubview:moveIndicator];
+    windowCloseButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [windowCloseButton setImage:[UIImage systemImageNamed:@"xmark"] forState:UIControlStateNormal];
+    windowCloseButton.tintColor = UIColor.whiteColor;
+    windowCloseButton.accessibilityLabel = @"Close window";
+    [windowCloseButton addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
+    [moveBar addSubview:windowCloseButton];
+    movePan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(moveWindow:)];
+    movePan.maximumNumberOfTouches = 1;
+    movePan.delegate = self;
+    [moveGrip addGestureRecognizer:movePan];
+    [scrollView.panGestureRecognizer requireGestureRecognizerToFail:movePan];
+    UITapGestureRecognizer *restore = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(resetWindowPosition:)];
+    restore.numberOfTapsRequired = 2;
+    [moveGrip addGestureRecognizer:restore];
+    __weak PullOverViewController *weakSelf = self;
+    UIAccessibilityCustomAction *left = [[UIAccessibilityCustomAction alloc] initWithName:@"Move left" actionHandler:^BOOL(UIAccessibilityCustomAction *action) {
+        return [weakSelf accessibilityMoveWindowByX:-20 y:0];
+    }];
+    UIAccessibilityCustomAction *right = [[UIAccessibilityCustomAction alloc] initWithName:@"Move right" actionHandler:^BOOL(UIAccessibilityCustomAction *action) {
+        return [weakSelf accessibilityMoveWindowByX:20 y:0];
+    }];
+    UIAccessibilityCustomAction *up = [[UIAccessibilityCustomAction alloc] initWithName:@"Move up" actionHandler:^BOOL(UIAccessibilityCustomAction *action) {
+        return [weakSelf accessibilityMoveWindowByX:0 y:-20];
+    }];
+    UIAccessibilityCustomAction *down = [[UIAccessibilityCustomAction alloc] initWithName:@"Move down" actionHandler:^BOOL(UIAccessibilityCustomAction *action) {
+        return [weakSelf accessibilityMoveWindowByX:0 y:20];
+    }];
+    UIAccessibilityCustomAction *reset = [[UIAccessibilityCustomAction alloc] initWithName:@"Restore window position" actionHandler:^BOOL(UIAccessibilityCustomAction *action) {
+        return [weakSelf restoreDefaultWindowPosition];
+    }];
+    moveGrip.accessibilityCustomActions = @[left, right, up, down, reset];
+}
 
 -(void)configureResizeGrip{
     resizeGrip = [[POWindowResizeHandle alloc] initWithFrame:CGRectZero];
@@ -677,12 +768,11 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
     resizeIcon.contentMode = UIViewContentModeScaleAspectFit;
     resizeIcon.userInteractionEnabled = NO;
     [resizeGrip addSubview:resizeIcon];
-    [scrollView addSubview:resizeGrip];
+    [windowChrome addSubview:resizeGrip];
     resizePan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(resizeWindow:)];
     resizePan.maximumNumberOfTouches = 1;
     resizePan.delegate = self;
     [resizeGrip addGestureRecognizer:resizePan];
-    // The drawer must not start paging while this dedicated grip is dragged.
     [scrollView.panGestureRecognizer requireGestureRecognizerToFail:resizePan];
     UITapGestureRecognizer *restore = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(resetWindowSize:)];
     restore.numberOfTapsRequired = 2;
@@ -697,19 +787,39 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
 
 -(void)loadWindowSizeForPinnedApplication{
     windowSizeFraction = [POWindowSizeStore fractionForBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
+    windowPosition = [POWindowPositionStore positionForBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
+    moveIcon.image = self.handle.imageView.image;
     [self applyWindowSizeLayout];
+}
+
+-(POFloatingWindowGeometry)geometryForWindowFraction:(double)fraction position:(POFloatingWindowPosition)position{
+    CGSize native = UIScreen.mainScreen.bounds.size;
+    UIEdgeInsets safe = self.view.safeAreaInsets;
+    return POFloatingWindowMakeGeometry(native.width, native.height, self.view.bounds.size.width,
+        self.view.bounds.size.height, safe.left, safe.top, safe.right, safe.bottom, fraction, position);
 }
 
 -(void)applyWindowSizeLayout{
     if (!self.contentView || !self.isViewLoaded) return;
-    CGSize native = UIScreen.mainScreen.bounds.size;
-    UIEdgeInsets safe = self.view.safeAreaInsets;
-    POWindowSizeGeometry geometry = POWindowSizeMakeGeometry(native.width, native.height,
-        self.view.bounds.size.width, self.view.bounds.size.height, safe.top, safe.bottom, windowSizeFraction);
-    windowGeometry = geometry;
-    if (!geometry.valid) { resizeGrip.hidden = YES; return; }
-    self.contentView.frame = POWindowCGRect(geometry.pane);
-    resizeGrip.frame = POWindowCGRect(geometry.grip);
+    windowGeometry = [self geometryForWindowFraction:windowSizeFraction position:windowPosition];
+    if (!windowGeometry.valid) {
+        windowChrome.hidden = YES;
+        return;
+    }
+    windowChrome.frame = POWindowCGRect(windowGeometry.chrome);
+    self.contentView.frame = POWindowCGRect(windowGeometry.pane);
+    moveBar.frame = POWindowCGRect(windowGeometry.titleBar);
+    CGFloat barWidth = moveBar.bounds.size.width;
+    moveGrip.frame = CGRectMake(0, 0, MAX(0, barWidth-28), 28);
+    windowCloseButton.frame = CGRectMake(MAX(0, barWidth-28), 0, 28, 28);
+    moveIcon.frame = CGRectMake(5, 5, 18, 18);
+    moveLabel.frame = CGRectMake(26, 1, MAX(0, moveGrip.bounds.size.width-26), 20);
+    moveIndicator.frame = CGRectMake(MAX(0, moveGrip.bounds.size.width/2-15), 23, 30, 3);
+    CGAffineTransform textTransform = [[POApplicationHelper settings][@"leftHanded"] boolValue]
+        ? CGAffineTransformMakeScale(-1, 1) : CGAffineTransformIdentity;
+    moveIcon.transform = textTransform;
+    moveLabel.transform = textTransform;
+    resizeGrip.frame = POWindowCGRect(windowGeometry.grip);
     resizeIcon.frame = CGRectInset(resizeGrip.bounds, 13, 3);
     resizeGrip.accessibilityValue = [NSString stringWithFormat:@"%ld%%", (long)llround(windowSizeFraction * 100)];
     activityIndicator.center = CGPointMake(self.contentView.bounds.size.width/2, self.contentView.bounds.size.height/2);
@@ -722,15 +832,14 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
 -(void)layoutHostedContent{
     if (!contextView || !windowGeometry.valid) return;
     CGSize native = UIScreen.mainScreen.bounds.size;
-    // Keep the existing native app canvas. Resize only its owned UIKit wrapper,
-    // with one uniform transform; no scene settings or host restart is needed.
+    // The native app canvas stays active. Only the owned chrome/view transform moves.
     contextView.bounds = CGRectMake(0, 0, native.width, native.height);
     CGFloat horizontal = [[POApplicationHelper settings][@"leftHanded"] boolValue] ? -windowGeometry.scale : windowGeometry.scale;
     contextView.transform = CGAffineTransformMakeScale(horizontal, windowGeometry.scale);
     contextView.center = CGPointMake(self.contentView.bounds.size.width/2, self.contentView.bounds.size.height/2);
 }
 
--(BOOL)canResizeWindow{
+-(BOOL)canManipulateWindow{
     CGFloat distance = scrollView.bounds.size.width - HANDLE_MARGIN;
     return !controllerDetached && !drawerClosing && self.viewIfLoaded.window && self.isOpened &&
         startup.phase == POStartupHosted && contextView && windowGeometry.valid && distance > 0 &&
@@ -738,25 +847,48 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
 }
 
 -(void)updateResizeGripVisibility{
-    resizeGrip.hidden = ![self canResizeWindow];
+    windowChrome.hidden = !self.isOpened || controllerDetached || !windowGeometry.valid;
+    BOOL interactive = [self canManipulateWindow];
+    resizeGrip.hidden = !interactive;
+    moveGrip.userInteractionEnabled = interactive;
+}
+
+-(BOOL)isWindowGestureCurrentForBundle:(NSString *)bundle generation:(uint64_t)generation
+                               bounds:(CGRect)bounds insets:(UIEdgeInsets)insets{
+    return [self canManipulateWindow] && [pinnedBundleId isEqualToString:bundle] &&
+        selectionGeneration == generation && CGRectEqualToRect(bounds, self.view.bounds) &&
+        UIEdgeInsetsEqualToEdgeInsets(insets, self.view.safeAreaInsets);
 }
 
 -(void)cancelWindowResize{
     if (!resizeGestureActive) return;
     resizeGestureActive = NO;
-    if ([pinnedBundleId isEqualToString:resizeBundleIdentifier]) windowSizeFraction = resizeStartFraction;
+    if ([pinnedBundleId isEqualToString:resizeBundleIdentifier]) {
+        windowSizeFraction = resizeStartFraction;
+        windowPosition = resizeStartPosition;
+    }
     resizeBundleIdentifier = nil;
-    // Clear the transaction before disabling; UIKit can synchronously send Cancelled.
     resizePan.enabled = NO;
     resizePan.enabled = YES;
     [self applyWindowSizeLayout];
 }
 
+-(void)cancelWindowMove{
+    if (!moveGestureActive) return;
+    moveGestureActive = NO;
+    if ([pinnedBundleId isEqualToString:moveBundleIdentifier]) windowPosition = moveStartPosition;
+    moveBundleIdentifier = nil;
+    movePan.enabled = NO;
+    movePan.enabled = YES;
+    [self applyWindowSizeLayout];
+}
+
 -(void)resizeWindow:(UIPanGestureRecognizer *)recognizer{
     if (recognizer.state == UIGestureRecognizerStateBegan) {
-        if (![self canResizeWindow]) return;
+        if (![self canManipulateWindow] || moveGestureActive) return;
         resizeGestureActive = YES;
         resizeStartFraction = windowSizeFraction;
+        resizeStartPosition = windowPosition;
         resizeStartGeometry = windowGeometry;
         resizeBundleIdentifier = [pinnedBundleId copy];
         resizeSelectionGeneration = selectionGeneration;
@@ -766,46 +898,116 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
         return;
     }
     if (!resizeGestureActive) return;
-    BOOL current = [self canResizeWindow] && [pinnedBundleId isEqualToString:resizeBundleIdentifier] &&
-        selectionGeneration == resizeSelectionGeneration && CGRectEqualToRect(resizeViewportBounds, self.view.bounds) &&
-        UIEdgeInsetsEqualToEdgeInsets(resizeSafeInsets, self.view.safeAreaInsets);
+    BOOL current = [self isWindowGestureCurrentForBundle:resizeBundleIdentifier generation:resizeSelectionGeneration
+                                                bounds:resizeViewportBounds insets:resizeSafeInsets];
     if (!current || recognizer.state == UIGestureRecognizerStateCancelled || recognizer.state == UIGestureRecognizerStateFailed) {
         [self cancelWindowResize];
         return;
     }
     if (recognizer.state == UIGestureRecognizerStateChanged || recognizer.state == UIGestureRecognizerStateEnded) {
         CGPoint delta = [recognizer translationInView:scrollView];
-        windowSizeFraction = POWindowSizeFractionForTranslation(resizeStartFraction, delta.x, delta.y,
+        windowSizeFraction = POFloatingWindowFractionForTranslation(resizeStartFraction, delta.x, delta.y,
             resizeStartGeometry.maximumWidth, resizeStartGeometry.maximumHeight);
+        POFloatingWindowGeometry resized = [self geometryForWindowFraction:windowSizeFraction position:windowPosition];
+        windowPosition = POFloatingWindowPositionForOrigin(resized,
+            resizeStartGeometry.chrome.x-resizeStartGeometry.pageOffset, resizeStartGeometry.chrome.y);
         [self applyWindowSizeLayout];
         if (recognizer.state == UIGestureRecognizerStateEnded) {
             NSString *bundle = resizeBundleIdentifier;
             resizeGestureActive = NO;
             resizeBundleIdentifier = nil;
             [POWindowSizeStore saveFraction:windowSizeFraction forBundleIdentifier:bundle defaults:[POApplicationHelper state]];
+            [POWindowPositionStore savePosition:windowPosition forBundleIdentifier:bundle defaults:[POApplicationHelper state]];
         }
     }
 }
 
--(void)adjustWindowSizeBy:(double)delta{
-    if (![self canResizeWindow] || !isfinite(delta)) return;
-    [self cancelWindowResize];
-    windowSizeFraction = POWindowSizeClampFraction(windowSizeFraction + delta);
+-(void)moveWindow:(UIPanGestureRecognizer *)recognizer{
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        if (![self canManipulateWindow] || resizeGestureActive) return;
+        moveGestureActive = YES;
+        moveStartGeometry = windowGeometry;
+        moveStartPosition = windowPosition;
+        moveBundleIdentifier = [pinnedBundleId copy];
+        moveSelectionGeneration = selectionGeneration;
+        moveViewportBounds = self.view.bounds;
+        moveSafeInsets = self.view.safeAreaInsets;
+        [recognizer setTranslation:CGPointZero inView:scrollView];
+        return;
+    }
+    if (!moveGestureActive) return;
+    BOOL current = [self isWindowGestureCurrentForBundle:moveBundleIdentifier generation:moveSelectionGeneration
+                                                bounds:moveViewportBounds insets:moveSafeInsets];
+    if (!current || recognizer.state == UIGestureRecognizerStateCancelled || recognizer.state == UIGestureRecognizerStateFailed) {
+        [self cancelWindowMove];
+        return;
+    }
+    if (recognizer.state == UIGestureRecognizerStateChanged || recognizer.state == UIGestureRecognizerStateEnded) {
+        CGPoint delta = [recognizer translationInView:scrollView];
+        windowPosition = POFloatingWindowMovePosition(moveStartGeometry, delta.x, delta.y);
+        [self applyWindowSizeLayout];
+        if (recognizer.state == UIGestureRecognizerStateEnded) {
+            NSString *bundle = moveBundleIdentifier;
+            moveGestureActive = NO;
+            moveBundleIdentifier = nil;
+            [POWindowPositionStore savePosition:windowPosition forBundleIdentifier:bundle defaults:[POApplicationHelper state]];
+        }
+    }
+}
+
+-(void)setWindowFractionKeepingOrigin:(double)fraction{
+    POFloatingWindowGeometry previous = windowGeometry;
+    windowSizeFraction = POWindowSizeClampFraction(fraction);
+    POFloatingWindowGeometry resized = [self geometryForWindowFraction:windowSizeFraction position:windowPosition];
+    windowPosition = POFloatingWindowPositionForOrigin(resized, previous.chrome.x-previous.pageOffset, previous.chrome.y);
     [self applyWindowSizeLayout];
+}
+
+-(void)adjustWindowSizeBy:(double)delta{
+    if (![self canManipulateWindow] || !isfinite(delta)) return;
+    [self cancelWindowResize];
+    [self cancelWindowMove];
+    [self setWindowFractionKeepingOrigin:windowSizeFraction + delta];
     [POWindowSizeStore saveFraction:windowSizeFraction forBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
+    [POWindowPositionStore savePosition:windowPosition forBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
 }
 
 -(BOOL)restoreDefaultWindowSize{
-    if (![self canResizeWindow]) return NO;
+    if (![self canManipulateWindow]) return NO;
     [self cancelWindowResize];
+    [self cancelWindowMove];
+    [self setWindowFractionKeepingOrigin:1.0];
     [POWindowSizeStore resetFractionForBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
-    windowSizeFraction = 1.0;
+    [POWindowPositionStore savePosition:windowPosition forBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
+    return YES;
+}
+
+-(BOOL)accessibilityMoveWindowByX:(double)dx y:(double)dy{
+    if (![self canManipulateWindow] || !isfinite(dx) || !isfinite(dy)) return NO;
+    [self cancelWindowResize];
+    [self cancelWindowMove];
+    if ([[POApplicationHelper settings][@"leftHanded"] boolValue]) dx = -dx;
+    windowPosition = POFloatingWindowMovePosition(windowGeometry, dx, dy);
+    [self applyWindowSizeLayout];
+    return [POWindowPositionStore savePosition:windowPosition forBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
+}
+
+-(BOOL)restoreDefaultWindowPosition{
+    if (![self canManipulateWindow]) return NO;
+    [self cancelWindowResize];
+    [self cancelWindowMove];
+    windowPosition = (POFloatingWindowPosition){0};
+    [POWindowPositionStore resetPositionForBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
     [self applyWindowSizeLayout];
     return YES;
 }
 
 -(void)resetWindowSize:(UITapGestureRecognizer *)recognizer{
     if (recognizer.state == UIGestureRecognizerStateRecognized) [self restoreDefaultWindowSize];
+}
+
+-(void)resetWindowPosition:(UITapGestureRecognizer *)recognizer{
+    if (recognizer.state == UIGestureRecognizerStateRecognized) [self restoreDefaultWindowPosition];
 }
 
 -(void)cleanUpSubviews{
@@ -818,6 +1020,7 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
 
 -(void)endHosting{
     [self cancelWindowResize];
+    [self cancelWindowMove];
     resizeGrip.hidden = YES;
     POStartupCancel(&startup);
     [startupTimer invalidate];
@@ -834,6 +1037,7 @@ static CGRect POWindowCGRect(POWindowSizeRect rect) {
     contextView = nil;
 
     showingCantHost = NO;
+    [self updateResizeGripVisibility];
 }
 
 -(void)showCantHostView{

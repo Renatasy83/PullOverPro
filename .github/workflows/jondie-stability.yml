@@ -1,8 +1,8 @@
-name: Jond_ie derivative - window size RC2, tests and rootless candidate
+name: Jond_ie derivative - movable window RC3, tests and rootless candidate
 on:
   workflow_dispatch:
   push:
-    branches: ['improve/jondie-stability', 'feature/jondie-window-size']
+    branches: ['improve/jondie-stability', 'feature/jondie-window-size', 'feature/jondie-window-move']
     paths: ['jondie-port/**', '.github/workflows/jondie-stability.yml']
 permissions:
   contents: read
@@ -121,11 +121,11 @@ jobs:
           report = {
             'commit': os.environ['GITHUB_SHA'],
             'upstream': '076da8f07e707453bc58ed9baadeefb40f0e93e4',
-            'runner': 'macos-15-intel', 'candidateVersion': '3.0.2~rc2',
+            'runner': 'macos-15-intel', 'candidateVersion': '3.0.2~rc3',
             'outcomes': {name: os.environ[name + '_RESULT'] for name in ('SOURCE', 'TESTS', 'ANALYSIS', 'BUILD', 'PACKAGE')},
-            'expectedFixtureSuites': 8,
-            'feature': 'Aspect-preserving window resize with per-application size persistence',
-            'userReportedWorkingBaseline': {'version': '3.0.2~rc1', 'sourceCommit': '22adc654e237d21d26a67535a994f63c4980b4bd', 'archiveCommit': '6c3fdc2fe19b09d1fa5d11a5be9f0aec095fb463'},
+            'expectedFixtureSuites': 10,
+            'feature': 'Draggable title bar, aspect-preserving resize and per-application size/position persistence',
+            'userReportedWorkingBaseline': {'version': '3.0.2~rc2', 'sourceCommit': '93b0304e39d1a97ba90eb0511d57e9e3780f95a2', 'archiveCommit': 'dd5e7e3ec5dd73231d65dd9e7fae18614ee8b865', 'feedbackCommit': '821e91052c5f08cb82bbb1b54c9fe15a3254e529', 'packageSha256': '59bf2fc4426c4ed78b28654af622574fc385d50c219d61d96998f9e3582fd5e4'},
             'fixtureLogs': sorted(p.name for p in (out / 'tests').glob('*.log')) if (out / 'tests').exists() else [],
             'package': json.loads(package.read_text()) if package.exists() else None,
             'macosCodesignDiagnostic': json.loads((out / 'MACOS_CODESIGN_DIAGNOSTIC.json').read_text()) if (out / 'MACOS_CODESIGN_DIAGNOSTIC.json').exists() else None,
@@ -133,7 +133,8 @@ jobs:
             'limitations': ['Embedded ldid code-page hashes establish internal integrity only, not certificate authenticity, Apple trust or jailbreak acceptance',
               'No real SpringBoard/UIKit scene execution',
               'Fake private interfaces verify only the production cleanup/launch logic under supplied responses',
-              'No measured CPU/battery improvement', 'Actual app launch, content, interaction and keyboard placement require a device']
+              'No measured CPU/battery improvement', 'Actual app launch, content, interaction and keyboard placement require a device',
+              'Title-bar gestures, mirrored positioning, remote touches and size/position restoration after respring require phone testing']
           }
           (out / 'VALIDATION.json').write_text(json.dumps(report, indent=2) + '\n')
           PY
@@ -152,13 +153,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: PullOverPro-3.0.2-rc2-window-size-evidence-${{ github.sha }}
+          name: PullOverPro-3.0.2-rc3-window-move-evidence-${{ github.sha }}
           path: jondie-port/diagnostics/
           if-no-files-found: error
       - name: Upload single candidate DEB
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: PullOverPro-3.0.2-rc2-rootless-${{ github.sha }}
+          name: PullOverPro-3.0.2-rc3-rootless-${{ github.sha }}
           path: jondie-port/packages/*.deb
           if-no-files-found: error

@@ -11,7 +11,7 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PACKAGE = 'com.johndie.pulloverpro-rootless'
-VERSION = '3.0.2~rc2'
+VERSION = '3.0.2~rc3'
 PREFIX = pathlib.Path('var/jb')
 
 
