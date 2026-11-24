@@ -1,3 +1,13 @@
+# Current continuation — window-size RC2 (2026-11-24)
+
+Current development is on `feature/jondie-window-size`, source directory `jondie-port/`. Read the [current OpenCode handoff](https://github.com/Renatasy83/PullOverPro/blob/feature/jondie-window-size/OPENCODE_HANDOFF.md) and [RC2 validation / necessary phone gate](https://github.com/Renatasy83/PullOverPro/blob/feature/jondie-window-size/docs/JOND_IE_WINDOW_SIZE_RC2_VALIDATION.md).
+
+Candidate3.0.2~rc2 implements aspect-preserving resizing and saved size per application. Source93b0304e39d1a97ba90eb0511d57e9e3780f95a2; successful Mac Actions run45332058212. Eight suites,11 production analyzer units, rootless/modern-arm64e and embedded page-hash inspections passed. Archive `candidate/jondie-window-size-3.0.2-rc2` at `dd5e7e3ec5dd73231d65dd9e7fae18614ee8b865`; DEB SHA256 `59bf2fc4426c4ed78b28654af622574fc385d50c219d61d96998f9e3582fd5e4`. RC2 is not phone-confirmed. The remaining tests are grip/touch mapping, A/B sizes/reset, and respring persistence.
+
+This branch retains the RC1 runtime as a baseline; only this handoff pointer changed. RC1 remains preserved and user-reported working at `checkpoint/user-reported-working-jondie-3.0.2-rc1` and original archive6c3fdc2fe19b09d1fa5d11a5be9f0aec095fb463. Keep main/recovery refs/packages unchanged. No automatic phone actions.
+
+## Previous RC1 handoff and confirmation scope
+
 # PullOver Pro — OpenCode / ChatGPT handoff (2026-11-23)
 
 ## Active work: stability corrections to Jond_ie’s GPL port
