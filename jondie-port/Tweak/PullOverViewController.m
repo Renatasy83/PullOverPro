@@ -1,4 +1,5 @@
 // Modified 2026-11-23 by Renatasy83: stability corrections; original credits and GPL-3.0 retained.
+// Modified 2026-11-24: owned-view resizing with per-application size persistence.
 #import <rootless.h>
 //
 //  PullOverViewController.m
@@ -11,10 +12,30 @@
 #import "POLog.h"
 #import "../Shared/POHostStartupState.h"
 #import "../Shared/POKeyboardGeometry.h"
+#import "../Shared/POWindowSizeGeometry.h"
+#import "POWindowSizeStore.h"
 
 #define HANDLE_MARGIN 50
 #define HALF_OPEN_HEIGHT 400
 
+// The resize grip belongs to our wrapper. It does not intercept app-content
+// touches, and VoiceOver can adjust it without performing a drag gesture.
+@interface POWindowResizeHandle : UIView
+@property (nonatomic, copy) void (^adjustFraction)(double delta);
+@end
+
+@implementation POWindowResizeHandle
+-(void)accessibilityIncrement{
+    if (self.adjustFraction) self.adjustFraction(0.05);
+}
+-(void)accessibilityDecrement{
+    if (self.adjustFraction) self.adjustFraction(-0.05);
+}
+@end
+
+static CGRect POWindowCGRect(POWindowSizeRect rect) {
+    return CGRectMake(rect.x, rect.y, rect.width, rect.height);
+}
 
 
 @interface PullOverViewController () <UIGestureRecognizerDelegate> {
@@ -39,6 +60,18 @@
     NSNumber *originalKeyboardOffset;
     uint64_t selectionGeneration;
     BOOL controllerDetached;
+    double windowSizeFraction;
+    POWindowSizeGeometry windowGeometry;
+    POWindowResizeHandle *resizeGrip;
+    UIImageView *resizeIcon;
+    UIPanGestureRecognizer *resizePan;
+    BOOL resizeGestureActive;
+    double resizeStartFraction;
+    POWindowSizeGeometry resizeStartGeometry;
+    NSString *resizeBundleIdentifier;
+    uint64_t resizeSelectionGeneration;
+    CGRect resizeViewportBounds;
+    UIEdgeInsets resizeSafeInsets;
 }
 
 @end
@@ -157,6 +190,7 @@
 
     
     [scrollView addSubview:self.contentView];
+    [self configureResizeGrip];
     
     if ([[POApplicationHelper state] stringForKey:@"lastPinnedBundleId"]) {
         pinnedBundleId = [[POApplicationHelper state] stringForKey:@"lastPinnedBundleId"];
@@ -167,6 +201,7 @@
         UIImage *image = [POApplicationHelper imageForBundleId:pinnedBundleId];
         self.handle.imageView.image = image;
     }
+    [self loadWindowSizeForPinnedApplication];
     
     if ([[POApplicationHelper settings][@"leftHanded"] boolValue]){
         imageView.transform = CGAffineTransformMakeScale(-1.0, 1.0);
@@ -194,8 +229,7 @@
 
 -(void)viewDidLayoutSubviews{
     [super viewDidLayoutSubviews];
-    
-    activityIndicator.center = CGPointMake(self.contentView.frame.size.width/2, self.contentView.frame.size.height/2);
+    [self applyWindowSizeLayout];
 }
 
 -(void)viewWillAppear:(BOOL)animated{
@@ -259,6 +293,8 @@
 }
 
 -(BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer shouldReceiveTouch:(UITouch *)touch{
+    if (recognizer == resizePan) return [self canResizeWindow];
+    if ([touch.view isDescendantOfView:resizeGrip]) return NO;
     // Background taps close the drawer; app content and the Retry button keep their touches.
     return ![touch.view isDescendantOfView:self.contentView];
 }
@@ -270,6 +306,7 @@
     [self endHosting]; // Release the old bundle before changing its identifier.
     POLog(@"pin %@ (front=%@)", bundleId, [POApplicationHelper frontMostBundleId]);
     pinnedBundleId = bundleId;
+    [self loadWindowSizeForPinnedApplication];
     
     [[POApplicationHelper state] setObject:bundleId forKey:@"lastPinnedBundleId"];
     UIImage *image = [POApplicationHelper imageForBundleId:bundleId];
@@ -495,6 +532,7 @@
                 self.handle.isNubbed = NO;
             }
         }
+        [self updateResizeGripVisibility];
     }
 }
 
@@ -614,26 +652,160 @@
 }
 
 -(void)layoutContextView{
-    contextView.transform = CGAffineTransformScale(CGAffineTransformIdentity, scale, scale);
-    if ([[POApplicationHelper settings][@"leftHanded"] boolValue]){
-        contextView.transform = CGAffineTransformConcat(contextView.transform, CGAffineTransformMakeScale(-1.0, 1.0));
-    }
-    
     [self.contentView addSubview:contextView];
-    
-    CGRect frame = contextView.frame;
-    frame.origin.x = 0;
-    frame.origin.y = 0;
-    frame.size.width = self.contentView.frame.size.width;
-    frame.size.height = self.contentView.frame.size.height;
-    contextView.frame = frame;
-    
-
+    [self applyWindowSizeLayout];
+    contextView.alpha = 0;
     [UIView animateWithDuration:0.3 animations:^{
         contextView.alpha = 1;
     }];
+    [self updateResizeGripVisibility];
+}
 
-    
+#pragma mark - Owned window size
+
+-(void)configureResizeGrip{
+    resizeGrip = [[POWindowResizeHandle alloc] initWithFrame:CGRectZero];
+    resizeGrip.hidden = YES;
+    resizeGrip.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.85];
+    resizeGrip.layer.cornerRadius = 9;
+    resizeGrip.isAccessibilityElement = YES;
+    resizeGrip.accessibilityTraits = UIAccessibilityTraitAdjustable;
+    resizeGrip.accessibilityLabel = @"Window size";
+    resizeGrip.accessibilityHint = @"Swipe up or down to adjust. Use Restore original size in the actions menu.";
+    resizeIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"arrow.up.left.and.arrow.down.right"]];
+    resizeIcon.tintColor = UIColor.whiteColor;
+    resizeIcon.contentMode = UIViewContentModeScaleAspectFit;
+    resizeIcon.userInteractionEnabled = NO;
+    [resizeGrip addSubview:resizeIcon];
+    [scrollView addSubview:resizeGrip];
+    resizePan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(resizeWindow:)];
+    resizePan.maximumNumberOfTouches = 1;
+    resizePan.delegate = self;
+    [resizeGrip addGestureRecognizer:resizePan];
+    // The drawer must not start paging while this dedicated grip is dragged.
+    [scrollView.panGestureRecognizer requireGestureRecognizerToFail:resizePan];
+    UITapGestureRecognizer *restore = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(resetWindowSize:)];
+    restore.numberOfTapsRequired = 2;
+    [resizeGrip addGestureRecognizer:restore];
+    __weak PullOverViewController *weakSelf = self;
+    resizeGrip.adjustFraction = ^(double delta) { [weakSelf adjustWindowSizeBy:delta]; };
+    UIAccessibilityCustomAction *reset = [[UIAccessibilityCustomAction alloc] initWithName:@"Restore original size" actionHandler:^BOOL(UIAccessibilityCustomAction *action) {
+        return [weakSelf restoreDefaultWindowSize];
+    }];
+    resizeGrip.accessibilityCustomActions = @[reset];
+}
+
+-(void)loadWindowSizeForPinnedApplication{
+    windowSizeFraction = [POWindowSizeStore fractionForBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
+    [self applyWindowSizeLayout];
+}
+
+-(void)applyWindowSizeLayout{
+    if (!self.contentView || !self.isViewLoaded) return;
+    CGSize native = UIScreen.mainScreen.bounds.size;
+    UIEdgeInsets safe = self.view.safeAreaInsets;
+    POWindowSizeGeometry geometry = POWindowSizeMakeGeometry(native.width, native.height,
+        self.view.bounds.size.width, self.view.bounds.size.height, safe.top, safe.bottom, windowSizeFraction);
+    windowGeometry = geometry;
+    if (!geometry.valid) { resizeGrip.hidden = YES; return; }
+    self.contentView.frame = POWindowCGRect(geometry.pane);
+    resizeGrip.frame = POWindowCGRect(geometry.grip);
+    resizeIcon.frame = CGRectInset(resizeGrip.bounds, 13, 3);
+    resizeGrip.accessibilityValue = [NSString stringWithFormat:@"%ld%%", (long)llround(windowSizeFraction * 100)];
+    activityIndicator.center = CGPointMake(self.contentView.bounds.size.width/2, self.contentView.bounds.size.height/2);
+    hostingStatusLabel.frame = CGRectMake(16, self.contentView.bounds.size.height/2-80, self.contentView.bounds.size.width-32, 100);
+    hostingRetryButton.frame = CGRectMake(16, self.contentView.bounds.size.height/2+28, self.contentView.bounds.size.width-32, 44);
+    [self layoutHostedContent];
+    [self updateResizeGripVisibility];
+}
+
+-(void)layoutHostedContent{
+    if (!contextView || !windowGeometry.valid) return;
+    CGSize native = UIScreen.mainScreen.bounds.size;
+    // Keep the existing native app canvas. Resize only its owned UIKit wrapper,
+    // with one uniform transform; no scene settings or host restart is needed.
+    contextView.bounds = CGRectMake(0, 0, native.width, native.height);
+    CGFloat horizontal = [[POApplicationHelper settings][@"leftHanded"] boolValue] ? -windowGeometry.scale : windowGeometry.scale;
+    contextView.transform = CGAffineTransformMakeScale(horizontal, windowGeometry.scale);
+    contextView.center = CGPointMake(self.contentView.bounds.size.width/2, self.contentView.bounds.size.height/2);
+}
+
+-(BOOL)canResizeWindow{
+    CGFloat distance = scrollView.bounds.size.width - HANDLE_MARGIN;
+    return !controllerDetached && !drawerClosing && self.viewIfLoaded.window && self.isOpened &&
+        startup.phase == POStartupHosted && contextView && windowGeometry.valid && distance > 0 &&
+        fabs(scrollView.contentOffset.x - distance) < 1.0;
+}
+
+-(void)updateResizeGripVisibility{
+    resizeGrip.hidden = ![self canResizeWindow];
+}
+
+-(void)cancelWindowResize{
+    if (!resizeGestureActive) return;
+    resizeGestureActive = NO;
+    if ([pinnedBundleId isEqualToString:resizeBundleIdentifier]) windowSizeFraction = resizeStartFraction;
+    resizeBundleIdentifier = nil;
+    // Clear the transaction before disabling; UIKit can synchronously send Cancelled.
+    resizePan.enabled = NO;
+    resizePan.enabled = YES;
+    [self applyWindowSizeLayout];
+}
+
+-(void)resizeWindow:(UIPanGestureRecognizer *)recognizer{
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        if (![self canResizeWindow]) return;
+        resizeGestureActive = YES;
+        resizeStartFraction = windowSizeFraction;
+        resizeStartGeometry = windowGeometry;
+        resizeBundleIdentifier = [pinnedBundleId copy];
+        resizeSelectionGeneration = selectionGeneration;
+        resizeViewportBounds = self.view.bounds;
+        resizeSafeInsets = self.view.safeAreaInsets;
+        [recognizer setTranslation:CGPointZero inView:scrollView];
+        return;
+    }
+    if (!resizeGestureActive) return;
+    BOOL current = [self canResizeWindow] && [pinnedBundleId isEqualToString:resizeBundleIdentifier] &&
+        selectionGeneration == resizeSelectionGeneration && CGRectEqualToRect(resizeViewportBounds, self.view.bounds) &&
+        UIEdgeInsetsEqualToEdgeInsets(resizeSafeInsets, self.view.safeAreaInsets);
+    if (!current || recognizer.state == UIGestureRecognizerStateCancelled || recognizer.state == UIGestureRecognizerStateFailed) {
+        [self cancelWindowResize];
+        return;
+    }
+    if (recognizer.state == UIGestureRecognizerStateChanged || recognizer.state == UIGestureRecognizerStateEnded) {
+        CGPoint delta = [recognizer translationInView:scrollView];
+        windowSizeFraction = POWindowSizeFractionForTranslation(resizeStartFraction, delta.x, delta.y,
+            resizeStartGeometry.maximumWidth, resizeStartGeometry.maximumHeight);
+        [self applyWindowSizeLayout];
+        if (recognizer.state == UIGestureRecognizerStateEnded) {
+            NSString *bundle = resizeBundleIdentifier;
+            resizeGestureActive = NO;
+            resizeBundleIdentifier = nil;
+            [POWindowSizeStore saveFraction:windowSizeFraction forBundleIdentifier:bundle defaults:[POApplicationHelper state]];
+        }
+    }
+}
+
+-(void)adjustWindowSizeBy:(double)delta{
+    if (![self canResizeWindow] || !isfinite(delta)) return;
+    [self cancelWindowResize];
+    windowSizeFraction = POWindowSizeClampFraction(windowSizeFraction + delta);
+    [self applyWindowSizeLayout];
+    [POWindowSizeStore saveFraction:windowSizeFraction forBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
+}
+
+-(BOOL)restoreDefaultWindowSize{
+    if (![self canResizeWindow]) return NO;
+    [self cancelWindowResize];
+    [POWindowSizeStore resetFractionForBundleIdentifier:pinnedBundleId defaults:[POApplicationHelper state]];
+    windowSizeFraction = 1.0;
+    [self applyWindowSizeLayout];
+    return YES;
+}
+
+-(void)resetWindowSize:(UITapGestureRecognizer *)recognizer{
+    if (recognizer.state == UIGestureRecognizerStateRecognized) [self restoreDefaultWindowSize];
 }
 
 -(void)cleanUpSubviews{
@@ -645,6 +817,8 @@
 }
 
 -(void)endHosting{
+    [self cancelWindowResize];
+    resizeGrip.hidden = YES;
     POStartupCancel(&startup);
     [startupTimer invalidate];
     startupTimer = nil;

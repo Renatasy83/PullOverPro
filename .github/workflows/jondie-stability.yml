@@ -1,8 +1,8 @@
-name: Jond_ie derivative - tests, analysis and rootless candidate
+name: Jond_ie derivative - window size RC2, tests and rootless candidate
 on:
   workflow_dispatch:
   push:
-    branches: ['improve/jondie-stability']
+    branches: ['improve/jondie-stability', 'feature/jondie-window-size']
     paths: ['jondie-port/**', '.github/workflows/jondie-stability.yml']
 permissions:
   contents: read
@@ -121,8 +121,11 @@ jobs:
           report = {
             'commit': os.environ['GITHUB_SHA'],
             'upstream': '076da8f07e707453bc58ed9baadeefb40f0e93e4',
-            'runner': 'macos-15-intel', 'candidateVersion': '3.0.2~rc1',
+            'runner': 'macos-15-intel', 'candidateVersion': '3.0.2~rc2',
             'outcomes': {name: os.environ[name + '_RESULT'] for name in ('SOURCE', 'TESTS', 'ANALYSIS', 'BUILD', 'PACKAGE')},
+            'expectedFixtureSuites': 8,
+            'feature': 'Aspect-preserving window resize with per-application size persistence',
+            'userReportedWorkingBaseline': {'version': '3.0.2~rc1', 'sourceCommit': '22adc654e237d21d26a67535a994f63c4980b4bd', 'archiveCommit': '6c3fdc2fe19b09d1fa5d11a5be9f0aec095fb463'},
             'fixtureLogs': sorted(p.name for p in (out / 'tests').glob('*.log')) if (out / 'tests').exists() else [],
             'package': json.loads(package.read_text()) if package.exists() else None,
             'macosCodesignDiagnostic': json.loads((out / 'MACOS_CODESIGN_DIAGNOSTIC.json').read_text()) if (out / 'MACOS_CODESIGN_DIAGNOSTIC.json').exists() else None,
@@ -149,13 +152,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: PullOverPro-jondie-stability-evidence-${{ github.sha }}
+          name: PullOverPro-3.0.2-rc2-window-size-evidence-${{ github.sha }}
           path: jondie-port/diagnostics/
           if-no-files-found: error
       - name: Upload single candidate DEB
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: PullOverPro-3.0.2-rc1-rootless-${{ github.sha }}
+          name: PullOverPro-3.0.2-rc2-rootless-${{ github.sha }}
           path: jondie-port/packages/*.deb
           if-no-files-found: error

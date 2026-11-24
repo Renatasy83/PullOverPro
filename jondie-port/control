@@ -1,12 +1,12 @@
 Package: com.johndie.pulloverpro-rootless
-Name: PullOver Pro (stability candidate)
-Version: 3.0.2~rc1
+Name: PullOver Pro (window size candidate)
+Version: 3.0.2~rc2
 Architecture: iphoneos-arm64
-Description: Original edge drawer and app hosting by c1d3r, rootless port by Jond_ie, with independently maintained stability corrections. Candidate build; exact device compatibility requires testing. GPL-3.0 source: https://github.com/Renatasy83/PullOverPro/tree/improve/jondie-stability/jondie-port
+Description: Original edge drawer and app hosting by c1d3r, rootless port by Jond_ie, with independently maintained stability corrections and aspect-preserving window sizing remembered per application. Candidate build; this new feature requires device testing. GPL-3.0 source: https://github.com/Renatasy83/PullOverPro/tree/feature/jondie-window-size/jondie-port
 Maintainer: Renatasy83
 Author: c1d3r (rootless port: Jond_ie; stability derivative: Renatasy83)
 Section: Tweaks
 Depends: mobilesubstrate, com.opa334.altlist, firmware (>= 15.0), firmware (<< 28.0)
 Recommends: preferenceloader
 Conflicts: com.renatasy83.pulloverpro.diagnostic
-Homepage: https://github.com/Renatasy83/PullOverPro/tree/improve/jondie-stability/jondie-port
+Homepage: https://github.com/Renatasy83/PullOverPro/tree/feature/jondie-window-size/jondie-port
