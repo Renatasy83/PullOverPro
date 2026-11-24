@@ -1,0 +1,16 @@
+ new Debian package, version 2.0.
+ size 105096 bytes: control archive=649 bytes.
+     931 bytes,    13 lines      control
+ Package: com.johndie.pulloverpro-rootless
+ Name: PullOver Pro (movable window candidate)
+ Description: Original edge drawer and app hosting by c1d3r, rootless port by Jond_ie, with independently maintained stability corrections, aspect-preserving resizing and a draggable title bar with size and position remembered per application. Candidate build; this new feature requires device testing. GPL-3.0 source: https://github.com/Renatasy83/PullOverPro/tree/feature/jondie-window-move/jondie-port
+ Maintainer: Renatasy83
+ Author: c1d3r (rootless port: Jond_ie; stability derivative: Renatasy83)
+ Section: Tweaks
+ Depends: mobilesubstrate, com.opa334.altlist, firmware (>= 15.0), firmware (<< 28.0)
+ Recommends: preferenceloader
+ Conflicts: com.renatasy83.pulloverpro.diagnostic
+ Homepage: https://github.com/Renatasy83/PullOverPro/tree/feature/jondie-window-move/jondie-port
+ Architecture: iphoneos-arm64
+ Version: 3.0.2~rc3
+ Installed-Size: 648

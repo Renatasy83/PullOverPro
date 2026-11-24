@@ -1,0 +1,248 @@
+{
+  "commit": "7cf87439e67a7f5bb7494a04946eb72366bd220a",
+  "upstream": "076da8f07e707453bc58ed9baadeefb40f0e93e4",
+  "runner": "macos-15-intel",
+  "candidateVersion": "3.0.2~rc3",
+  "outcomes": {
+    "SOURCE": "success",
+    "TESTS": "success",
+    "ANALYSIS": "success",
+    "BUILD": "success",
+    "PACKAGE": "success"
+  },
+  "expectedFixtureSuites": 10,
+  "feature": "Draggable title bar, aspect-preserving resize and per-application size/position persistence",
+  "userReportedWorkingBaseline": {
+    "version": "3.0.2~rc2",
+    "sourceCommit": "93b0304e39d1a97ba90eb0511d57e9e3780f95a2",
+    "archiveCommit": "dd5e7e3ec5dd73231d65dd9e7fae18614ee8b865",
+    "feedbackCommit": "821e91052c5f08cb82bbb1b54c9fe15a3254e529",
+    "packageSha256": "59bf2fc4426c4ed78b28654af622574fc385d50c219d61d96998f9e3582fd5e4"
+  },
+  "fixtureLogs": [
+    "run-context.log",
+    "run-floating-window.log",
+    "run-keyboard.log",
+    "run-preferences.log",
+    "run-quickswitch.log",
+    "run-signature.log",
+    "run-startup.log",
+    "run-window-position-store.log",
+    "run-window-size-store.log",
+    "run-window-size.log"
+  ],
+  "package": {
+    "package": "com.johndie.pulloverpro-rootless_3.0.2~rc3_iphoneos-arm64.deb",
+    "bytes": 105096,
+    "sha256": "cb7450093d305e65762d7ba1c5d68aac05f6b3ea6dfa36d9b0ac8a8aecdc19cd",
+    "rootless": true,
+    "maintainerScripts": [],
+    "binaries": [
+      {
+        "binary": "PullOverPro.dylib",
+        "slices": [
+          "arm64",
+          "arm64e ABI v2"
+        ],
+        "signatures": [
+          {
+            "architecture": "arm64",
+            "codeDirectories": [
+              {
+                "slot": 0,
+                "version": "0x20400",
+                "flags": "0x0",
+                "hashType": 1,
+                "hash": "sha1",
+                "pagesVerified": 44,
+                "pageBytes": 4096,
+                "codeLimit": 177472,
+                "specialSlotsVerified": [
+                  2
+                ],
+                "platform": 0
+              },
+              {
+                "slot": 4096,
+                "version": "0x20400",
+                "flags": "0x0",
+                "hashType": 2,
+                "hash": "sha256",
+                "pagesVerified": 44,
+                "pageBytes": 4096,
+                "codeLimit": 177472,
+                "specialSlotsVerified": [
+                  2
+                ],
+                "platform": 0
+              }
+            ],
+            "embeddedPageHashIntegrityVerified": true,
+            "cmsPresent": false,
+            "appleTrustVerified": false,
+            "deviceTrustVerified": false
+          },
+          {
+            "architecture": "arm64e",
+            "codeDirectories": [
+              {
+                "slot": 0,
+                "version": "0x20400",
+                "flags": "0x0",
+                "hashType": 1,
+                "hash": "sha1",
+                "pagesVerified": 44,
+                "pageBytes": 4096,
+                "codeLimit": 177488,
+                "specialSlotsVerified": [
+                  2
+                ],
+                "platform": 0
+              },
+              {
+                "slot": 4096,
+                "version": "0x20400",
+                "flags": "0x0",
+                "hashType": 2,
+                "hash": "sha256",
+                "pagesVerified": 44,
+                "pageBytes": 4096,
+                "codeLimit": 177488,
+                "specialSlotsVerified": [
+                  2
+                ],
+                "platform": 0
+              }
+            ],
+            "embeddedPageHashIntegrityVerified": true,
+            "cmsPresent": false,
+            "appleTrustVerified": false,
+            "deviceTrustVerified": false
+          }
+        ],
+        "embeddedPageHashIntegrityVerified": true,
+        "appleTrustVerified": false,
+        "deviceTrustVerified": false
+      },
+      {
+        "binary": "PullOverProPrefs",
+        "slices": [
+          "arm64",
+          "arm64e ABI v2"
+        ],
+        "signatures": [
+          {
+            "architecture": "arm64",
+            "codeDirectories": [
+              {
+                "slot": 0,
+                "version": "0x20400",
+                "flags": "0x0",
+                "hashType": 1,
+                "hash": "sha1",
+                "pagesVerified": 17,
+                "pageBytes": 4096,
+                "codeLimit": 69408,
+                "specialSlotsVerified": [
+                  2
+                ],
+                "platform": 0
+              },
+              {
+                "slot": 4096,
+                "version": "0x20400",
+                "flags": "0x0",
+                "hashType": 2,
+                "hash": "sha256",
+                "pagesVerified": 17,
+                "pageBytes": 4096,
+                "codeLimit": 69408,
+                "specialSlotsVerified": [
+                  2
+                ],
+                "platform": 0
+              }
+            ],
+            "embeddedPageHashIntegrityVerified": true,
+            "cmsPresent": false,
+            "appleTrustVerified": false,
+            "deviceTrustVerified": false
+          },
+          {
+            "architecture": "arm64e",
+            "codeDirectories": [
+              {
+                "slot": 0,
+                "version": "0x20400",
+                "flags": "0x0",
+                "hashType": 1,
+                "hash": "sha1",
+                "pagesVerified": 17,
+                "pageBytes": 4096,
+                "codeLimit": 69408,
+                "specialSlotsVerified": [
+                  2
+                ],
+                "platform": 0
+              },
+              {
+                "slot": 4096,
+                "version": "0x20400",
+                "flags": "0x0",
+                "hashType": 2,
+                "hash": "sha256",
+                "pagesVerified": 17,
+                "pageBytes": 4096,
+                "codeLimit": 69408,
+                "specialSlotsVerified": [
+                  2
+                ],
+                "platform": 0
+              }
+            ],
+            "embeddedPageHashIntegrityVerified": true,
+            "cmsPresent": false,
+            "appleTrustVerified": false,
+            "deviceTrustVerified": false
+          }
+        ],
+        "embeddedPageHashIntegrityVerified": true,
+        "appleTrustVerified": false,
+        "deviceTrustVerified": false
+      }
+    ],
+    "deviceRuntimeTested": false,
+    "dopamineEllekitCompatibilityConfirmed": false
+  },
+  "macosCodesignDiagnostic": {
+    "results": [
+      {
+        "binary": "Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib",
+        "exitCode": 1,
+        "stdout": "",
+        "stderr": "/Users/runner/work/_temp/jondie-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib: code object is not signed at all\nIn architecture: arm64\n"
+      },
+      {
+        "binary": "Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs",
+        "exitCode": 1,
+        "stdout": "",
+        "stderr": "/Users/runner/work/_temp/jondie-package/var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs: code object is not signed at all\nIn architecture: arm64\n"
+      }
+    ],
+    "isReleaseGate": false,
+    "macosVerificationSucceeded": false,
+    "appleTrustVerified": false,
+    "deviceTrustVerified": false,
+    "scope": "Theos/ldid embedded signatures are checked independently for code-page and special-slot hash integrity. macOS codesign acceptance is recorded separately; neither establishes jailbreak device trust."
+  },
+  "deviceRuntimeTested": false,
+  "dopamineEllekitCompatibilityConfirmed": false,
+  "limitations": [
+    "Embedded ldid code-page hashes establish internal integrity only, not certificate authenticity, Apple trust or jailbreak acceptance",
+    "No real SpringBoard/UIKit scene execution",
+    "Fake private interfaces verify only the production cleanup/launch logic under supplied responses",
+    "No measured CPU/battery improvement",
+    "Actual app launch, content, interaction and keyboard placement require a device",
+    "Title-bar gestures, mirrored positioning, remote touches and size/position restoration after respring require phone testing"
+  ]
+}

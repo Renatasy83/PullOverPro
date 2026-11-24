@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "binary": "Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib",
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "/Users/runner/work/_temp/jondie-package/var/jb/Library/MobileSubstrate/DynamicLibraries/PullOverPro.dylib: code object is not signed at all\nIn architecture: arm64\n"
+    },
+    {
+      "binary": "Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs",
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "/Users/runner/work/_temp/jondie-package/var/jb/Library/PreferenceBundles/PullOverProPrefs.bundle/PullOverProPrefs: code object is not signed at all\nIn architecture: arm64\n"
+    }
+  ],
+  "isReleaseGate": false,
+  "macosVerificationSucceeded": false,
+  "appleTrustVerified": false,
+  "deviceTrustVerified": false,
+  "scope": "Theos/ldid embedded signatures are checked independently for code-page and special-slot hash integrity. macOS codesign acceptance is recorded separately; neither establishes jailbreak device trust."
+}

@@ -12,11 +12,15 @@ Latest user feedback: RC2 resizing works but is impractical without moving the w
 - New Foundation `POWindowPositionStore` stores `windowPositionsV1` per bundleID in existing POStateDomain. Reads do not write. Only completed valid move/resize gestures save; closing, changing app/controller or invalid viewport/insets cancels intermediate changes. Existing `windowSizeFractionsV1` is retained. Reset affects only the selected app's position; sibling/global state and unknown fields survive.
 - Position/size operations modify only owned UIKit frames/transforms, keeping the native app canvas and existing presenter alive. No new private API signatures or host restart during dragging. Original edge activation and outside-tap behavior are retained. VoiceOver has directional movement/reset actions. Close button and background tap remain separate from move/resize gesture areas.
 
-## Validation boundary
+## Validated RC3 ready for the phone gate
 
-Portable floating-window and retained RC2 geometry tests passed with ASan/UBSan. Independent geometry/store/UI integration reviews found no blocker; end-hosting visibility is explicitly refreshed even when UIKit directly marks a controller detached. The workflow requires ten suites: prior eight plus floating geometry and actual position-store Foundation tests. Full macOS tests, production Clang analysis, rootless Theos and payload/modern-arm64e/embedded-signature inspection remain pending this checkpoint. Record actual final results before delivery.
+[Full validation, download and necessary phone checks](docs/JOND_IE_WINDOW_MOVE_RC3_VALIDATION.md).
 
-Real phone gate only: drag versus paging on both edges, app touches/keyboard after moving and resizing, header X plus separate position/size resets, independent per-app position restoration and respring persistence. Fixtures do not execute UIKit remote touches or an iOS respring. No battery/performance/all-app/long-stability claims. Do not ask the user for intermediate builds or every app.
+Build source7cf87439e67a7f5bb7494a04946eb72366bd220a; Mac Actions run45481859945 / job138756816704 succeeded. All ten suites passed, including272 actual position-store checks,123 size-store checks and66 manager/fake-platform checks. Clang analyzed12 production units with zero findings. Theos rootless release, complete payload/modern-arm64e/embedded-signature inspection passed (244 page-hash checks). Downloaded ZIP digests matched Actions metadata and the DEB was independently inspected on Linux.
+
+Candidate `com.johndie.pulloverpro-rootless_3.0.2~rc3_iphoneos-arm64.deb` (105096bytes), SHA256 `cb7450093d305e65762d7ba1c5d68aac05f6b3ea6dfa36d9b0ac8a8aecdc19cd`, preserved in `candidate-packages/jondie-window-move-3.0.2-rc3/` and branch `candidate/jondie-window-move-3.0.2-rc3`, with complete evidence. Package artifact14961898471; evidence14962620697. RC1/RC2 packages and checkpoints remain unchanged.
+
+Only real-device checks remain: top-bar drag versus paging on both edges, app touches/keyboard after moving/resizing, X and separate position/size resets, independent A/B profiles and respring persistence. RC3 has not run on a phone. The previous user reports do not confirm these new controls. Fixtures do not execute UIKit remote touch or iOS respring behavior. No all-app/battery/long-stability or Apple/device trust claims. Do not ask for intermediate installs or exhaustive per-app checks.
 
 ## Recovery and tandem continuation
 
